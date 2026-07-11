@@ -224,6 +224,40 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .auto-item .ai-t{font-weight:700;display:flex;justify-content:space-between;gap:8px}
 .auto-item .ai-d{font-size:12px;color:var(--tinta-suave);margin-top:2px}
 
+/* ===== MEU DIA 2.0 — linha do tempo ===== */
+.rz-faixa{background:var(--papel);border:1px solid var(--linha);border-radius:10px;padding:8px 14px;font-size:12.5px;color:var(--tinta-suave);margin-bottom:14px}
+.rz-faixa strong{color:var(--tinta)}
+.ld-item{display:flex;gap:12px}
+.ld-rail{width:22px;display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.ld-dot{width:18px;height:18px;border-radius:50%;border:2px solid #C4CED2;background:var(--porcelana);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ld-passado .ld-dot{background:var(--petroleo);border-color:var(--petroleo)}
+.ld-atual .ld-dot{background:var(--laranja);border-color:var(--laranja);box-shadow:0 0 0 4px #FBD8C2}
+.ld-dot.livre{border-color:var(--foco)}
+.ld-dot.ev{border-color:var(--foco)}
+.ld-linha{flex:1;width:2px;background:#C4CED2;margin-top:4px;min-height:14px}
+.ld-corpo{flex:1;padding-bottom:12px;min-width:0}
+.ld-cab{font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:1px}
+.ld-hora{font-size:12px;color:var(--tinta-suave);font-variant-numeric:tabular-nums}
+.ld-nome{font-weight:700}
+.ld-passado .ld-corpo{opacity:.55}
+.ld-passado .ld-nome{text-decoration:line-through}
+.ld-cont{font-size:11.5px;font-weight:700;color:var(--tinta-suave)}
+.ld-cont.ok{color:var(--verde)}
+.ld-resta{font-size:11.5px;font-weight:700;color:var(--laranja)}
+.ld-toggle{font-size:11px;color:var(--tinta-suave)}
+.ld-tarefas{margin-top:8px}
+.ld-agora-card{background:var(--papel);border:2px solid var(--laranja);border-radius:12px;padding:8px 12px}
+.pill.agora{background:var(--laranja);color:#fff}
+.pill.ag-ev{background:var(--foco-suave);color:var(--foco)}
+.ld-ev .ld-ev-ico{font-size:14px;margin-top:2px}
+.ch-card{padding:0;overflow:hidden}
+.ch-head{width:100%;display:flex;align-items:center;gap:8px;background:none;border:none;font:inherit;font-size:14px;font-weight:700;color:var(--tinta);padding:14px 16px;cursor:pointer;text-align:left}
+.ch-head .chev{margin-left:auto;color:var(--tinta-suave)}
+.ch-card #chamadosAvaliar{padding:0 16px 14px}
+details.rec{background:var(--papel);border:1px solid var(--linha);border-radius:14px;padding:12px 16px;margin-top:12px}
+details.rec summary{font-family:'Archivo',sans-serif;font-weight:800;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0}
+details.rec[open] summary{margin-bottom:8px}
+
 .aviso{font-size:12px;color:var(--tinta-suave);margin-top:16px;text-align:center}
 .status-salvo{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none}
 .status-salvo.show{opacity:.92}
@@ -288,51 +322,35 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 
   <!-- ===== MEU DIA ===== -->
   <div class="vista ativa" id="v-dia">
-    <div class="rodizio">
-      <div class="card destaque"><div class="rotulo">Triagem da semana</div><div class="valor" id="cTriagem">—</div><div class="sub">Cadastro de produto vai sempre para a titular dos produtos</div></div>
-      <div class="card"><div class="rotulo">Plantão de hoje (fila do meio-dia)</div><div class="valor" id="cPlantao">—</div><div class="sub">Quem está de plantão tem o bloco livre no fim do dia</div></div>
-      <div class="card"><div class="rotulo">Plantão de sábado</div><div class="valor" id="cSabado">—</div><div class="sub">08h–12h · os demais folgam</div></div>
+    <div class="rz-faixa">🔁 Triagem: <strong id="cTriagem">—</strong> · Plantão do meio-dia: <strong id="cPlantao">—</strong> · Sábado: <strong id="cSabado">—</strong></div>
+    <div class="painel">
+      <h3 id="tituloCheck">Seu dia — siga a linha</h3>
+      <div class="faixa" id="faixaDia">—</div>
+      <div id="linhaDia"></div>
     </div>
-    <div class="regua-box">
-      <div class="regua-cab"><h2 id="tituloRegua">Régua do dia</h2><div class="agora-txt" id="blocoAtualTxt">—</div></div>
-      <div class="regua"><div class="trilho" id="trilho"></div><div class="ponteiro" id="ponteiro"></div><div class="horas" id="horas"></div></div>
-      <div class="legenda">
-        <span><i style="background:var(--petroleo)"></i>Atendimento</span>
-        <span><i style="background:#0B4750"></i>Pico</span>
-        <span><i style="background:var(--ambar)"></i>Almoço/plantão</span>
-        <span><i style="background:var(--foco)"></i>Bloco livre</span>
-        <span><i style="background:#3D5560"></i>Fechamento</span>
-      </div>
+    <div class="painel ch-card">
+      <button class="ch-head" id="chHead" type="button">
+        <span id="chResumo">🔔 Chamados para avaliar</span>
+        <span class="chev" id="chChev">▾</span>
+      </button>
+      <div id="chamadosAvaliar" style="display:none"><p class="vazio">Carregando…</p></div>
     </div>
-    <div class="grade">
-      <div class="painel">
-        <h3 id="tituloCheck">Checklist de hoje</h3>
-        <div class="faixa" id="faixaCheck">—</div>
-        <div id="listaTarefas"></div>
+    <details class="rec">
+      <summary>Progresso do time hoje</summary>
+      <div class="faixa">Atualiza em tempo real para todos.</div>
+      <div class="time-prog" id="timeProg"></div>
+    </details>
+    <details class="rec">
+      <summary>Regras de ouro</summary>
+      <div style="font-size:13px;display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        <span>• 1ª resposta <strong>≤ 30 min</strong></span>
+        <span>• Esteira Rápida resolve em <strong>≤ 4h úteis</strong></span>
+        <span>• Técnica: <strong>≤ 24h</strong>, update a cada 4h</span>
+        <span>• Nenhum chamado <strong>&gt; 4h sem interação</strong></span>
+        <span>• Zero chamados em "Outros" — retipifique</span>
+        <span>• Resolveu, concluiu — não dorme aberto</span>
       </div>
-      <div>
-        <div class="painel">
-          <h3>Avaliar chamados de hoje</h3>
-          <div id="chamadosAvaliar"><p class="vazio">Carregando…</p></div>
-        </div>
-        <div class="painel">
-          <h3>Progresso do time hoje</h3>
-          <div class="faixa">Atualiza em tempo real para todos.</div>
-          <div class="time-prog" id="timeProg"></div>
-        </div>
-        <div class="painel">
-          <h3>Regras de ouro</h3>
-          <div style="font-size:13px;display:flex;flex-direction:column;gap:6px;margin-top:6px">
-            <span>• 1ª resposta <strong>≤ 30 min</strong></span>
-            <span>• Esteira Rápida resolve em <strong>≤ 4h úteis</strong></span>
-            <span>• Técnica: <strong>≤ 24h</strong>, update a cada 4h</span>
-            <span>• Nenhum chamado <strong>&gt; 4h sem interação</strong></span>
-            <span>• Zero chamados em "Outros" — retipifique</span>
-            <span>• Resolveu, concluiu — não dorme aberto</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    </details>
   </div>
 
   <!-- ===== AGENDA ===== -->
@@ -685,13 +703,15 @@ function desenharDia(){
   $('cTriagem').textContent=(uPorId(triagemDaSemana(d))||{}).nome||'—';
   $('cPlantao').textContent=(uPorId(plantaoDoDia(d))||{}).nome||'—';
   $('cSabado').textContent=(uPorId(CFG.rodizio.sabadoFixo)||{}).nome||'—';
-  desenharRegua();desenharChecklist();desenharTimeProg();desenharChamadosAvaliar();
+  desenharChecklist();desenharTimeProg();desenharChamadosAvaliar();
 }
 /* Chamados do Sults resolvidos pelo consultor → avaliação de esforço em 1 toque */
 async function desenharChamadosAvaliar(){
   const box=$('chamadosAvaliar');if(!box)return;
   const eu=usuarioAtual;
+  const resumo=t=>{const r=$('chResumo');if(r)r.innerHTML=t;};
   if(!eu.nomeSults){
+    resumo('🔗 Chamados para avaliar — falta vincular seu nome do Sults');
     box.innerHTML='<p class="vazio">'+(eu.admin?'Preencha o campo "Nome no Sults" de cada pessoa em Admin → Equipe para ativar a avaliação de chamados.':'Peça ao gestor para preencher seu "Nome no Sults" (Admin → Equipe) e seus chamados resolvidos aparecerão aqui para avaliar.')+'</p>';
     return;
   }
@@ -700,13 +720,14 @@ async function desenharChamadosAvaliar(){
     .ilike('responsavel','%'+eu.nomeSults+'%').gte('resolvido',desde)
     .order('resolvido',{ascending:false}).limit(40);
   const lista=chs||[];
-  if(!lista.length){box.innerHTML='<p class="vazio">Nenhum chamado seu resolvido nos últimos 3 dias.</p>';return;}
+  if(!lista.length){resumo('✅ Chamados para avaliar — nenhum resolvido nos últimos 3 dias');box.innerHTML='<p class="vazio">Nenhum chamado seu resolvido nos últimos 3 dias.</p>';return;}
   const cids=lista.map(c=>'ch_'+c.id);
   const{data:ja}=await sb.from('historico_tarefas').select('cid').eq('user_id',eu.id).in('cid',cids);
   const feitos=new Set((ja||[]).map(r=>r.cid));
   const pend=lista.filter(c=>!feitos.has('ch_'+c.id));
-  if(!pend.length){box.innerHTML='<p class="vazio">✅ Todos os seus chamados recentes já avaliados ('+lista.length+' nos últimos 3 dias).</p>';return;}
-  box.innerHTML='<div class="faixa"><strong>'+pend.length+'</strong> para avaliar · um toque por chamado — isso alimenta a matriz de automação</div>';
+  if(!pend.length){resumo('✅ Chamados em dia — todos avaliados');box.innerHTML='<p class="vazio">✅ Todos os seus chamados recentes já avaliados ('+lista.length+' nos últimos 3 dias).</p>';return;}
+  resumo('🔔 <strong>'+pend.length+'</strong> chamado'+(pend.length>1?'s':'')+' para avaliar · um toque por chamado');
+  box.innerHTML='<div class="faixa">Isso alimenta a matriz de automação — obrigado!</div>';
   for(const c of pend.slice(0,15)){
     const div=document.createElement('div');div.className='tarefa';div.style.cursor='default';
     div.innerHTML='<div class="txt">#'+c.id+' · '+(c.assunto||'(sem assunto)')
@@ -726,69 +747,121 @@ async function desenharChamadosAvaliar(){
     box.appendChild(p);
   }
 }
-function desenharRegua(){
-  const d=agora(),uid=usuarioAtual.id;
-  const blocos=reguaDe(uid,d);
-  const trilho=$('trilho'),horas=$('horas'),pt=$('ponteiro');
-  trilho.innerHTML='';horas.innerHTML='';
-  $('tituloRegua').textContent='Régua de '+usuarioAtual.nome+' — hoje';
-  if(!blocos.length){
-    $('blocoAtualTxt').textContent=d.getDay()===0?'Domingo — sem plantão.':(d.getDay()===6?'Sábado é do plantão fixo — hoje é folga.':'Sem régua para hoje (peça ao gestor para configurar no Admin).');
-    pt.style.display='none';return;
-  }
-  const ini=blocos[0].ini,fim=blocos[blocos.length-1].fim,total=fim-ini;
-  const min=d.getHours()*60+d.getMinutes();
-  const atual=blocos.find(b=>min>=b.ini&&min<b.fim);
-  for(const b of blocos){
-    const div=document.createElement('div');
-    div.className='bloco-seg b-'+b.tipo+(atual&&atual.id===b.id?' atual':'');
-    div.style.width=((b.fim-b.ini)/total*100)+'%';
-    div.textContent=b.nome;div.title=b.nome+' · '+fmt(b.ini)+'–'+fmt(b.fim);
-    trilho.appendChild(div);
-  }
-  for(let h=Math.ceil(ini/60);h<=Math.floor(fim/60);h++){const s=document.createElement('span');s.textContent=String(h).padStart(2,'0')+'h';horas.appendChild(s);}
-  if(min>=ini&&min<=fim){pt.style.display='block';pt.style.left=((min-ini)/total*100)+'%';}else pt.style.display='none';
-  $('blocoAtualTxt').innerHTML=atual?'Agora: <strong>'+atual.nome+'</strong> ('+fmt(atual.ini)+'–'+fmt(atual.fim)+')':(min<ini?'Começa às <strong>'+fmt(ini)+'</strong>':'Dia encerrado — fila triada para amanhã?');
-}
+const blocosAbertos=new Set(); // blocos expandidos manualmente na linha do tempo
+function hm(s){const p=String(s).split(':').map(Number);return p[0]*60+(p[1]||0);}
+function fmtDur(m){if(m<60)return m+' min';const h=Math.floor(m/60),r=m%60;return r?h+'h'+String(r).padStart(2,'0'):h+'h';}
 function desenharChecklist(){
   const d=agora(),uid=usuarioAtual.id;
-  const lista=$('listaTarefas');lista.innerHTML='';
-  $('tituloCheck').textContent='Checklist de hoje — '+usuarioAtual.nome;
-  $('faixaCheck').textContent=papelTexto(uid,d);
+  const lista=$('linhaDia');lista.innerHTML='';
+  $('tituloCheck').textContent='Seu dia — siga a linha';
   const blocos=reguaDe(uid,d),ts=tarefasDe(uid,d);
-  if(!blocos.length){lista.innerHTML='<p class="vazio">'+(d.getDay()===0?'Domingo — sem plantão.':'Hoje é folga. Bom descanso! 🐾')+'</p>';return;}
   const min=d.getHours()*60+d.getMinutes();
+  const hoje=chaveDia(d);
+  const evs=(agenda[uid]||[]).filter(e=>e.data===hoje).map(e=>({...e,iniMin:hm(e.ini)})).sort((a,b)=>a.iniMin-b.iniMin);
+  if(!blocos.length){
+    $('faixaDia').textContent=papelTexto(uid,d);
+    let msg=d.getDay()===0?'Domingo — sem plantão.':(d.getDay()===6?'Sábado é do plantão fixo — hoje é folga. Bom descanso! 🐾':'Sem régua para hoje (peça ao gestor para configurar no Admin).');
+    lista.innerHTML='<p class="vazio">'+msg+'</p>';
+    for(const e of evs)lista.appendChild(linhaEventoDia(uid,e));
+    return;
+  }
   const atual=blocos.find(b=>min>=b.ini&&min<b.fim);
-  for(const b of blocos){
+  $('faixaDia').textContent=papelTexto(uid,d)+(atual?'':(min<blocos[0].ini?' · começa às '+fmt(blocos[0].ini):' · dia encerrado — fila triada para amanhã?'));
+  const soltos=evs.filter(e=>!blocos.some(b=>e.iniMin>=b.ini&&e.iniMin<b.fim));
+  blocos.forEach((b,idx)=>{
+    const estado=min>=b.fim?'passado':(min>=b.ini?'atual':'futuro');
     const fixas=(ts[b.id]||[]).map(t=>({...t,cid:b.id+'_'+t.id}));
     const ehLivre=b.tipo==='foco';
     const extras=ehLivre?(atividades[uid]||[]).map(a=>({id:a.id,txt:a.txt,sub:'',cid:'livre_'+a.id,removivel:true})):[];
-    if(!fixas.length&&!ehLivre)continue;
     const todos=[...fixas,...extras];
-    const feitas=todos.filter(t=>checksHoje[uid].has(t.cid)).length;
-    const sec=document.createElement('div');sec.className='secao-bloco';
-    const cab=document.createElement('div');cab.className='cab-bloco';
-    cab.innerHTML='<i style="background:'+CORES[b.tipo]+'"></i> '+b.nome+' · '+fmt(b.ini)+'–'+fmt(b.fim)
-      +(ehLivre?' <span class="pill livre">editável</span>':'')
-      +(atual&&atual.id===b.id?' <span class="pill agora">agora</span>':'')
-      +(todos.length&&feitas===todos.length?' <span class="pill ok">completo</span>':'');
-    sec.appendChild(cab);
-    for(const t of todos)sec.appendChild(linhaTarefa(uid,t));
-    if(ehLivre){
-      const form=document.createElement('div');form.className='add-linha';
-      form.innerHTML='<input placeholder="Nova atividade para o bloco livre…" maxlength="120"><button>Adicionar</button>';
-      const inp=form.querySelector('input');
-      const add=async()=>{
-        const v=inp.value.trim();if(!v)return;inp.value='';
-        const{error}=await sb.from('atividades_livres').insert({user_id:uid,txt:v,criado_por:usuarioAtual.id});
-        if(error)erroDB(error);else{await carregarAtividades();desenharChecklist();desenharTimeProg();piscar();}
-      };
-      form.querySelector('button').onclick=add;
-      inp.addEventListener('keydown',e=>{if(e.key==='Enter')add();});
-      sec.appendChild(form);
+    const doBloco=evs.filter(e=>e.iniMin>=b.ini&&e.iniMin<b.fim);
+    const nTar=todos.length+doBloco.filter(e=>e.tipo==='tarefa').length;
+    const nFeit=todos.filter(t=>checksHoje[uid].has(t.cid)).length+doBloco.filter(e=>e.tipo==='tarefa'&&e.concluida).length;
+    const aberto=estado==='atual'||blocosAbertos.has(b.id);
+    const item=document.createElement('div');item.className='ld-item ld-'+estado;
+    const rail=document.createElement('div');rail.className='ld-rail';
+    rail.innerHTML='<span class="ld-dot'+(ehLivre?' livre':'')+'">'+(estado==='passado'?'✓':'')+'</span>'+(idx<blocos.length-1||soltos.length?'<span class="ld-linha"></span>':'');
+    item.appendChild(rail);
+    const corpo=document.createElement('div');corpo.className='ld-corpo';
+    const cab=document.createElement('div');cab.className='ld-cab';
+    cab.innerHTML=(estado==='atual'?'<span class="pill agora">agora</span> ':'')
+      +'<span class="ld-hora">'+fmt(b.ini)+'–'+fmt(b.fim)+'</span> <span class="ld-nome">'+b.nome+'</span>'
+      +(nTar?' <span class="ld-cont'+(nFeit===nTar?' ok':'')+'">'+nFeit+'/'+nTar+'</span>':'')
+      +(estado==='atual'?' <span class="ld-resta">faltam '+fmtDur(b.fim-min)+'</span>':'')
+      +(estado!=='atual'&&(nTar||ehLivre)?' <span class="ld-toggle">'+(aberto?'▴':'▾')+'</span>':'');
+    if(estado!=='atual'&&(nTar||ehLivre)){
+      cab.style.cursor='pointer';
+      cab.onclick=()=>{blocosAbertos.has(b.id)?blocosAbertos.delete(b.id):blocosAbertos.add(b.id);desenharChecklist();};
     }
-    lista.appendChild(sec);
+    corpo.appendChild(cab);
+    if(aberto&&(nTar||ehLivre||doBloco.length)){
+      const cx=document.createElement('div');cx.className='ld-tarefas'+(estado==='atual'?' ld-agora-card':'');
+      const mist=[...todos.map(t=>({tipo:'t',o:t,ord:0})),...doBloco.map(e=>({tipo:'e',o:e,ord:e.iniMin}))];
+      for(const m of mist)cx.appendChild(m.tipo==='t'?linhaTarefa(uid,m.o):linhaEventoDia(uid,m.o));
+      if(ehLivre){
+        const form=document.createElement('div');form.className='add-linha';
+        form.innerHTML='<input placeholder="Nova atividade para o bloco livre…" maxlength="120"><button>Adicionar</button>';
+        const inp=form.querySelector('input');
+        const add=async()=>{
+          const v=inp.value.trim();if(!v)return;inp.value='';
+          const{error}=await sb.from('atividades_livres').insert({user_id:uid,txt:v,criado_por:usuarioAtual.id});
+          if(error)erroDB(error);else{await carregarAtividades();desenharChecklist();desenharTimeProg();piscar();}
+        };
+        form.querySelector('button').onclick=add;
+        inp.addEventListener('keydown',e=>{if(e.key==='Enter')add();});
+        cx.appendChild(form);
+      }
+      corpo.appendChild(cx);
+    }
+    item.appendChild(corpo);
+    lista.appendChild(item);
+  });
+  if(soltos.length){
+    const item=document.createElement('div');item.className='ld-item ld-futuro';
+    item.innerHTML='<div class="ld-rail"><span class="ld-dot ev"></span></div>';
+    const corpo=document.createElement('div');corpo.className='ld-corpo';
+    const cab=document.createElement('div');cab.className='ld-cab';
+    cab.innerHTML='<span class="ld-nome">Fora da régua (agenda)</span>';
+    corpo.appendChild(cab);
+    const cx=document.createElement('div');cx.className='ld-tarefas';
+    for(const e of soltos)cx.appendChild(linhaEventoDia(uid,e));
+    corpo.appendChild(cx);
+    item.appendChild(corpo);
+    lista.appendChild(item);
   }
+}
+function linhaEventoDia(uid,e){
+  const ehT=e.tipo==='tarefa';
+  const chave='evd|'+e.id;
+  const pend=pendentes.has(chave);
+  const row=document.createElement(ehT?'label':'div');
+  row.className='tarefa ld-ev'+((e.concluida&&ehT)?' feita':'');
+  row.innerHTML=(ehT?'<input type="checkbox" '+((e.concluida||pend)?'checked':'')+'>':'<span class="ld-ev-ico">🕐</span>')
+    +'<div class="txt">'+e.ini+' · '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':'compromisso')+'</span>'
+    +(e.descricao?'<small>'+e.descricao+'</small>':'')
+    +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
+    +'</div>';
+  if(!ehT)return row;
+  row.querySelector('input').onchange=async ev=>{
+    if(ev.target.checked&&!e.concluida){pendentes.add(chave);desenharChecklist();return;}
+    if(!ev.target.checked&&pendentes.has(chave)){pendentes.delete(chave);desenharChecklist();return;}
+    if(!ev.target.checked&&e.concluida){
+      await sb.from('agenda_eventos').update({concluida:false}).eq('id',e.id);
+      await sb.from('historico_tarefas').delete().match({user_id:uid,cid:'ag_'+e.id});
+      await carregarAgenda();desenharChecklist();piscar();
+    }
+  };
+  row.querySelectorAll('.dif-chips button').forEach(b=>{
+    b.onclick=async ev=>{
+      ev.preventDefault();ev.stopPropagation();
+      pendentes.delete(chave);
+      const r1=await sb.from('agenda_eventos').update({concluida:true}).eq('id',e.id);
+      const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
+      if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
+      await carregarAgenda();desenharChecklist();
+    };
+  });
+  return row;
 }
 const pendentes=new Set(); // conclusões aguardando avaliação de dificuldade
 function linhaTarefa(uid,t){
@@ -1470,7 +1543,7 @@ const DIAS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feir
 function tick(){
   const d=agora();
   $('relogio').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  if(usuarioAtual){$('quemSou').textContent=usuarioAtual.nome+' · '+DIAS[d.getDay()]+' · '+papelTexto(usuarioAtual.id,d);if(vistaAtiva()==='dia')desenharRegua();}
+  if(usuarioAtual){$('quemSou').textContent=usuarioAtual.nome+' · '+DIAS[d.getDay()]+' · '+papelTexto(usuarioAtual.id,d);if(vistaAtiva()==='dia')desenharChecklist();}
 }
 function ligarAbas(){
   document.querySelectorAll('.aba[data-v]').forEach(a=>{
@@ -1511,6 +1584,11 @@ ligarAbas();
   };
   $('btnSalvarRegua').onclick=salvarRegua;
   $('btnNovaAba').onclick=criarAba;
+  $('chHead').onclick=()=>{
+    const b=$('chamadosAvaliar'),aberto=b.style.display!=='none';
+    b.style.display=aberto?'none':'block';
+    $('chChev').textContent=aberto?'▾':'▴';
+  };
   $('btnNovaIdeia').onclick=novaIdeia;
   $('btnExcluirAba').onclick=excluirAba;
   setInterval(tick,30000);

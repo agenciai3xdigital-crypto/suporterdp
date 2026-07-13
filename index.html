@@ -1298,9 +1298,10 @@ async function desenharRotina(){
   tab.innerHTML='<tr><td class="vazio">Carregando…</td></tr>';
   const hoje=agora();
   const desdeD=new Date(hoje);desdeD.setDate(desdeD.getDate()-ROT_JANELA);
-  const{data:checks,error}=await sb.from('checks_diarios').select('user_id,dia,cid').gte('dia',chaveDia(desdeD));
+  const{data:checks,error}=await sb.from('checks_diarios').select('user_id,dia,ids').gte('dia',chaveDia(desdeD));
   if(error){erroDB(error);tab.innerHTML='';return;}
-  const feito=new Set((checks||[]).map(c=>c.user_id+'|'+c.dia+'|'+c.cid));
+  const feito=new Set();
+  (checks||[]).forEach(c=>(c.ids||[]).forEach(id=>feito.add(c.user_id+'|'+c.dia+'|'+id)));
   const linhas=[];
   const umDia=24*3600*1000;
   for(const u of CFG.usuarios){
@@ -1343,7 +1344,9 @@ async function desenharRotina(){
     const btn=document.createElement('button');btn.className='btn claro';btn.style.cssText='padding:4px 10px;font-size:11.5px';btn.textContent='✓ Concluir';
     btn.onclick=async()=>{
       btn.disabled=true;
-      const{error}=await sb.from('checks_diarios').insert({user_id:l.u.id,dia:l.iso,cid:l.cid});
+      const{data:ex}=await sb.from('checks_diarios').select('ids').eq('user_id',l.u.id).eq('dia',l.iso).maybeSingle();
+      const ids=[...new Set([...((ex&&ex.ids)||[]),l.cid])];
+      const{error}=await sb.from('checks_diarios').upsert({user_id:l.u.id,dia:l.iso,ids,atualizado_em:new Date().toISOString()});
       if(error){erroDB(error);btn.disabled=false;return;}
       piscar();await carregarChecks();desenharRotina();
     };

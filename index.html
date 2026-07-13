@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Plantão do Suporte — Sistema da Equipe</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
 :root{
@@ -268,6 +269,21 @@ details.recolhe{background:var(--papel);border:1px solid var(--linha);border-rad
 details.recolhe summary{font-family:'Archivo',sans-serif;font-weight:800;font-size:14px;cursor:pointer;text-transform:none;letter-spacing:0}
 details.recolhe[open] summary{margin-bottom:8px}
 
+/* ===== Agenda 3.0 + Rotina ===== */
+.part-chip{border:1.5px solid var(--cor,#999);color:var(--tinta);background:#fff;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700;cursor:pointer}
+.part-chip.on{background:var(--cor,#999);color:#fff}
+.pv-mes{grid-template-rows:auto}
+.pv-mes-rot{font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--tinta-suave);text-align:center;padding:2px 0}
+.pv-dia-mes{min-height:74px}
+.pv-dia.fora{opacity:.4}
+.rot-tab{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.rot-tab th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave);padding:6px 8px;border-bottom:2px solid var(--linha)}
+.rot-tab td{padding:7px 8px;border-bottom:1px dashed var(--linha);vertical-align:middle}
+.rot-tab .avatar{width:20px;height:20px;font-size:10px;display:inline-flex;vertical-align:middle;margin-right:4px}
+.st-rot{font-size:10.5px;font-weight:800;border-radius:99px;padding:2px 9px;text-transform:uppercase}
+.st-rot.atrasada{background:#FCE4E4;color:var(--verm)}
+.st-rot.hoje{background:#FFF3E2;color:var(--ambar)}
+
 .aviso{font-size:12px;color:var(--tinta-suave);margin-top:16px;text-align:center}
 .status-salvo{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none}
 .status-salvo.show{opacity:.92}
@@ -308,6 +324,7 @@ details.recolhe[open] summary{margin-bottom:8px}
     <button class="aba" data-v="agenda">Agenda</button>
     <span id="abasCustom" style="display:contents"></span>
     <button class="aba" data-v="insights" id="abaInsights" style="display:none">Insights</button>
+    <button class="aba" data-v="rotina" id="abaRotina" style="display:none">Rotina</button>
     <button class="aba" data-v="admin" id="abaAdmin" style="display:none">Admin</button>
     <button class="aba" id="btnNovaAba" style="display:none" title="Criar nova aba">＋ Aba</button>
   </div>
@@ -366,23 +383,56 @@ details.recolhe[open] summary{margin-bottom:8px}
   <!-- ===== AGENDA ===== -->
   <div class="vista" id="v-agenda">
     <div class="ag-topo">
-      <label style="font-size:13px;font-weight:700">Dia: <input type="date" id="agData"></label>
+      <label style="font-size:13px;font-weight:700">Visão:
+        <select id="agModo">
+          <option value="dia" selected>Dia</option>
+          <option value="semana">Semana</option>
+          <option value="mes">Mês</option>
+          <option value="intervalo">Intervalo</option>
+        </select>
+      </label>
+      <label style="font-size:13px;font-weight:700"><span id="agRotData">Dia:</span> <input type="date" id="agData"></label>
+      <label style="font-size:13px;font-weight:700;display:none" id="agLbl2">até <input type="date" id="agData2"></label>
       <span class="esp"></span>
       <button class="btn verde" id="btnRotinaGoogle" title="Baixa um arquivo .ics com os blocos de hoje para importar no seu Google Agenda">Rotina de hoje → Google Agenda</button>
     </div>
     <div class="ag-form">
       <select id="evQuem" style="display:none"></select>
-      <select id="evTipo"><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option></select>
+      <select id="evTipo"><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="evento">Evento</option></select>
       <input id="evTitulo" placeholder="Título">
       <input id="evData" type="date">
       <input id="evIni" type="time" value="09:00">
       <input id="evFim" type="time" value="10:00">
       <button class="btn laranja" id="btnAddEvento">Adicionar</button>
       <input id="evDesc" placeholder="Descrição (opcional)" style="flex-basis:100%">
+      <div id="evParts" style="flex-basis:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
     </div>
     <div class="previa" id="agPrevia"></div>
     <div id="listaEventos"></div>
     <p class="aviso">"Google Agenda" abre o Google Calendar <strong>da conta de quem clicar</strong>, com o evento pré-preenchido. O .ics pode ser importado em qualquer agenda.</p>
+  </div>
+
+  <!-- ===== ROTINA (admin) ===== -->
+  <div class="vista" id="v-rotina">
+    <div class="ag-topo">
+      <h2 class="sec" style="margin:0">Rotina da equipe — tarefas em aberto</h2>
+      <span class="esp"></span>
+      <label style="font-size:13px;font-weight:700">Pessoa:
+        <select id="rotPessoa"><option value="">Todas</option></select>
+      </label>
+      <label style="font-size:13px;font-weight:700">Status:
+        <select id="rotStatus">
+          <option value="">Todos</option>
+          <option value="atrasada">Atrasadas</option>
+          <option value="hoje">De hoje</option>
+        </select>
+      </label>
+    </div>
+    <div class="rodizio" id="rotKpis"></div>
+    <div class="painel">
+      <div class="faixa">Tarefas diárias não concluídas ficam aqui acumulando até serem feitas (janela: últimos 30 dias). Concluir aqui registra no dia original.</div>
+      <div style="overflow-x:auto"><table class="rot-tab" id="rotTab"></table></div>
+    </div>
   </div>
 
   <!-- ===== INSIGHTS ===== -->
@@ -395,6 +445,8 @@ details.recolhe[open] summary{margin-bottom:8px}
           <option value="90">Últimos 90 dias</option>
         </select>
       </label>
+      <span class="esp"></span>
+      <button class="btn claro" id="btnExportAval">⬇️ Exportar avaliações (Excel)</button>
     </div>
 
     <h2 class="sec">Decisões rápidas — metas e alertas (chamados)</h2>
@@ -609,7 +661,11 @@ async function carregarAtividades(){
 async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
-  (data||[]).forEach(e=>{(agenda[e.user_id]=agenda[e.user_id]||[]).push({id:e.id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida});});
+  (data||[]).forEach(e=>{
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[]};
+    const donos=[...new Set([e.user_id,...(e.participantes||[])])];
+    donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
+  });
 }
 async function carregarAbas(){
   const {data:abas}=await sb.from('abas_custom').select('*').order('ordem').order('criada_em');
@@ -641,6 +697,7 @@ function redesenharVistaAtiva(){
   if(v==='agenda')desenharAgenda();
   if(v==='insights')desenharInsights();
   if(v==='admin')desenharAdmin();
+  if(v==='rotina')desenharRotina();
   if(v==='board')desenharBoard();
   desenharTimeProg();
 }
@@ -691,6 +748,8 @@ async function iniciarSessao(user){
   $('telaLogin').style.display='none';$('app').style.display='block';
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
+  $('abaRotina').style.display=usuarioAtual.admin?'inline-block':'none';
+  if(!usuarioAtual.admin)$('agModo').parentElement.style.display='none';
   $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
   renderAbasCustom();
@@ -847,7 +906,7 @@ function linhaEventoDia(uid,e){
   const row=document.createElement(ehT?'label':'div');
   row.className='tarefa ld-ev'+((e.concluida&&ehT)?' feita':'');
   row.innerHTML=(ehT?'<input type="checkbox" '+((e.concluida||pend)?'checked':'')+'>':'<span class="ld-ev-ico">🕐</span>')
-    +'<div class="txt">'+e.ini+' · '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':'compromisso')+'</span>'
+    +'<div class="txt">'+e.ini+' · '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
     +(e.descricao?'<small>'+e.descricao+'</small>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
@@ -1011,15 +1070,20 @@ function desenharPrevia(dia){
 const pendEv=new Set(); // tarefas de agenda aguardando avaliação
 function eventoEl(uid,e){
   const div=document.createElement('div');div.className='evento';
-  const podeRemover=usuarioAtual.admin||uid===usuarioAtual.id;
-  const podeConcluir=uid===usuarioAtual.id||usuarioAtual.admin;
+  const podeRemover=usuarioAtual.admin||e.dono===usuarioAtual.id||e.por===usuarioAtual.id;
+  const podeConcluir=e.dono===usuarioAtual.id||usuarioAtual.admin;
   const ehTarefa=e.tipo==='tarefa';
+  const STC={tarefa:'projeto',compromisso:'ideia',evento:'aprovada'};
+  const ICO={tarefa:'📌 ',compromisso:'',evento:'🎪 '};
+  const outros=(e.participantes||[]).filter(p=>p!==e.dono);
+  const nomesPart=outros.map(p=>((uPorId(p)||{}).nome||'—').split(' ')[0]).join(', ');
   const pend=pendEv.has(e.id);
   div.innerHTML='<div class="hora">'+e.ini+'–'+e.fim+'</div><div class="det">'
     +'<div class="t" style="'+(e.concluida?'text-decoration:line-through;color:var(--tinta-suave)':'')+'">'
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
-    +(ehTarefa?'📌 ':'')+e.titulo+' <span class="st '+(ehTarefa?'projeto':'ideia')+'">'+(ehTarefa?'tarefa':'compromisso')+'</span></div>'
+    +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span></div>'
     +(e.descricao?'<div class="n" style="white-space:pre-wrap">'+e.descricao+'</div>':'')
+    +(outros.length?'<div class="n">👥 '+((uPorId(e.dono)||{}).nome||'—').split(' ')[0]+' + '+nomesPart+'</div>':'')
     +(e.por&&e.por!==uid?'<div class="n">Marcado por '+((uPorId(e.por)||{}).nome||'—')+'</div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>'
@@ -1039,7 +1103,7 @@ function eventoEl(uid,e){
     if(!ev.target.checked&&e.concluida){
       // desfazer conclusão da tarefa
       await sb.from('agenda_eventos').update({concluida:false}).eq('id',e.id);
-      await sb.from('historico_tarefas').delete().match({user_id:uid,cid:'ag_'+e.id});
+      await sb.from('historico_tarefas').delete().match({user_id:e.dono||uid,cid:'ag_'+e.id});
       await carregarAgenda();desenharAgenda();piscar();
     }
   };
@@ -1048,7 +1112,7 @@ function eventoEl(uid,e){
       ev.preventDefault();ev.stopPropagation();
       pendEv.delete(e.id);
       const r1=await sb.from('agenda_eventos').update({concluida:true}).eq('id',e.id);
-      const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
+      const r2=await sb.from('historico_tarefas').insert({user_id:e.dono||uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
       if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
       await carregarAgenda();desenharAgenda();
     };
@@ -1064,6 +1128,16 @@ function desenharAgenda(){
       q.innerHTML=CFG.usuarios.map(u=>'<option value="'+u.id+'">Marcar para: '+u.nome+'</option>').join('');
       q.value=usuarioAtual.id;
     }
+  }
+  desenharEvParts();
+  const modo=usuarioAtual.admin?($('agModo').value||'dia'):'dia';
+  $('agLbl2').style.display=modo==='intervalo'?'inline-block':'none';
+  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':'De:'));
+  if(usuarioAtual.admin&&modo!=='dia'){
+    $('agPrevia').innerHTML='';
+    if(modo==='semana')return desenharAgendaSemana(dia,lista);
+    if(modo==='mes')return desenharAgendaMes(dia,lista);
+    if(modo==='intervalo')return desenharAgendaIntervalo(dia,$('agData2').value||dia,lista);
   }
   desenharPrevia(dia);
   if(usuarioAtual.admin){
@@ -1083,15 +1157,200 @@ function desenharAgenda(){
     for(const e of evs)lista.appendChild(eventoEl(usuarioAtual.id,e));
   }
 }
+const evPartsSel=new Set();
+function desenharEvParts(){
+  const box=$('evParts');if(!box)return;
+  const tipo=$('evTipo').value;
+  if(tipo==='tarefa'){box.style.display='none';evPartsSel.clear();return;}
+  box.style.display='flex';
+  const alvo=agAlvo();
+  evPartsSel.delete(alvo);
+  box.innerHTML='<span style="font-size:12px;font-weight:700;color:var(--tinta-suave)">Participantes:</span>';
+  CFG.usuarios.filter(u=>u.id!==alvo).forEach(u=>{
+    const c=document.createElement('button');c.type='button';
+    const on=evPartsSel.has(u.id);
+    c.className='part-chip'+(on?' on':'');
+    c.style.setProperty('--cor',corDe(u.id));
+    c.textContent=(on?'✓ ':'+ ')+u.nome.split(' ')[0];
+    c.onclick=()=>{on?evPartsSel.delete(u.id):evPartsSel.add(u.id);desenharEvParts();};
+    box.appendChild(c);
+  });
+}
 async function addEvento(){
   const uid=agAlvo();
   const titulo=$('evTitulo').value.trim(),data=$('evData').value,ini=$('evIni').value,fim=$('evFim').value;
   const tipo=$('evTipo').value,descricao=$('evDesc').value.trim();
   if(!titulo||!data||!ini||!fim)return;
-  const{error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,criado_por:usuarioAtual.id});
+  const participantes=tipo==='tarefa'?[]:[...evPartsSel].filter(p=>p!==uid);
+  const{error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,criado_por:usuarioAtual.id});
   if(error){erroDB(error);return;}
-  $('evTitulo').value='';$('evDesc').value='';$('agData').value=data;
+  $('evTitulo').value='';$('evDesc').value='';$('agData').value=data;evPartsSel.clear();desenharEvParts();
   await carregarAgenda();desenharAgenda();piscar();
+}
+
+
+/* ===== Agenda consolidada (admin): semana, mês e intervalo ===== */
+function evsDoDia(iso){
+  const vistos=new Set(),out=[];
+  for(const u of CFG.usuarios){
+    for(const e of (agenda[u.id]||[])){
+      if(e.data!==iso||vistos.has(e.id))continue;
+      vistos.add(e.id);out.push(e);
+    }
+  }
+  return out.sort((a,b)=>a.ini.localeCompare(b.ini));
+}
+function chipEv(e){
+  const c=document.createElement('div');c.className='pv-chip';
+  c.style.background=corDe(e.dono);
+  const nome=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
+  c.title=e.titulo+' · '+e.ini+'–'+e.fim+' · '+nome+((e.participantes||[]).length?' +'+e.participantes.filter(p=>p!==e.dono).length:'');
+  c.textContent=e.ini+' '+nome+' · '+e.titulo;
+  return c;
+}
+function desenharAgendaSemana(dia,lista){
+  const base=new Date(dia+'T12:00:00');
+  const seg=new Date(base);seg.setDate(seg.getDate()-((seg.getDay()+6)%7));
+  const fim=new Date(seg);fim.setDate(seg.getDate()+6);
+  const box=$('agPrevia');
+  box.innerHTML='<h4>Semana da equipe — '+chaveDia(seg).split('-').reverse().join('/')+' a '+chaveDia(fim).split('-').reverse().join('/')+' (clique num dia para abrir)</h4>';
+  const grid=document.createElement('div');grid.className='pv-week';
+  const ROT=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+  const hojeISO=chaveDia(agora());
+  for(let i=0;i<7;i++){
+    const d=new Date(seg);d.setDate(seg.getDate()+i);
+    const iso=chaveDia(d);
+    const cel=document.createElement('div');
+    cel.className='pv-dia'+(iso===hojeISO?' hoje':'');
+    cel.innerHTML='<div class="pv-rot">'+ROT[i]+'</div><div class="pv-num">'+d.getDate()+'</div>';
+    const evs=evsDoDia(iso);
+    evs.slice(0,4).forEach(e=>cel.appendChild(chipEv(e)));
+    if(evs.length>4){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-4)+' mais';cel.appendChild(mm);}
+    cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();};
+    grid.appendChild(cel);
+  }
+  box.appendChild(grid);
+  legendaEquipe(box);
+}
+function desenharAgendaMes(dia,lista){
+  const base=new Date(dia+'T12:00:00');
+  const primeiro=new Date(base.getFullYear(),base.getMonth(),1,12);
+  const ini=new Date(primeiro);ini.setDate(primeiro.getDate()-((primeiro.getDay()+6)%7));
+  const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const box=$('agPrevia');
+  box.innerHTML='<h4>'+MES[base.getMonth()]+' de '+base.getFullYear()+' — toda a equipe (clique num dia para abrir)</h4>';
+  const grid=document.createElement('div');grid.className='pv-week pv-mes';
+  const ROT=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
+  ROT.forEach(r=>{const h=document.createElement('div');h.className='pv-mes-rot';h.textContent=r;grid.appendChild(h);});
+  const hojeISO=chaveDia(agora());
+  for(let i=0;i<42;i++){
+    const d=new Date(ini);d.setDate(ini.getDate()+i);
+    if(i===35&&d.getMonth()!==base.getMonth())break;
+    const iso=chaveDia(d);
+    const cel=document.createElement('div');
+    cel.className='pv-dia pv-dia-mes'+(iso===hojeISO?' hoje':'')+(d.getMonth()!==base.getMonth()?' fora':'');
+    cel.innerHTML='<div class="pv-num">'+d.getDate()+'</div>';
+    const evs=evsDoDia(iso);
+    evs.slice(0,3).forEach(e=>cel.appendChild(chipEv(e)));
+    if(evs.length>3){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-3);cel.appendChild(mm);}
+    cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();};
+    grid.appendChild(cel);
+  }
+  box.appendChild(grid);
+  legendaEquipe(box);
+}
+function desenharAgendaIntervalo(de,ate,lista){
+  if(ate<de){const t=de;de=ate;ate=t;}
+  const box=$('agPrevia');
+  box.innerHTML='<h4>Itens da equipe de '+de.split('-').reverse().join('/')+' até '+ate.split('-').reverse().join('/')+'</h4>';
+  let total=0;
+  const d=new Date(de+'T12:00:00'),fim=new Date(ate+'T12:00:00');
+  while(d<=fim){
+    const iso=chaveDia(d);
+    const evs=evsDoDia(iso);
+    if(evs.length){
+      total+=evs.length;
+      const sec=document.createElement('div');sec.className='ag-sec';
+      sec.innerHTML=iso.split('-').reverse().join('/')+' <span class="qtd">'+evs.length+' item'+(evs.length>1?'s':'')+'</span>';
+      lista.appendChild(sec);
+      for(const e of evs)lista.appendChild(eventoEl(e.dono,e));
+    }
+    d.setDate(d.getDate()+1);
+  }
+  if(!total)lista.innerHTML='<p class="vazio">Nenhum item da equipe neste intervalo.</p>';
+}
+function legendaEquipe(box){
+  const lg=document.createElement('div');lg.style.cssText='display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--tinta-suave);margin-top:8px';
+  lg.innerHTML=CFG.usuarios.map(u=>'<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+corDe(u.id)+';vertical-align:-1px"></span> '+u.nome.split(' ')[0]+'</span>').join('');
+  box.appendChild(lg);
+}
+
+/* ===== ROTINA (admin): tarefas não concluídas acumulam como Atrasadas ===== */
+const ROT_JANELA=30; // dias para trás
+async function desenharRotina(){
+  const tab=$('rotTab');if(!tab)return;
+  const selP=$('rotPessoa');
+  if(selP.options.length<=1){
+    CFG.usuarios.filter(u=>!u.admin).forEach(u=>{
+      const o=document.createElement('option');o.value=u.id;o.textContent=u.nome;selP.appendChild(o);
+    });
+  }
+  tab.innerHTML='<tr><td class="vazio">Carregando…</td></tr>';
+  const hoje=agora();
+  const desdeD=new Date(hoje);desdeD.setDate(desdeD.getDate()-ROT_JANELA);
+  const{data:checks,error}=await sb.from('checks_diarios').select('user_id,dia,cid').gte('dia',chaveDia(desdeD));
+  if(error){erroDB(error);tab.innerHTML='';return;}
+  const feito=new Set((checks||[]).map(c=>c.user_id+'|'+c.dia+'|'+c.cid));
+  const linhas=[];
+  const umDia=24*3600*1000;
+  for(const u of CFG.usuarios){
+    if(u.admin)continue;
+    for(let i=ROT_JANELA;i>=0;i--){
+      const dt=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()-i,12);
+      const iso=chaveDia(dt);
+      const blocos=reguaDe(u.id,dt);if(!blocos.length)continue;
+      const ts=tarefasDe(u.id,dt);
+      for(const b of blocos){
+        for(const t of (ts[b.id]||[])){
+          const cid=b.id+'_'+t.id;
+          if(feito.has(u.id+'|'+iso+'|'+cid))continue;
+          linhas.push({u,iso,cid,txt:t.txt,bloco:b.nome,atraso:i});
+        }
+      }
+    }
+  }
+  const fP=selP.value,fS=$('rotStatus').value;
+  const vis=linhas.filter(l=>(!fP||l.u.id===fP)&&(!fS||(fS==='atrasada'?l.atraso>0:l.atraso===0)));
+  const atras=linhas.filter(l=>l.atraso>0);
+  const pessoasAtraso=new Set(atras.map(l=>l.u.id)).size;
+  const maisAntiga=atras.length?Math.max(...atras.map(l=>l.atraso)):0;
+  $('rotKpis').innerHTML=
+    kpiCard('Atrasadas',atras.length,'acumuladas em '+ROT_JANELA+' dias')
+    +kpiCard('Pendentes hoje',linhas.filter(l=>l.atraso===0).length,'ainda dentro do prazo')
+    +kpiCard('Mais antiga',maisAntiga?maisAntiga+' d':'—','dias de atraso')
+    +kpiCard('Pessoas com atraso',pessoasAtraso,'de '+CFG.usuarios.filter(u=>!u.admin).length+' na equipe');
+  if(!vis.length){tab.innerHTML='<tr><td class="vazio" style="padding:14px">🎉 Nada em aberto com esses filtros.</td></tr>';return;}
+  vis.sort((a,b)=>b.atraso-a.atraso||a.u.nome.localeCompare(b.u.nome));
+  tab.innerHTML='<tr><th>Tarefa</th><th>Bloco</th><th>Responsável</th><th>Data original</th><th>Atraso</th><th>Status</th><th></th></tr>';
+  for(const l of vis.slice(0,300)){
+    const tr=document.createElement('tr');
+    const st=l.atraso>0?'<span class="st-rot atrasada">Atrasada</span>':'<span class="st-rot hoje">Hoje</span>';
+    tr.innerHTML='<td>'+l.txt+'</td><td style="color:var(--tinta-suave)">'+l.bloco+'</td>'
+      +'<td><span class="avatar" style="background:'+corDe(l.u.id)+'">'+l.u.nome[0].toUpperCase()+'</span> '+l.u.nome.split(' ')[0]+'</td>'
+      +'<td>'+l.iso.split('-').reverse().join('/')+'</td>'
+      +'<td style="font-weight:700;color:'+(l.atraso>0?'var(--verm)':'var(--tinta-suave)')+'">'+(l.atraso>0?l.atraso+' d':'—')+'</td>'
+      +'<td>'+st+'</td><td></td>';
+    const btn=document.createElement('button');btn.className='btn claro';btn.style.cssText='padding:4px 10px;font-size:11.5px';btn.textContent='✓ Concluir';
+    btn.onclick=async()=>{
+      btn.disabled=true;
+      const{error}=await sb.from('checks_diarios').insert({user_id:l.u.id,dia:l.iso,cid:l.cid});
+      if(error){erroDB(error);btn.disabled=false;return;}
+      piscar();await carregarChecks();desenharRotina();
+    };
+    tr.lastElementChild.appendChild(btn);
+    tab.appendChild(tr);
+  }
+  if(vis.length>300){const tr=document.createElement('tr');tr.innerHTML='<td colspan="7" class="vazio">Mostrando 300 de '+vis.length+'.</td>';tab.appendChild(tr);}
 }
 
 /* ================================================================
@@ -1419,6 +1678,69 @@ function desenharTarefasPainel(H,dias){
     return insLinha(u.nome,Math.round(ss.length/maxP*100),ss.length+' concl. · dif. '+(ss.length?(ss.reduce((a,b)=>a+b,0)/ss.length).toFixed(1):'—'));
   }).join('')||'<p class="vazio">Sem conclusões no período.</p>';
 }
+
+/* Exporta todas as avaliações de chamados feitas pela equipe (.xlsx, 2 planilhas) */
+async function exportarAvaliacoes(){
+  const btn=$('btnExportAval');btn.disabled=true;btn.textContent='Gerando…';
+  try{
+    let todas=[],de=0;
+    while(true){
+      const{data,error}=await sb.from('historico_tarefas').select('*').eq('origem','chamado').order('dia').range(de,de+999);
+      if(error){erroDB(error);return;}
+      todas=todas.concat(data||[]);
+      if(!data||data.length<1000)break;de+=1000;
+    }
+    if(!todas.length){alert('Nenhum chamado avaliado pela equipe ainda. As avaliações feitas no painel "Avaliar chamados de hoje" aparecem aqui.');return;}
+    const ids=[...new Set(todas.map(h=>Number(String(h.cid).replace('ch_',''))))].filter(n=>!isNaN(n));
+    const mapa={};
+    for(let i=0;i<ids.length;i+=200){
+      const{data}=await sb.from('chamados_sults').select('id,assunto,titulo,unidade,aberto,resolvido,avaliacao_nota').in('id',ids.slice(i,i+200));
+      (data||[]).forEach(c=>mapa[c.id]=c);
+    }
+    const DIFN={facil:'Fácil',medio:'Médio',dificil:'Difícil'};
+    const dt=v=>v?String(v).slice(0,16).replace('T',' '):'';
+    const linhas=todas.map(h=>{
+      const id=Number(String(h.cid).replace('ch_',''));const c=mapa[id]||{};
+      const th=horas(c.aberto,c.resolvido);
+      return {
+        'Chamado':id,
+        'Assunto':c.assunto||String(h.titulo).split(' #')[0],
+        'Título':c.titulo||'',
+        'Unidade':c.unidade||'',
+        'Avaliado por':(uPorId(h.user_id)||{}).nome||'—',
+        'Dificuldade':DIFN[h.dificuldade]||h.dificuldade,
+        'Data da avaliação':h.dia,
+        'Aberto em':dt(c.aberto),
+        'Resolvido em':dt(c.resolvido),
+        'Resolução (h)':th!=null&&th>=0?Number(th.toFixed(1)):'',
+        'Nota do franqueado':c.avaliacao_nota??''
+      };
+    });
+    const porA={};linhas.forEach(l=>{const k=l['Assunto']||'(sem assunto)';(porA[k]=porA[k]||[]).push(l);});
+    const resumo=Object.entries(porA).map(([a,ls])=>{
+      const n=ls.length;
+      const f=ls.filter(x=>x.Dificuldade==='Fácil').length,m=ls.filter(x=>x.Dificuldade==='Médio').length,d=ls.filter(x=>x.Dificuldade==='Difícil').length;
+      return {'Assunto':a,'Avaliações':n,'Fácil':f,'Médio':m,'Difícil':d,'Esforço médio (1-3)':Number(((f+2*m+3*d)/n).toFixed(2))};
+    }).sort((x,y)=>y['Avaliações']-x['Avaliações']);
+    if(typeof XLSX!=='undefined'){
+      const wb=XLSX.utils.book_new();
+      const w1=XLSX.utils.json_to_sheet(linhas);
+      w1['!cols']=[{wch:9},{wch:26},{wch:44},{wch:34},{wch:24},{wch:11},{wch:16},{wch:17},{wch:17},{wch:12},{wch:9}];
+      XLSX.utils.book_append_sheet(wb,w1,'Avaliações');
+      const w2=XLSX.utils.json_to_sheet(resumo);
+      w2['!cols']=[{wch:30},{wch:11},{wch:8},{wch:8},{wch:8},{wch:18}];
+      XLSX.utils.book_append_sheet(wb,w2,'Resumo por assunto');
+      XLSX.writeFile(wb,'avaliacoes_chamados_'+chaveDia(agora())+'.xlsx');
+    }else{
+      const esc=v=>'"'+String(v).replace(/"/g,'""')+'"';
+      const cab=Object.keys(linhas[0]);
+      const csv='\ufeff'+cab.map(esc).join(';')+'\n'+linhas.map(l=>cab.map(k=>esc(l[k])).join(';')).join('\n');
+      const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      a.download='avaliacoes_chamados_'+chaveDia(agora())+'.csv';a.click();
+    }
+    piscar();
+  }finally{btn.disabled=false;btn.textContent='⬇️ Exportar avaliações (Excel)';}
+}
 function fmtH(h){if(h<1)return Math.round(h*60)+' min';if(h<48)return h.toFixed(1)+' h';return (h/24).toFixed(1)+' d';}
 
 /* ================================================================
@@ -1581,6 +1903,12 @@ ligarAbas();
   $('btnSair').onclick=sair;
   $('btnAddEvento').onclick=addEvento;
   $('agData').onchange=desenharAgenda;
+  $('agData2').onchange=desenharAgenda;
+  $('agModo').onchange=desenharAgenda;
+  $('evTipo').onchange=desenharEvParts;
+  $('evQuem').onchange=desenharEvParts;
+  $('rotPessoa').onchange=desenharRotina;
+  $('rotStatus').onchange=desenharRotina;
   $('btnRotinaGoogle').onclick=rotinaParaGoogle;
   $('btnModelo').onclick=aplicarModelo;
   $('btnAddBloco').onclick=()=>{
@@ -1594,6 +1922,7 @@ ligarAbas();
   };
   $('btnSalvarRegua').onclick=salvarRegua;
   $('btnNovaAba').onclick=criarAba;
+  $('btnExportAval').onclick=exportarAvaliacoes;
   $('chHead').onclick=()=>{
     const b=$('chamadosAvaliar'),aberto=b.style.display!=='none';
     b.style.display=aberto?'none':'block';

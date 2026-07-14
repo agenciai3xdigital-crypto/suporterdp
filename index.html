@@ -284,6 +284,53 @@ details.recolhe[open] summary{margin-bottom:8px}
 .st-rot.atrasada{background:#FCE4E4;color:var(--verm)}
 .st-rot.hoje{background:#FFF3E2;color:var(--ambar)}
 
+/* ===== Rotina gerencial + macros/subs ===== */
+.rot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:8px}
+.rot-col{padding:12px;min-width:0}
+.rot-cab{display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:2px}
+.rot-cab .avatar{width:22px;height:22px;font-size:10px}
+.rot-h{font-size:11.5px;color:var(--tinta-suave);font-weight:700}
+.rot-vig{font-size:10.5px;color:var(--tinta-suave);margin-bottom:8px}
+.rot-faixa{border-radius:10px;padding:7px 10px;margin-bottom:6px;font-size:12px}
+.rf-atend{background:var(--petroleo-suave);color:var(--petroleo)}
+.rf-pico{background:#D3E4E7;color:var(--petroleo)}
+.rf-plantao{background:#FAEEDA;color:#854F0B}
+.rf-foco{background:var(--foco-suave);color:var(--foco)}
+.rf-fecha{background:#DCE3E6;color:var(--tinta)}
+.rf-cab{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rf-cab strong{font-size:12px}
+.rf-meta{font-size:10.5px;opacity:.8}
+.rf-acao{margin-left:auto;font-size:11px}
+.rf-form{background:#fff;border-radius:8px;padding:8px;margin-top:6px;color:var(--tinta)}
+.rf-linha{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.rf-linha input[type=time]{width:88px}
+.rf-nome{flex:1;min-width:120px}
+.rf-mtxt,.rf-stxt{flex:1;min-width:100px;font-size:12px}
+.rf-tag{font-size:12px;color:var(--tinta-suave)}
+.rf-x{border:none;background:none;color:var(--verm);font-size:15px;cursor:pointer;padding:0 4px}
+.rf-macro{border:1px dashed var(--linha);border-radius:8px;padding:6px;margin-bottom:6px}
+.rf-subs{margin-left:14px}
+.rf-adds{border:none;background:none;color:var(--foco);font-size:11px;font-weight:700;cursor:pointer;padding:0}
+.rot-add{width:100%;margin-top:4px}
+.rot-mon{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;border-bottom:1px dashed var(--linha);font-size:13px}
+.rot-mon:last-child{border-bottom:none}
+.rot-mon .avatar{width:22px;height:22px;font-size:10px}
+.mon-chip{font-size:11px;font-weight:700;border-radius:99px;padding:2px 9px;background:var(--porcelana);color:var(--tinta-suave)}
+.mon-chip.ok{background:var(--verde-suave);color:var(--verde)}
+.mon-chip.meio{background:#FFF3E2;color:var(--ambar)}
+.mon-chip.tarde{background:#FCE4E4;color:var(--verm)}
+.st-rot.ferias{background:var(--foco-suave);color:var(--foco)}
+.tarefa.macro{flex-direction:column;align-items:stretch;cursor:default}
+.tarefa.macro>.txt>strong{font-size:13.5px}
+.mc-cont{font-size:11px;font-weight:800;color:var(--tinta-suave);margin-left:4px}
+.mc-cont.ok{color:var(--verde)}
+.mc-subs{margin-top:6px;border-left:2px solid var(--linha);padding-left:8px}
+.tarefa.sub{padding:4px 0;border-bottom:none;font-size:13px}
+.tarefa.sub .txt{font-size:13px}
+
+.bd-evento{border-left:4px solid var(--verde);border-radius:0 12px 12px 0}
+.bd-evento .ev-data{font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;color:var(--verde);background:var(--verde-suave);border-radius:8px;padding:3px 9px}
+
 .aviso{font-size:12px;color:var(--tinta-suave);margin-top:16px;text-align:center}
 .status-salvo{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none}
 .status-salvo.show{opacity:.92}
@@ -336,6 +383,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <span class="esp"></span>
       <button class="btn claro" id="btnExcluirAba" style="display:none;color:var(--verm)">Excluir aba</button>
     </div>
+    <div id="bdAgendados"></div>
     <div class="bd-form">
       <div class="linha1">
         <input id="bdNovoTitulo" placeholder="Título da ideia (ex.: Feira de adoção na loja Centro)" maxlength="120">
@@ -349,7 +397,7 @@ details.recolhe[open] summary{margin-bottom:8px}
 
   <!-- ===== MEU DIA ===== -->
   <div class="vista ativa" id="v-dia">
-    <div class="rz-faixa">🔁 Triagem: <strong id="cTriagem">—</strong> · Plantão do meio-dia: <strong id="cPlantao">—</strong> · Sábado: <strong id="cSabado">—</strong></div>
+    <div class="rz-faixa" id="rzFaixa">👥 —</div>
     <div class="painel">
       <h3 id="tituloCheck">Seu dia — siga a linha</h3>
       <div class="faixa" id="faixaDia">—</div>
@@ -415,8 +463,17 @@ details.recolhe[open] summary{margin-bottom:8px}
   <!-- ===== ROTINA (admin) ===== -->
   <div class="vista" id="v-rotina">
     <div class="ag-topo">
-      <h2 class="sec" style="margin:0">Rotina da equipe — tarefas em aberto</h2>
+      <h2 class="sec" style="margin:0">Rotina da equipe</h2>
       <span class="esp"></span>
+      <button class="btn claro" id="btnRotEditar">✎ Editar rotinas</button>
+    </div>
+    <div class="rot-grid" id="rotGrid"></div>
+
+    <h2 class="sec">Monitor de hoje <span style="font-weight:400;font-size:12px;color:var(--tinta-suave)">progresso por macro-tarefa — somente leitura</span></h2>
+    <div class="painel" id="rotMonitor"></div>
+
+    <h2 class="sec">Pendências acumuladas <span style="font-weight:400;font-size:12px;color:var(--tinta-suave)">somente leitura · atraso conta a partir da vigência da rotina</span></h2>
+    <div class="ag-topo">
       <label style="font-size:13px;font-weight:700">Pessoa:
         <select id="rotPessoa"><option value="">Todas</option></select>
       </label>
@@ -430,7 +487,6 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
     <div class="rodizio" id="rotKpis"></div>
     <div class="painel">
-      <div class="faixa">Tarefas diárias não concluídas ficam aqui acumulando até serem feitas (janela: últimos 30 dias). Concluir aqui registra no dia original.</div>
       <div style="overflow-x:auto"><table class="rot-tab" id="rotTab"></table></div>
     </div>
   </div>
@@ -514,27 +570,6 @@ details.recolhe[open] summary{margin-bottom:8px}
     <h2 class="sec">Equipe</h2>
     <table class="adm-tab" id="tabUsuarios"></table>
     <p style="font-size:12px;color:var(--tinta-suave);margin-top:6px">Criar e remover usuários (e redefinir senhas): painel do Supabase → Authentication → Users. O perfil aparece aqui automaticamente.</p>
-
-    <h2 class="sec">Rodízio</h2>
-    <div class="painel" id="painelRodizio"></div>
-
-    <h2 class="sec">Réguas e tarefas por pessoa</h2>
-    <div class="painel">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <select id="admUser"></select>
-        <select id="admPerfil">
-          <option value="padrao">Dia padrão</option>
-          <option value="plantao">Dia de plantão</option>
-          <option value="sabado">Sábado</option>
-        </select>
-        <button class="btn claro" id="btnModelo">Aplicar modelo padrão</button>
-      </div>
-      <div id="admReguaEditor"></div>
-      <div style="margin-top:8px;display:flex;gap:8px">
-        <button class="btn claro" id="btnAddBloco">+ Adicionar bloco</button>
-        <button class="btn laranja" id="btnSalvarRegua">Salvar régua e tarefas</button>
-      </div>
-    </div>
 
     <h2 class="sec">Registro de acessos</h2>
     <div class="painel" id="painelLog" style="max-height:280px;overflow:auto"></div>
@@ -627,7 +662,7 @@ const MODELO_TAREFAS_TECNICO={
 let sb=null, usuarioAtual=null, admReguaDraft=null;
 let CFG={usuarios:[],rodizio:{dupla:[],produtos:null,sabadoFixo:null,ancoraISO:'2026-07-06'}};
 let REGUAS={}, TAREFAS={}, checksHoje={}, atividades={}, agenda={};
-let ABAS=[], ITENS=[], abaAtualId=null;
+let ABAS=[], ITENS=[], abaAtualId=null, VIG={};
 const uPorId=id=>CFG.usuarios.find(u=>u.id===id);
 const corDe=uid=>{const u=uPorId(uid); if(u&&u.cor)return u.cor; const i=CFG.usuarios.findIndex(x=>x.id===uid); return PALETA[((i%PALETA.length)+PALETA.length)%PALETA.length];};
 function piscar(){const el=$('statusSalvo');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1200);}
@@ -639,12 +674,12 @@ function erroDB(e){console.error(e);alert('Erro ao salvar no banco: '+(e.message
 async function carregarBase(){
   const {data:perfis,error:e1}=await sb.from('perfis').select('*').order('criado_em');
   if(e1)throw e1;
-  CFG.usuarios=perfis.map(p=>({id:p.id,nome:p.nome,admin:p.is_admin,cor:p.cor,nomeSults:p.nome_sults||''}));
+  CFG.usuarios=perfis.map(p=>({id:p.id,nome:p.nome,admin:p.is_admin,cor:p.cor,nomeSults:p.nome_sults||'',feriasAte:p.ferias_ate||null}));
   const {data:cfg,error:e2}=await sb.from('config_rodizio').select('*').eq('id',1).single();
   if(e2)throw e2;
   CFG.rodizio={dupla:cfg.dupla||[],produtos:cfg.produtos,sabadoFixo:cfg.sabado_fixo,ancoraISO:cfg.ancora};
   const {data:rg}=await sb.from('reguas').select('*');
-  REGUAS={};(rg||[]).forEach(r=>{(REGUAS[r.user_id]=REGUAS[r.user_id]||{})[r.perfil]=r.blocos;});
+  REGUAS={};VIG={};(rg||[]).forEach(r=>{(REGUAS[r.user_id]=REGUAS[r.user_id]||{})[r.perfil]=r.blocos;VIG[r.user_id+'|'+r.perfil]=r.vigencia||null;});
   const {data:tf}=await sb.from('tarefas_fixas').select('*');
   TAREFAS={};(tf||[]).forEach(r=>{(TAREFAS[r.user_id]=TAREFAS[r.user_id]||{})[r.perfil]=r.tarefas;});
 }
@@ -709,23 +744,21 @@ function ancora(){const[y,mo,d]=CFG.rodizio.ancoraISO.split('-').map(Number);ret
 function semanasDesdeAncora(d){const seg=new Date(d);seg.setHours(0,0,0,0);seg.setDate(seg.getDate()-((seg.getDay()+6)%7));return Math.round((seg-ancora())/(7*24*3600*1000));}
 function triagemDaSemana(d){const[a,b]=CFG.rodizio.dupla;if(!a||!b)return null;return((semanasDesdeAncora(d)%2)+2)%2===0?a:b;}
 function plantaoDoDia(d){const[a,b]=CFG.rodizio.dupla;if(!a||!b)return null;const base=new Date(d.getFullYear(),0,0);const doy=Math.floor((d-base)/(24*3600*1000));return doy%2===0?a:b;}
+function emFerias(uid,d){const u=uPorId(uid);return !!(u&&u.feriasAte&&chaveDia(d)<=u.feriasAte);}
 function perfilDe(uid,d){
-  if(d.getDay()===0)return null;
-  if(d.getDay()===6)return uid===CFG.rodizio.sabadoFixo?'sabado':null;
+  if(emFerias(uid,d))return null;
   const r=REGUAS[uid];if(!r)return null;
-  if(CFG.rodizio.dupla.includes(uid)&&plantaoDoDia(d)===uid&&r.plantao)return'plantao';
+  if(d.getDay()===0)return null;
+  if(d.getDay()===6)return r.sabado?'sabado':null;
   return r.padrao?'padrao':null;
 }
 function reguaDe(uid,d){const p=perfilDe(uid,d);return p&&REGUAS[uid]&&REGUAS[uid][p]?REGUAS[uid][p]:[];}
 function tarefasDe(uid,d){const p=perfilDe(uid,d);if(!p)return{};return(TAREFAS[uid]&&TAREFAS[uid][p])||{};}
 function papelTexto(uid,d){
-  if(d.getDay()===6)return uid===CFG.rodizio.sabadoFixo?'Plantão de sábado':'Folga · sábado';
+  if(emFerias(uid,d)){const u=uPorId(uid);return'Férias até '+u.feriasAte.split('-').reverse().join('/');}
   if(d.getDay()===0)return'Domingo';
-  if(uid===CFG.rodizio.produtos)return'Esteira Rápida · produtos';
-  const partes=[];
-  if(triagemDaSemana(d)===uid)partes.push('Triagem da semana');
-  if(CFG.rodizio.dupla.includes(uid))partes.push(plantaoDoDia(d)===uid?'Plantão do dia':'Esteira Técnica');
-  return partes.join(' · ')||'Atendimento';
+  if(d.getDay()===6)return(REGUAS[uid]&&REGUAS[uid].sabado)?'Plantão de sábado':'Sábado — sem expediente';
+  return'Atendimento';
 }
 
 /* ================================================================
@@ -769,9 +802,11 @@ function totalDe(uid,d){
 }
 function desenharDia(){
   const d=agora();
-  $('cTriagem').textContent=(uPorId(triagemDaSemana(d))||{}).nome||'—';
-  $('cPlantao').textContent=(uPorId(plantaoDoDia(d))||{}).nome||'—';
-  $('cSabado').textContent=(uPorId(CFG.rodizio.sabadoFixo)||{}).nome||'—';
+  $('rzFaixa').innerHTML='👥 Hoje: '+CFG.usuarios.filter(u=>!u.admin).map(u=>{
+    if(emFerias(u.id,d))return u.nome.split(' ')[0]+' <span style="color:var(--tinta-suave)">· férias até '+u.feriasAte.split('-').reverse().slice(0,2).join('/')+'</span>';
+    const b=reguaDe(u.id,d);
+    return'<strong>'+u.nome.split(' ')[0]+'</strong> '+(b.length?fmt(b[0].ini)+'–'+fmt(b[b.length-1].fim):'sem expediente');
+  }).join(' · ');
   desenharChecklist();desenharTimeProg();desenharChamadosAvaliar();
 }
 /* Chamados do Sults resolvidos pelo consultor → avaliação de esforço em 1 toque */
@@ -829,7 +864,7 @@ function desenharChecklist(){
   const evs=(agenda[uid]||[]).filter(e=>e.data===hoje).map(e=>({...e,iniMin:hm(e.ini)})).sort((a,b)=>a.iniMin-b.iniMin);
   if(!blocos.length){
     $('faixaDia').textContent=papelTexto(uid,d);
-    let msg=d.getDay()===0?'Domingo — sem plantão.':(d.getDay()===6?'Sábado é do plantão fixo — hoje é folga. Bom descanso! 🐾':'Sem régua para hoje (peça ao gestor para configurar no Admin).');
+    let msg=emFerias(uid,d)?'Você está de férias até '+((uPorId(uid)||{}).feriasAte||'').split('-').reverse().join('/')+'. Sua rotina volta na sequência.':(d.getDay()===0?'Domingo — sem expediente.':(d.getDay()===6?'Sábado: expediente apenas do plantão de produtos (8h–12h).':'Sem rotina configurada para hoje — o gestor define na aba Rotina.'));
     lista.innerHTML='<p class="vazio">'+msg+'</p>';
     for(const e of evs)lista.appendChild(linhaEventoDia(uid,e));
     return;
@@ -933,7 +968,60 @@ function linhaEventoDia(uid,e){
   return row;
 }
 const pendentes=new Set(); // conclusões aguardando avaliação de dificuldade
+function salvarChecks(uid){return sb.from('checks_diarios').upsert({user_id:uid,dia:chaveDia(agora()),ids:[...checksHoje[uid]],atualizado_em:new Date().toISOString()});}
+function linhaMacro(uid,t){
+  const feita=checksHoje[uid].has(t.cid);
+  const chave=uid+'|'+t.cid;
+  const pend=pendentes.has(chave);
+  const done=t.subs.filter(s=>checksHoje[uid].has(t.cid+'_s'+s.id)).length;
+  const box=document.createElement('div');box.className='tarefa macro'+(feita?' feita':'');
+  box.innerHTML='<div class="txt"><strong>'+(feita?'✅ ':'▣ ')+t.txt+'</strong> <span class="mc-cont'+(done===t.subs.length?' ok':'')+'">'+done+'/'+t.subs.length+'</span>'
+    +(t.sub?'<small>'+t.sub+'</small>':'')
+    +(pend?'<div class="dif-chips"><span>Macro completa! Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
+    +'<div class="mc-subs"></div></div>';
+  const subsBox=box.querySelector('.mc-subs');
+  for(const s of t.subs){
+    const scid=t.cid+'_s'+s.id;
+    const sfeita=checksHoje[uid].has(scid);
+    const l=document.createElement('label');l.className='tarefa sub'+(sfeita?' feita':'');
+    l.innerHTML='<input type="checkbox" '+(sfeita?'checked':'')+'><div class="txt">'+s.txt+'</div>';
+    l.querySelector('input').onchange=async e=>{
+      if(e.target.checked){
+        checksHoje[uid].add(scid);
+        const todas=t.subs.every(x=>checksHoje[uid].has(t.cid+'_s'+x.id));
+        if(todas)pendentes.add(chave);
+        desenharChecklist();desenharTimeProg();
+        const{error}=await salvarChecks(uid);
+        if(error)erroDB(error);
+      }else{
+        checksHoje[uid].delete(scid);
+        pendentes.delete(chave);
+        if(checksHoje[uid].has(t.cid)){
+          checksHoje[uid].delete(t.cid);
+          await sb.from('historico_tarefas').delete().match({user_id:uid,dia:chaveDia(agora()),cid:t.cid});
+        }
+        desenharChecklist();desenharTimeProg();
+        const{error}=await salvarChecks(uid);
+        if(error)erroDB(error);else piscar();
+      }
+    };
+    subsBox.appendChild(l);
+  }
+  box.querySelectorAll('.dif-chips button').forEach(b=>{
+    b.onclick=async e=>{
+      e.preventDefault();e.stopPropagation();
+      pendentes.delete(chave);
+      checksHoje[uid].add(t.cid);
+      desenharChecklist();desenharTimeProg();
+      const r1=await salvarChecks(uid);
+      const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:t.cid,origem:'fixa',titulo:t.txt,dificuldade:b.dataset.d});
+      if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
+    };
+  });
+  return box;
+}
 function linhaTarefa(uid,t){
+  if(t.subs&&t.subs.length)return linhaMacro(uid,t);
   const feita=checksHoje[uid].has(t.cid);
   const chave=uid+'|'+t.cid;
   const pend=pendentes.has(chave);
@@ -1285,37 +1373,173 @@ function legendaEquipe(box){
   box.appendChild(lg);
 }
 
-/* ===== ROTINA (admin): tarefas não concluídas acumulam como Atrasadas ===== */
-const ROT_JANELA=30; // dias para trás
+/* ===== ROTINA (admin): editor de faixas + monitor + pendências (leitura) ===== */
+const ROT_JANELA=30;
+let rotEdit=false;
+const rotAberta=new Set();
+const TIPO_ROT={atend:'Atendimento',pico:'Pico',plantao:'Almoço/cobertura',foco:'Bloco livre',fecha:'Fechamento'};
+function novoId(p){return p+Math.random().toString(36).slice(2,7);}
 async function desenharRotina(){
-  const tab=$('rotTab');if(!tab)return;
+  desenharRotinaGrid();
+  await desenharRotinaDados();
+}
+function desenharRotinaGrid(){
+  const grid=$('rotGrid');grid.innerHTML='';
+  $('btnRotEditar').textContent=rotEdit?'✓ Concluir edição':'✎ Editar rotinas';
+  for(const u of CFG.usuarios.filter(x=>!x.admin)){
+    const col=document.createElement('div');col.className='rot-col painel';
+    const blocos=[...((REGUAS[u.id]||{}).padrao||[])].sort((a,b)=>a.ini-b.ini);
+    const temSab=!!((REGUAS[u.id]||{}).sabado||[]).length;
+    const vig=VIG[u.id+'|padrao'];
+    col.innerHTML='<div class="rot-cab"><span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span><strong>'+u.nome.split(' ')[0]+'</strong>'
+      +(u.feriasAte&&u.feriasAte>=chaveDia(agora())?'<span class="st-rot ferias">férias até '+u.feriasAte.split('-').reverse().slice(0,2).join('/')+'</span>':'')
+      +'<span class="esp"></span>'
+      +(blocos.length?'<span class="rot-h">'+fmt(blocos[0].ini)+'–'+fmt(blocos[blocos.length-1].fim)+'</span>':'')
+      +'</div>'
+      +(vig?'<div class="rot-vig">vigência '+String(vig).split('-').reverse().slice(0,2).join('/')+(temSab?' · sáb 8–12':'')+'</div>':'');
+    if(!blocos.length){
+      const p=document.createElement('p');p.className='vazio';p.textContent='Sem rotina configurada.';col.appendChild(p);
+    }
+    for(const b of blocos)col.appendChild(faixaEl(u,b));
+    if(rotEdit){
+      const add=document.createElement('button');add.className='btn claro rot-add';add.textContent='+ faixa';
+      add.onclick=()=>{
+        const bs=(REGUAS[u.id]=REGUAS[u.id]||{});
+        const arr=(bs.padrao=bs.padrao||[]);
+        const ult=arr.length?Math.max(...arr.map(x=>x.fim)):480;
+        const nb={id:novoId('b'),ini:ult,fim:Math.min(ult+60,1439),nome:'Nova faixa',tipo:'atend'};
+        arr.push(nb);rotAberta.add(u.id+'|'+nb.id);desenharRotinaGrid();
+      };
+      col.appendChild(add);
+    }
+    grid.appendChild(col);
+  }
+}
+function faixaEl(u,b){
+  const chave=u.id+'|'+b.id;
+  const aberta=rotEdit&&rotAberta.has(chave);
+  const ts=((TAREFAS[u.id]||{}).padrao||{});
+  const macros=ts[b.id]||[];
+  const nSubs=macros.reduce((a,mm)=>a+((mm.subs||[]).length),0);
+  const div=document.createElement('div');div.className='rot-faixa rf-'+(b.tipo||'atend');
+  const cab=document.createElement('div');cab.className='rf-cab';
+  cab.innerHTML='<strong>'+fmt(b.ini)+' '+b.nome+'</strong>'
+    +(macros.length?'<span class="rf-meta">'+macros.length+' macro'+(macros.length>1?'s':'')+' · '+nSubs+' subs</span>':'')
+    +(rotEdit?'<span class="rf-acao">'+(aberta?'▴':'✎')+'</span>':'');
+  if(rotEdit){cab.style.cursor='pointer';cab.onclick=()=>{aberta?rotAberta.delete(chave):rotAberta.add(chave);desenharRotinaGrid();};}
+  div.appendChild(cab);
+  if(aberta){
+    const f=document.createElement('div');f.className='rf-form';
+    f.innerHTML='<div class="rf-linha"><input class="rf-nome" value="'+String(b.nome).replace(/"/g,'&quot;')+'">'
+      +'<input type="time" class="rf-ini" value="'+fmt(b.ini)+'"><input type="time" class="rf-fim" value="'+fmt(b.fim)+'">'
+      +'<select class="rf-tipo">'+Object.entries(TIPO_ROT).map(([k,v])=>'<option value="'+k+'"'+(b.tipo===k?' selected':'')+'>'+v+'</option>').join('')+'</select></div>'
+      +'<div class="rf-macros"></div>'
+      +'<div class="rf-linha"><button class="btn claro rf-addm">+ macro-tarefa</button><span class="esp"></span>'
+      +'<button class="btn claro rf-del" style="color:var(--verm)">Remover faixa</button>'
+      +'<button class="btn laranja rf-save">Salvar</button></div>';
+    const mBox=f.querySelector('.rf-macros');
+    macros.forEach((mm,mi)=>{
+      const me=document.createElement('div');me.className='rf-macro';
+      me.innerHTML='<div class="rf-linha"><span class="rf-tag">▣</span><input class="rf-mtxt" value="'+String(mm.txt).replace(/"/g,'&quot;')+'"><button class="rf-x" title="remover macro">×</button></div><div class="rf-subs"></div><button class="rf-adds">+ sub-tarefa</button>';
+      const sBox=me.querySelector('.rf-subs');
+      (mm.subs||[]).forEach((s,si)=>{
+        const se=document.createElement('div');se.className='rf-linha';
+        se.innerHTML='<span class="rf-tag">☐</span><input class="rf-stxt" value="'+String(s.txt).replace(/"/g,'&quot;')+'"><button class="rf-x">×</button>';
+        se.querySelector('.rf-x').onclick=()=>{mm.subs.splice(si,1);desenharRotinaGrid();};
+        se.querySelector('input').onchange=e=>{s.txt=e.target.value.trim();};
+        sBox.appendChild(se);
+      });
+      me.querySelector('.rf-mtxt').onchange=e=>{mm.txt=e.target.value.trim();};
+      me.querySelector('.rf-x').onclick=()=>{macros.splice(mi,1);ts[b.id]=macros;desenharRotinaGrid();};
+      me.querySelector('.rf-adds').onclick=()=>{(mm.subs=mm.subs||[]).push({id:novoId('s'),txt:'Nova sub-tarefa'});desenharRotinaGrid();};
+      mBox.appendChild(me);
+    });
+    f.querySelector('.rf-addm').onclick=()=>{
+      const T=(TAREFAS[u.id]=TAREFAS[u.id]||{});const P=(T.padrao=T.padrao||{});
+      (P[b.id]=P[b.id]||[]).push({id:novoId('m'),txt:'Nova macro-tarefa',sub:'',subs:[{id:novoId('s'),txt:'Primeira sub-tarefa'}]});
+      desenharRotinaGrid();
+    };
+    f.querySelector('.rf-del').onclick=()=>{
+      if(!confirm('Remover a faixa "'+b.nome+'"?'))return;
+      const arr=REGUAS[u.id].padrao;arr.splice(arr.findIndex(x=>x.id===b.id),1);
+      delete ts[b.id];
+      salvarRotina(u.id);
+    };
+    f.querySelector('.rf-save').onclick=()=>{
+      b.nome=f.querySelector('.rf-nome').value.trim()||b.nome;
+      b.ini=hm(f.querySelector('.rf-ini').value);
+      b.fim=hm(f.querySelector('.rf-fim').value);
+      b.tipo=f.querySelector('.rf-tipo').value;
+      rotAberta.delete(chave);
+      salvarRotina(u.id);
+    };
+    div.appendChild(f);
+  }
+  return div;
+}
+async function salvarRotina(uid){
+  const blocos=[...((REGUAS[uid]||{}).padrao||[])].sort((a,b)=>a.ini-b.ini);
+  REGUAS[uid].padrao=blocos;
+  const tarefas=((TAREFAS[uid]||{}).padrao)||{};
+  const r1=await sb.from('reguas').upsert({user_id:uid,perfil:'padrao',blocos},{onConflict:'user_id,perfil'});
+  const r2=await sb.from('tarefas_fixas').upsert({user_id:uid,perfil:'padrao',tarefas},{onConflict:'user_id,perfil'});
+  if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
+  desenharRotina();
+}
+async function desenharRotinaDados(){
   const selP=$('rotPessoa');
   if(selP.options.length<=1){
     CFG.usuarios.filter(u=>!u.admin).forEach(u=>{
       const o=document.createElement('option');o.value=u.id;o.textContent=u.nome;selP.appendChild(o);
     });
   }
-  tab.innerHTML='<tr><td class="vazio">Carregando…</td></tr>';
   const hoje=agora();
   const desdeD=new Date(hoje);desdeD.setDate(desdeD.getDate()-ROT_JANELA);
   const{data:checks,error}=await sb.from('checks_diarios').select('user_id,dia,ids').gte('dia',chaveDia(desdeD));
-  if(error){erroDB(error);tab.innerHTML='';return;}
+  if(error){erroDB(error);return;}
   const feito=new Set();
   (checks||[]).forEach(c=>(c.ids||[]).forEach(id=>feito.add(c.user_id+'|'+c.dia+'|'+id)));
+  const macroOk=(uid,iso,t,cid)=>{
+    if(feito.has(uid+'|'+iso+'|'+cid))return true;
+    if(t.subs&&t.subs.length)return t.subs.every(s=>feito.has(uid+'|'+iso+'|'+cid+'_s'+s.id));
+    return false;
+  };
+  const mon=$('rotMonitor');mon.innerHTML='';
+  const hojeISO=chaveDia(hoje),minAg=hoje.getHours()*60+hoje.getMinutes();
+  for(const u of CFG.usuarios.filter(x=>!x.admin)){
+    const blocos=reguaDe(u.id,hoje),ts=tarefasDe(u.id,hoje);
+    const linha=document.createElement('div');linha.className='rot-mon';
+    let chips='';
+    for(const b of blocos){
+      for(const t of (ts[b.id]||[])){
+        const cid=b.id+'_'+t.id;
+        const total=(t.subs&&t.subs.length)?t.subs.length:1;
+        const done=(t.subs&&t.subs.length)?t.subs.filter(s=>feito.has(u.id+'|'+hojeISO+'|'+cid+'_s'+s.id)).length:(feito.has(u.id+'|'+hojeISO+'|'+cid)?1:0);
+        const ok=macroOk(u.id,hojeISO,t,cid);
+        const cls=ok?'ok':(done>0?'meio':(minAg>=b.fim?'tarde':''));
+        chips+='<span class="mon-chip '+cls+'">'+(ok?'✓ ':'')+t.txt+' '+done+'/'+total+'</span>';
+      }
+    }
+    linha.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span><strong>'+u.nome.split(' ')[0]+'</strong> '
+      +(blocos.length?(chips||'<span class="mon-chip">sem macros hoje</span>'):'<span class="mon-chip">'+papelTexto(u.id,hoje)+'</span>');
+    mon.appendChild(linha);
+  }
   const linhas=[];
-  const umDia=24*3600*1000;
   for(const u of CFG.usuarios){
     if(u.admin)continue;
+    const vig=VIG[u.id+'|padrao']||'2000-01-01';
     for(let i=ROT_JANELA;i>=0;i--){
       const dt=new Date(hoje.getFullYear(),hoje.getMonth(),hoje.getDate()-i,12);
       const iso=chaveDia(dt);
+      if(iso<vig)continue;
       const blocos=reguaDe(u.id,dt);if(!blocos.length)continue;
       const ts=tarefasDe(u.id,dt);
       for(const b of blocos){
         for(const t of (ts[b.id]||[])){
           const cid=b.id+'_'+t.id;
-          if(feito.has(u.id+'|'+iso+'|'+cid))continue;
-          linhas.push({u,iso,cid,txt:t.txt,bloco:b.nome,atraso:i});
+          if(macroOk(u.id,iso,t,cid))continue;
+          if(i===0&&minAg<b.fim)continue;
+          linhas.push({u,iso,txt:t.txt,bloco:b.nome,atraso:i});
         }
       }
     }
@@ -1323,37 +1547,25 @@ async function desenharRotina(){
   const fP=selP.value,fS=$('rotStatus').value;
   const vis=linhas.filter(l=>(!fP||l.u.id===fP)&&(!fS||(fS==='atrasada'?l.atraso>0:l.atraso===0)));
   const atras=linhas.filter(l=>l.atraso>0);
-  const pessoasAtraso=new Set(atras.map(l=>l.u.id)).size;
-  const maisAntiga=atras.length?Math.max(...atras.map(l=>l.atraso)):0;
   $('rotKpis').innerHTML=
-    kpiCard('Atrasadas',atras.length,'acumuladas em '+ROT_JANELA+' dias')
-    +kpiCard('Pendentes hoje',linhas.filter(l=>l.atraso===0).length,'ainda dentro do prazo')
-    +kpiCard('Mais antiga',maisAntiga?maisAntiga+' d':'—','dias de atraso')
-    +kpiCard('Pessoas com atraso',pessoasAtraso,'de '+CFG.usuarios.filter(u=>!u.admin).length+' na equipe');
+    kpiCard('Atrasadas',atras.length,'desde a vigência da rotina')
+    +kpiCard('Pendentes hoje',linhas.filter(l=>l.atraso===0).length,'blocos já encerrados hoje')
+    +kpiCard('Mais antiga',atras.length?Math.max(...atras.map(l=>l.atraso))+' d':'—','dias de atraso')
+    +kpiCard('Pessoas com atraso',new Set(atras.map(l=>l.u.id)).size,'de '+CFG.usuarios.filter(u=>!u.admin).length+' na equipe');
+  const tab=$('rotTab');
   if(!vis.length){tab.innerHTML='<tr><td class="vazio" style="padding:14px">🎉 Nada em aberto com esses filtros.</td></tr>';return;}
   vis.sort((a,b)=>b.atraso-a.atraso||a.u.nome.localeCompare(b.u.nome));
-  tab.innerHTML='<tr><th>Tarefa</th><th>Bloco</th><th>Responsável</th><th>Data original</th><th>Atraso</th><th>Status</th><th></th></tr>';
+  tab.innerHTML='<tr><th>Macro-tarefa</th><th>Faixa</th><th>Responsável</th><th>Data original</th><th>Atraso</th><th>Status</th></tr>';
   for(const l of vis.slice(0,300)){
     const tr=document.createElement('tr');
-    const st=l.atraso>0?'<span class="st-rot atrasada">Atrasada</span>':'<span class="st-rot hoje">Hoje</span>';
     tr.innerHTML='<td>'+l.txt+'</td><td style="color:var(--tinta-suave)">'+l.bloco+'</td>'
       +'<td><span class="avatar" style="background:'+corDe(l.u.id)+'">'+l.u.nome[0].toUpperCase()+'</span> '+l.u.nome.split(' ')[0]+'</td>'
       +'<td>'+l.iso.split('-').reverse().join('/')+'</td>'
       +'<td style="font-weight:700;color:'+(l.atraso>0?'var(--verm)':'var(--tinta-suave)')+'">'+(l.atraso>0?l.atraso+' d':'—')+'</td>'
-      +'<td>'+st+'</td><td></td>';
-    const btn=document.createElement('button');btn.className='btn claro';btn.style.cssText='padding:4px 10px;font-size:11.5px';btn.textContent='✓ Concluir';
-    btn.onclick=async()=>{
-      btn.disabled=true;
-      const{data:ex}=await sb.from('checks_diarios').select('ids').eq('user_id',l.u.id).eq('dia',l.iso).maybeSingle();
-      const ids=[...new Set([...((ex&&ex.ids)||[]),l.cid])];
-      const{error}=await sb.from('checks_diarios').upsert({user_id:l.u.id,dia:l.iso,ids,atualizado_em:new Date().toISOString()});
-      if(error){erroDB(error);btn.disabled=false;return;}
-      piscar();await carregarChecks();desenharRotina();
-    };
-    tr.lastElementChild.appendChild(btn);
+      +'<td>'+(l.atraso>0?'<span class="st-rot atrasada">Atrasada</span>':'<span class="st-rot hoje">Hoje</span>')+'</td>';
     tab.appendChild(tr);
   }
-  if(vis.length>300){const tr=document.createElement('tr');tr.innerHTML='<td colspan="7" class="vazio">Mostrando 300 de '+vis.length+'.</td>';tab.appendChild(tr);}
+  if(vis.length>300){const tr=document.createElement('tr');tr.innerHTML='<td colspan="6" class="vazio">Mostrando 300 de '+vis.length+'.</td>';tab.appendChild(tr);}
 }
 
 /* ================================================================
@@ -1376,6 +1588,7 @@ function desenharBoard(){
   if(!aba){$('bdTitulo').textContent='Aba não encontrada';$('bdLista').innerHTML='';return;}
   $('bdTitulo').textContent=aba.nome;
   $('btnExcluirAba').style.display=usuarioAtual.admin?'inline-block':'none';
+  desenharBdAgendados(aba);
   const lista=$('bdLista');lista.innerHTML='';
   const itens=ITENS.filter(i=>i.aba_id===aba.id);
   if(!itens.length){lista.innerHTML='<p class="vazio">Nenhuma ideia ainda — seja a primeira pessoa a enviar!</p>';return;}
@@ -1387,6 +1600,52 @@ function desenharBoard(){
     lista.appendChild(h);
     for(const i of doStatus)lista.appendChild(cardItem(i));
   }
+}
+function desenharBdAgendados(aba){
+  const box=$('bdAgendados');box.innerHTML='';
+  if(!/evento/i.test(aba.nome))return;
+  const vistos=new Set(),evs=[];
+  for(const u of CFG.usuarios){
+    for(const e of (agenda[u.id]||[])){
+      if(e.tipo!=='evento'||vistos.has(e.id))continue;
+      vistos.add(e.id);evs.push(e);
+    }
+  }
+  const hoje=chaveDia(agora());
+  const prox=evs.filter(e=>e.data>=hoje).sort((a,b)=>a.data.localeCompare(b.data)||a.ini.localeCompare(b.ini));
+  let htmlx='<div class="bd-sec">📅 Eventos agendados <span class="qtd">('+prox.length+')</span></div>';
+  if(!prox.length){
+    htmlx+='<p class="vazio" style="margin-bottom:14px">Nenhum evento agendado — aprove uma ideia, transforme em projeto e clique em Agendar.</p>';
+    box.innerHTML=htmlx;return;
+  }
+  box.innerHTML=htmlx;
+  for(const e of prox.slice(0,20)){
+    const dono=(uPorId(e.dono)||{}).nome||'—';
+    const outros=(e.participantes||[]).filter(p=>p!==e.dono);
+    const div=document.createElement('div');div.className='bd-card bd-evento';
+    div.style.cursor='pointer';div.title='Abrir este dia na Agenda';
+    div.innerHTML='<div class="cab"><span class="ev-data">'+e.data.split('-').reverse().slice(0,2).join('/')+'</span>'
+      +'<span class="t">🎪 '+e.titulo+'</span><span class="st aprovada">'+e.ini+'–'+e.fim+'</span></div>'
+      +(e.descricao?'<div class="desc">'+e.descricao+'</div>':'')
+      +'<div class="meta">responsável: '+dono.split(' ')[0]
+      +(outros.length?' · 👥 +'+outros.length+' participante'+(outros.length>1?'s':''):'')+'</div>';
+    div.onclick=()=>{
+      document.querySelectorAll('.aba').forEach(x=>x.classList.remove('ativa'));
+      document.querySelectorAll('.vista').forEach(x=>x.classList.remove('ativa'));
+      document.querySelector('.aba[data-v=agenda]').classList.add('ativa');
+      $('v-agenda').classList.add('ativa');
+      $('agData').value=e.data;
+      if(usuarioAtual.admin)$('agModo').value='dia';
+      desenharAgenda();
+    };
+    box.appendChild(div);
+  }
+  if(prox.length>20){
+    const p=document.createElement('p');p.className='vazio';p.textContent='+'+(prox.length-20)+' eventos futuros — veja na Agenda.';
+    box.appendChild(p);
+  }
+  const sep=document.createElement('div');sep.className='bd-sec';sep.style.marginTop='18px';sep.textContent='💡 Ideias de eventos';
+  box.appendChild(sep);
 }
 function cardItem(i){
   const div=document.createElement('div');div.className='bd-card';
@@ -1421,8 +1680,9 @@ function cardItem(i){
         $('v-agenda').classList.add('ativa');
         $('evTitulo').value=i.titulo;
         $('evDesc').value=i.descricao||'';
-        $('evTipo').value='tarefa';
+        $('evTipo').value='evento';
         desenharAgenda();
+        desenharEvParts();
         $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
         return;
       }
@@ -1749,18 +2009,20 @@ function fmtH(h){if(h<1)return Math.round(h*60)+' min';if(h<48)return h.toFixed(
 /* ================================================================
    ADMIN
 ================================================================ */
-function desenharAdmin(){desenharUsuarios();desenharRodizio();prepararEditorRegua();desenharLog();}
+function desenharAdmin(){desenharUsuarios();desenharLog();}
 function desenharUsuarios(){
   const t=$('tabUsuarios');
-  t.innerHTML='<tr><th>Nome</th><th>Nome no Sults</th><th>Admin</th><th>Cor</th></tr>';
+  t.innerHTML='<tr><th>Nome</th><th>Nome no Sults</th><th>Férias até</th><th>Admin</th><th>Cor</th></tr>';
   CFG.usuarios.forEach(u=>{
     const tr=document.createElement('tr');
-    tr.innerHTML='<td><input value="'+u.nome+'"></td><td><input value="'+(u.nomeSults||'')+'" placeholder="como aparece no Sults"></td><td><input type="checkbox" '+(u.admin?'checked':'')+'></td><td><input type="color" value="'+(u.cor||corDe(u.id))+'" style="width:44px;padding:2px"></td>';
-    const textos=tr.querySelectorAll('input:not([type=checkbox]):not([type=color])');
+    tr.innerHTML='<td><input value="'+u.nome+'"></td><td><input value="'+(u.nomeSults||'')+'" placeholder="como aparece no Sults"></td><td><input type="date" value="'+(u.feriasAte||'')+'" style="width:135px"></td><td><input type="checkbox" '+(u.admin?'checked':'')+'></td><td><input type="color" value="'+(u.cor||corDe(u.id))+'" style="width:44px;padding:2px"></td>';
+    const textos=tr.querySelectorAll('input:not([type=checkbox]):not([type=color]):not([type=date])');
     const inN=textos[0], inS=textos[1];
+    const inF=tr.querySelector('input[type=date]');
+    inF.onchange=async()=>{const v=inF.value||null;const{error}=await sb.from('perfis').update({ferias_ate:v}).eq('id',u.id);if(error)erroDB(error);else{u.feriasAte=v;piscar();redesenharVistaAtiva();}};
     const inA=tr.querySelector('input[type=checkbox]');
     const inC=tr.querySelector('input[type=color]');
-    inN.onchange=async()=>{const{error}=await sb.from('perfis').update({nome:inN.value.trim()}).eq('id',u.id);if(error)erroDB(error);else{u.nome=inN.value.trim();piscar();desenharRodizio();prepararEditorRegua();}};
+    inN.onchange=async()=>{const{error}=await sb.from('perfis').update({nome:inN.value.trim()}).eq('id',u.id);if(error)erroDB(error);else{u.nome=inN.value.trim();piscar();}};
     inS.onchange=async()=>{const{error}=await sb.from('perfis').update({nome_sults:inS.value.trim()}).eq('id',u.id);if(error)erroDB(error);else{u.nomeSults=inS.value.trim();piscar();}};
     inA.onchange=async()=>{const{error}=await sb.from('perfis').update({is_admin:inA.checked}).eq('id',u.id);if(error)erroDB(error);else{u.admin=inA.checked;piscar();}};
     inC.onchange=async()=>{const{error}=await sb.from('perfis').update({cor:inC.value}).eq('id',u.id);if(error)erroDB(error);else{u.cor=inC.value;piscar();}};
@@ -1913,18 +2175,8 @@ ligarAbas();
   $('rotPessoa').onchange=desenharRotina;
   $('rotStatus').onchange=desenharRotina;
   $('btnRotinaGoogle').onclick=rotinaParaGoogle;
-  $('btnModelo').onclick=aplicarModelo;
-  $('btnAddBloco').onclick=()=>{
-    if(!admReguaDraft)return;
-    const d=admReguaDraft;
-    const ult=d.blocos[d.blocos.length-1];
-    d.blocos.push({id:'b'+Date.now(),ini:ult?ult.fim:m(8),fim:(ult?ult.fim:m(8))+60,nome:'Novo bloco',tipo:'atend'});
-    if(!REGUAS[d.uid])REGUAS[d.uid]={};if(!TAREFAS[d.uid])TAREFAS[d.uid]={};
-    REGUAS[d.uid][d.perfil]=d.blocos;TAREFAS[d.uid][d.perfil]=d.tarefas;
-    desenharEditorRegua();
-  };
-  $('btnSalvarRegua').onclick=salvarRegua;
   $('btnNovaAba').onclick=criarAba;
+  $('btnRotEditar').onclick=()=>{rotEdit=!rotEdit;if(!rotEdit)rotAberta.clear();desenharRotinaGrid();};
   $('btnExportAval').onclick=exportarAvaliacoes;
   $('chHead').onclick=()=>{
     const b=$('chamadosAvaliar'),aberto=b.style.display!=='none';

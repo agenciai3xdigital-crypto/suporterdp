@@ -138,7 +138,18 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .pv-dia.hoje .pv-num{color:var(--laranja)}
 .pv-dia .pv-rot{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tinta-suave)}
 .pv-dia .pv-num{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px}
-.pv-chip{font-size:10.5px;font-weight:600;border-radius:6px;padding:2px 5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.pv-chip{font-size:10.5px;font-weight:600;border-radius:6px;padding:2px 5px;margin-top:3px;white-space:normal;word-break:break-word;line-height:1.35;color:#fff}
+.fr-wrap{position:relative;flex:2;min-width:200px}
+.fr-wrap input{width:100%}
+.fr-list{position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1.5px solid var(--linha);border-radius:10px;max-height:220px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.fr-list div{padding:7px 10px;font-size:12.5px;cursor:pointer;border-bottom:1px solid var(--linha)}
+.fr-list div:hover{background:var(--laranja-suave)}
+.fr-tag{font-size:11px;font-weight:700;background:var(--laranja-suave);color:var(--laranja);border-radius:6px;padding:1px 6px;margin-left:6px}
+.frq-row{display:flex;justify-content:space-between;gap:8px;padding:9px 4px;border-bottom:1px solid var(--linha);font-size:13.5px;cursor:pointer;align-items:center}
+.frq-row:hover{background:var(--laranja-suave)}
+.frq-hist{border-left:3px solid var(--linha);margin:4px 0 10px 10px;padding:6px 0 6px 14px;font-size:12.5px}
+.frq-hist p{margin:0 0 6px}
+.ag-dia-cab{font-family:'Archivo',sans-serif;font-weight:800;font-size:17px;margin:10px 0 4px}
 .pv-mais{font-size:10px;color:var(--tinta-suave);margin-top:2px}
 .pv-tl{display:flex;min-width:680px}
 .pv-gut{width:44px;flex-shrink:0;position:relative}
@@ -430,6 +441,19 @@ details.recolhe[open] summary{margin-bottom:8px}
 
   <!-- ===== AGENDA ===== -->
   <div class="vista" id="v-agenda">
+    <div class="ag-form">
+      <select id="evQuem" style="display:none"></select>
+      <select id="evTipo"><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="evento">Evento</option></select>
+      <input id="evTitulo" placeholder="Título">
+      <div class="fr-wrap"><input id="evFra" placeholder="Franquia (obrigatório) — nome ou nº" autocomplete="off"><div class="fr-list" id="evFraList" style="display:none"></div></div>
+      <input id="evData" type="date">
+      <input id="evIni" type="time" value="09:00">
+      <input id="evFim" type="time" value="10:00">
+      <button class="btn laranja" id="btnAddEvento">Adicionar</button>
+      <button class="btn claro" id="btnCancelEdit" style="display:none">Cancelar edição</button>
+      <input id="evDesc" placeholder="Descrição (opcional)" style="flex-basis:100%">
+      <div id="evParts" style="flex-basis:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
+    </div>
     <div class="ag-topo">
       <label style="font-size:13px;font-weight:700">Visão:
         <select id="agModo">
@@ -437,23 +461,13 @@ details.recolhe[open] summary{margin-bottom:8px}
           <option value="semana">Semana</option>
           <option value="mes">Mês</option>
           <option value="intervalo">Intervalo</option>
+          <option value="franquias">Franquias (histórico)</option>
         </select>
       </label>
       <label style="font-size:13px;font-weight:700"><span id="agRotData">Dia:</span> <input type="date" id="agData"></label>
       <label style="font-size:13px;font-weight:700;display:none" id="agLbl2">até <input type="date" id="agData2"></label>
       <span class="esp"></span>
       <button class="btn verde" id="btnRotinaGoogle" title="Baixa um arquivo .ics com os blocos de hoje para importar no seu Google Agenda">Rotina de hoje → Google Agenda</button>
-    </div>
-    <div class="ag-form">
-      <select id="evQuem" style="display:none"></select>
-      <select id="evTipo"><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="evento">Evento</option></select>
-      <input id="evTitulo" placeholder="Título">
-      <input id="evData" type="date">
-      <input id="evIni" type="time" value="09:00">
-      <input id="evFim" type="time" value="10:00">
-      <button class="btn laranja" id="btnAddEvento">Adicionar</button>
-      <input id="evDesc" placeholder="Descrição (opcional)" style="flex-basis:100%">
-      <div id="evParts" style="flex-basis:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
     </div>
     <div class="previa" id="agPrevia"></div>
     <div id="listaEventos"></div>
@@ -570,6 +584,10 @@ details.recolhe[open] summary{margin-bottom:8px}
     <h2 class="sec">Equipe</h2>
     <table class="adm-tab" id="tabUsuarios"></table>
     <p style="font-size:12px;color:var(--tinta-suave);margin-top:6px">Criar e remover usuários (e redefinir senhas): painel do Supabase → Authentication → Users. O perfil aparece aqui automaticamente.</p>
+
+    <h2 class="sec">Franquias <button class="btn claro" id="btnFrqNova" style="margin-left:8px">＋ Nova franquia</button></h2>
+    <input id="frqBusca" placeholder="Buscar franquia por nome, nº, cidade ou consultor" style="width:100%;max-width:420px;margin-bottom:8px">
+    <div class="painel" id="painelFrq" style="max-height:340px;overflow:auto"></div>
 
     <h2 class="sec">Registro de acessos</h2>
     <div class="painel" id="painelLog" style="max-height:280px;overflow:auto"></div>
@@ -693,11 +711,18 @@ async function carregarAtividades(){
   atividades={};CFG.usuarios.forEach(u=>atividades[u.id]=[]);
   (data||[]).forEach(a=>{(atividades[a.user_id]=atividades[a.user_id]||[]).push({id:a.id,txt:a.txt});});
 }
+let FRQ=[];
+async function carregarFranquias(){
+  const {data}=await sb.from('franquias').select('*').order('fra');
+  FRQ=data||[];
+}
+function frqPorId(fra){return FRQ.find(f=>f.fra===fra);}
+function frqRotulo(fra){const f=frqPorId(fra);return f?(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome):null;}
 async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[]};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -717,6 +742,7 @@ function ligarRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'checks_diarios'},async()=>{await carregarChecks();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'atividades_livres'},async()=>{await carregarAtividades();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'agenda_eventos'},async()=>{await carregarAgenda();redesenharVistaAtiva();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'franquias'},async()=>{await carregarFranquias();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'config_rodizio'},async()=>{await carregarBase();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'reguas'},async()=>{await carregarBase();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'tarefas_fixas'},async()=>{await carregarBase();redesenharVistaAtiva();})
@@ -772,6 +798,7 @@ async function entrar(){
 }
 async function iniciarSessao(user){
   await carregarBase();
+  await carregarFranquias();
   const perfil=uPorId(user.id);
   if(!perfil){$('loginErro').textContent='Perfil não encontrado — avise o gestor.';await sb.auth.signOut();return;}
   usuarioAtual=perfil;
@@ -782,7 +809,9 @@ async function iniciarSessao(user){
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display=usuarioAtual.admin?'inline-block':'none';
-  if(!usuarioAtual.admin)$('agModo').parentElement.style.display='none';
+  if(!usuarioAtual.admin){
+    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="franquias">Franquias (histórico)</option>';
+  }
   $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
   renderAbasCustom();
@@ -1103,7 +1132,7 @@ function desenharPrevia(dia){
   const box=$('agPrevia');box.innerHTML='';
   if(usuarioAtual.admin){
     const HINI=7,HFIM=19,PXH=44,ALT=(HFIM-HINI)*PXH;
-    box.innerHTML='<h4>Visão geral do dia — todas as agendas ('+dia.split('-').reverse().join('/')+')</h4>';
+    box.innerHTML='<h4>Visão geral do dia — todas as agendas ('+diaSemanaExt(dia)+')</h4>';
     const tl=document.createElement('div');tl.className='pv-tl';
     const gut=document.createElement('div');gut.className='pv-gut';gut.style.height=(ALT+30)+'px';
     for(let h=HINI;h<=HFIM;h++){const s=document.createElement('span');s.style.top=(30+(h-HINI)*PXH)+'px';s.textContent=String(h).padStart(2,'0')+'h';gut.appendChild(s);}
@@ -1170,13 +1199,18 @@ function eventoEl(uid,e){
     +'<div class="t" style="'+(e.concluida?'text-decoration:line-through;color:var(--tinta-suave)':'')+'">'
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
     +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span></div>'
+    +((e.fra===0||e.fra)?'<div class="n">🏪 '+(frqRotulo(e.fra)||'FRA '+e.fra)+'</div>':'')
     +(e.descricao?'<div class="n" style="white-space:pre-wrap">'+e.descricao+'</div>':'')
     +(outros.length?'<div class="n">👥 '+((uPorId(e.dono)||{}).nome||'—').split(' ')[0]+' + '+nomesPart+'</div>':'')
     +(e.por&&e.por!==uid?'<div class="n">Marcado por '+((uPorId(e.por)||{}).nome||'—')+'</div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>'
     +'<div class="acoes"><a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a>'
-    +'<button class="ics">.ics</button>'+(podeRemover?'<button class="x">Remover</button>':'')+'</div>';
+    +'<button class="ics">.ics</button>'
+    +(((e.por||e.dono)===usuarioAtual.id)?'<button class="ed">✎ Editar</button>':'')
+    +(podeRemover?'<button class="x">Remover</button>':'')+'</div>';
+  const bed=div.querySelector('.ed');
+  if(bed)bed.onclick=()=>entrarEdicao(e);
   div.querySelector('.ics').onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
   const bx=div.querySelector('.x');
   if(bx)bx.onclick=async()=>{
@@ -1207,6 +1241,8 @@ function eventoEl(uid,e){
   });
   return div;
 }
+const DIAS_SEM=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+function diaSemanaExt(iso){return DIAS_SEM[new Date(iso+'T12:00:00').getDay()]+' · '+iso.split('-').reverse().join('/');}
 function desenharAgenda(){
   const dia=$('agData').value||chaveDia(agora());
   const lista=$('listaEventos');lista.innerHTML='';
@@ -1218,15 +1254,20 @@ function desenharAgenda(){
     }
   }
   desenharEvParts();
-  const modo=usuarioAtual.admin?($('agModo').value||'dia'):'dia';
+  const modo=$('agModo').value||'dia';
   $('agLbl2').style.display=modo==='intervalo'?'inline-block':'none';
-  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':'De:'));
+  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':'De:')));
+  if(modo==='franquias'){
+    $('agPrevia').innerHTML='';
+    return desenharAgendaFranquias(lista);
+  }
   if(usuarioAtual.admin&&modo!=='dia'){
     $('agPrevia').innerHTML='';
     if(modo==='semana')return desenharAgendaSemana(dia,lista);
     if(modo==='mes')return desenharAgendaMes(dia,lista);
     if(modo==='intervalo')return desenharAgendaIntervalo(dia,$('agData2').value||dia,lista);
   }
+  const cab=document.createElement('div');cab.className='ag-dia-cab';cab.textContent=diaSemanaExt(dia);lista.appendChild(cab);
   desenharPrevia(dia);
   if(usuarioAtual.admin){
     let totalDia=0;
@@ -1238,10 +1279,10 @@ function desenharAgenda(){
       lista.appendChild(sec);
       for(const e of evs)lista.appendChild(eventoEl(u.id,e));
     }
-    if(!totalDia){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum compromisso em nenhuma agenda neste dia.';lista.prepend(p);}
+    if(!totalDia){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum compromisso em nenhuma agenda neste dia.';lista.appendChild(p);}
   }else{
     const evs=(agenda[usuarioAtual.id]||[]).filter(e=>e.data===dia).sort((a,b)=>a.ini.localeCompare(b.ini));
-    if(!evs.length)lista.innerHTML='<p class="vazio">Nenhum compromisso neste dia. Adicione acima — e envie ao Google Agenda com um clique.</p>';
+    if(!evs.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum compromisso neste dia. Adicione acima — e envie ao Google Agenda com um clique.';lista.appendChild(p);}
     for(const e of evs)lista.appendChild(eventoEl(usuarioAtual.id,e));
   }
 }
@@ -1264,18 +1305,119 @@ function desenharEvParts(){
     box.appendChild(c);
   });
 }
+let evFraSel=null,editEvId=null,editEvOrig=null;
+function retroativo(data,ini){
+  const ag=agora();
+  const hoje=chaveDia(ag);
+  if(data<hoje)return true;
+  if(data===hoje){
+    const hh=String(ag.getHours()).padStart(2,'0')+':'+String(ag.getMinutes()).padStart(2,'0');
+    if(ini<hh)return true;
+  }
+  return false;
+}
+function sairEdicao(){
+  editEvId=null;editEvOrig=null;evFraSel=null;
+  $('evFra').value='';$('btnAddEvento').textContent='Adicionar';
+  $('btnCancelEdit').style.display='none';
+}
 async function addEvento(){
   const uid=agAlvo();
   const titulo=$('evTitulo').value.trim(),data=$('evData').value,ini=$('evIni').value,fim=$('evFim').value;
   const tipo=$('evTipo').value,descricao=$('evDesc').value.trim();
   if(!titulo||!data||!ini||!fim)return;
+  if(evFraSel===null&&evFraSel!==0){alert('Selecione a franquia (FR) do item. Para itens internos, escolha "INTERNO / SEDE".');$('evFra').focus();return;}
+  const mudouHorario=!editEvId||!editEvOrig||editEvOrig.data!==data||editEvOrig.ini!==ini;
+  if(mudouHorario&&retroativo(data,ini)){alert('Data/hora retroativa não permitida. Escolha um horário a partir de agora.');return;}
   const participantes=tipo==='tarefa'?[]:[...evPartsSel].filter(p=>p!==uid);
-  const{error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,criado_por:usuarioAtual.id});
+  let error;
+  if(editEvId){
+    ({error}=await sb.from('agenda_eventos').update({titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel}).eq('id',editEvId));
+  }else{
+    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,criado_por:usuarioAtual.id}));
+  }
   if(error){erroDB(error);return;}
-  $('evTitulo').value='';$('evDesc').value='';$('agData').value=data;evPartsSel.clear();desenharEvParts();
+  $('evTitulo').value='';$('evDesc').value='';$('agData').value=data;evPartsSel.clear();sairEdicao();desenharEvParts();
   await carregarAgenda();desenharAgenda();piscar();
 }
+function entrarEdicao(e){
+  editEvId=e.id;editEvOrig={data:e.data,ini:e.ini};
+  if(usuarioAtual.admin&&$('evQuem').options.length)$('evQuem').value=e.dono;
+  $('evTipo').value=e.tipo;$('evTitulo').value=e.titulo;$('evData').value=e.data;
+  $('evIni').value=e.ini;$('evFim').value=e.fim;$('evDesc').value=e.descricao||'';
+  evPartsSel.clear();(e.participantes||[]).filter(p=>p!==e.dono).forEach(p=>evPartsSel.add(p));
+  evFraSel=(e.fra===0||e.fra)?e.fra:null;
+  $('evFra').value=evFraSel!==null?(frqRotulo(evFraSel)||''):'';
+  $('btnAddEvento').textContent='Salvar alterações';
+  $('btnCancelEdit').style.display='inline-block';
+  desenharEvParts();
+  $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function desenharFraList(){
+  const box=$('evFraList'),q=$('evFra').value.trim().toLowerCase();
+  if(!q){box.style.display='none';return;}
+  const hits=FRQ.filter(f=>f.ativo!==false&&(String(f.fra).includes(q)||f.nome.toLowerCase().includes(q)||(f.cidade||'').toLowerCase().includes(q))).slice(0,12);
+  if(!hits.length){box.style.display='none';return;}
+  box.innerHTML='';box.style.display='block';
+  hits.forEach(f=>{
+    const d=document.createElement('div');
+    d.textContent=(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome+(f.cidade?' — '+f.cidade:''));
+    d.onmousedown=ev=>{ev.preventDefault();evFraSel=f.fra;$('evFra').value=frqRotulo(f.fra);box.style.display='none';};
+    box.appendChild(d);
+  });
+}
 
+
+/* ===== Visão Franquias: histórico por FR ===== */
+let frqHistAberta=new Set(),frqHistPeriodo='tri',frqHistBusca='';
+function todosEventosUnicos(){
+  const vistos=new Set(),out=[];
+  for(const u of CFG.usuarios)for(const e of (agenda[u.id]||[])){if(vistos.has(e.id))continue;vistos.add(e.id);out.push(e);}
+  return out;
+}
+function desenharAgendaFranquias(lista){
+  const barra=document.createElement('div');
+  barra.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0';
+  barra.innerHTML='<input id="frqHq" placeholder="Buscar franquia (nome, nº, cidade)" style="flex:1;min-width:200px" value="'+frqHistBusca.replace(/"/g,'&quot;')+'">'
+    +'<select id="frqHp"><option value="tri"'+(frqHistPeriodo==='tri'?' selected':'')+'>Último trimestre</option><option value="ano"'+(frqHistPeriodo==='ano'?' selected':'')+'>Último ano</option><option value="tudo"'+(frqHistPeriodo==='tudo'?' selected':'')+'>Tudo</option></select>';
+  lista.appendChild(barra);
+  const corte=new Date(agora());
+  if(frqHistPeriodo==='tri')corte.setMonth(corte.getMonth()-3);
+  if(frqHistPeriodo==='ano')corte.setFullYear(corte.getFullYear()-1);
+  const corteISO=frqHistPeriodo==='tudo'?'0000-00-00':chaveDia(corte);
+  const evs=todosEventosUnicos().filter(e=>e.data>=corteISO);
+  const porFra={};
+  evs.forEach(e=>{const k=(e.fra===0||e.fra)?e.fra:'sem';(porFra[k]=porFra[k]||[]).push(e);});
+  const q=frqHistBusca.trim().toLowerCase();
+  const frs=FRQ.filter(f=>!q||String(f.fra).includes(q)||f.nome.toLowerCase().includes(q)||(f.cidade||'').toLowerCase().includes(q));
+  const ICO={tarefa:'📌',compromisso:'📍',evento:'🎪'};
+  let mostrou=0;
+  const bloco=(chave,rotulo,itens)=>{
+    mostrou++;
+    const row=document.createElement('div');row.className='frq-row';
+    row.innerHTML='<span>'+rotulo+'</span><span style="color:var(--tinta-suave);font-size:12px">'+itens.length+' ite'+(itens.length===1?'m':'ns')+' '+(frqHistAberta.has(chave)?'▾':'▸')+'</span>';
+    row.onclick=()=>{frqHistAberta.has(chave)?frqHistAberta.delete(chave):frqHistAberta.add(chave);desenharAgenda();};
+    lista.appendChild(row);
+    if(frqHistAberta.has(chave)){
+      const h=document.createElement('div');h.className='frq-hist';
+      itens.sort((a,b)=>b.data.localeCompare(a.data)||a.ini.localeCompare(b.ini));
+      h.innerHTML=itens.map(e=>'<p><span style="color:var(--tinta-suave)">'+e.data.split('-').reverse().join('/')+' '+e.ini+'</span> · '+(ICO[e.tipo]||'')+' '+e.titulo
+        +' <span class="st '+({tarefa:'projeto',compromisso:'ideia',evento:'aprovada'}[e.tipo]||'ideia')+'">'+e.tipo+(e.tipo==='tarefa'?(e.concluida?' · concluída':' · pendente'):'')+'</span>'
+        +' <span style="color:var(--tinta-suave)">— '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0])+'</span></p>').join('');
+      lista.appendChild(h);
+    }
+  };
+  for(const f of frs){
+    const itens=porFra[f.fra]||[];
+    if(!itens.length&&q==='')continue;
+    if(!itens.length)continue;
+    bloco(f.fra,(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome)+(f.consultor?' <span class="fr-tag">'+f.consultor+'</span>':''),itens);
+  }
+  if(porFra['sem']&&!q)bloco('sem','Sem franquia vinculada <span class="fr-tag">itens antigos</span>',porFra['sem']);
+  if(!mostrou){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum item no período para as franquias filtradas.';lista.appendChild(p);}
+  $('frqHq').oninput=ev=>{frqHistBusca=ev.target.value;clearTimeout(window._frqT);window._frqT=setTimeout(desenharAgenda,250);};
+  $('frqHp').onchange=ev=>{frqHistPeriodo=ev.target.value;desenharAgenda();};
+}
 
 /* ===== Agenda consolidada (admin): semana, mês e intervalo ===== */
 function evsDoDia(iso){
@@ -2009,7 +2151,58 @@ function fmtH(h){if(h<1)return Math.round(h*60)+' min';if(h<48)return h.toFixed(
 /* ================================================================
    ADMIN
 ================================================================ */
-function desenharAdmin(){desenharUsuarios();desenharLog();}
+function desenharAdmin(){desenharUsuarios();desenharFrqAdmin();desenharLog();}
+function frqForm(f){
+  const v=k=>f&&f[k]!=null?String(f[k]).replace(/"/g,'&quot;'):'';
+  const box=document.createElement('div');
+  box.style.cssText='display:grid;grid-template-columns:90px 1fr 1fr;gap:6px;padding:10px;border:1.5px solid var(--laranja);border-radius:10px;margin:6px 0;background:var(--laranja-suave)';
+  box.innerHTML='<input id="ffFra" placeholder="Nº FRA" value="'+v('fra')+'" '+(f?'disabled':'')+'>'
+    +'<input id="ffNome" placeholder="Nome (REDE POP)" value="'+v('nome')+'">'
+    +'<input id="ffRazao" placeholder="Razão social" value="'+v('razao_social')+'">'
+    +'<input id="ffCons" placeholder="Consultor" value="'+v('consultor')+'">'
+    +'<input id="ffCid" placeholder="Cidade" value="'+v('cidade')+'">'
+    +'<input id="ffTel" placeholder="Telefone" value="'+v('telefone')+'">'
+    +'<input id="ffResp" placeholder="Responsável" value="'+v('responsavel')+'" style="grid-column:span 2">'
+    +'<label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" id="ffAtivo" '+((!f||f.ativo!==false)?'checked':'')+'> Ativa</label>'
+    +'<button class="btn laranja" id="ffSalvar">Salvar</button><button class="btn claro" id="ffCancel">Cancelar</button>';
+  box.querySelector('#ffCancel').onclick=()=>{frqEdit=null;frqNovaOn=false;desenharFrqAdmin();};
+  box.querySelector('#ffSalvar').onclick=async()=>{
+    const fra=parseInt(box.querySelector('#ffFra').value,10);
+    const nome=box.querySelector('#ffNome').value.trim();
+    if(isNaN(fra)||!nome){alert('Informe o nº FRA e o nome.');return;}
+    const reg={fra,nome,razao_social:box.querySelector('#ffRazao').value.trim()||null,consultor:box.querySelector('#ffCons').value.trim()||null,cidade:box.querySelector('#ffCid').value.trim()||null,telefone:box.querySelector('#ffTel').value.trim()||null,responsavel:box.querySelector('#ffResp').value.trim()||null,ativo:box.querySelector('#ffAtivo').checked,atualizado_em:new Date().toISOString()};
+    let error;
+    if(f){({error}=await sb.from('franquias').update(reg).eq('fra',f.fra));}
+    else{
+      if(frqPorId(fra)){alert('Já existe franquia com o nº '+fra+'.');return;}
+      ({error}=await sb.from('franquias').insert(reg));
+    }
+    if(error){erroDB(error);return;}
+    frqEdit=null;frqNovaOn=false;
+    await carregarFranquias();desenharFrqAdmin();piscar();
+  };
+  return box;
+}
+let frqEdit=null,frqNovaOn=false;
+function desenharFrqAdmin(){
+  const el=$('painelFrq');if(!el)return;
+  el.innerHTML='';
+  if(frqNovaOn)el.appendChild(frqForm(null));
+  const q=($('frqBusca').value||'').trim().toLowerCase();
+  const frs=FRQ.filter(f=>!q||String(f.fra).includes(q)||f.nome.toLowerCase().includes(q)||(f.cidade||'').toLowerCase().includes(q)||(f.consultor||'').toLowerCase().includes(q));
+  for(const f of frs){
+    if(frqEdit===f.fra){el.appendChild(frqForm(f));continue;}
+    const row=document.createElement('div');row.className='frq-row';row.style.cursor='default';
+    row.innerHTML='<span>'+(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome)
+      +(f.cidade?' <span style="color:var(--tinta-suave);font-size:12px">— '+f.cidade+'</span>':'')
+      +(f.consultor?' <span class="fr-tag">'+f.consultor+'</span>':'')
+      +(f.ativo===false?' <span class="st reprovada">inativa</span>':'')
+      +'</span><button class="btn claro" style="padding:2px 10px;font-size:12px">✎</button>';
+    row.querySelector('button').onclick=()=>{frqEdit=f.fra;frqNovaOn=false;desenharFrqAdmin();};
+    el.appendChild(row);
+  }
+  if(!frs.length)el.innerHTML='<p class="vazio">Nenhuma franquia encontrada.</p>';
+}
 function desenharUsuarios(){
   const t=$('tabUsuarios');
   t.innerHTML='<tr><th>Nome</th><th>Nome no Sults</th><th>Férias até</th><th>Admin</th><th>Cor</th></tr>';
@@ -2167,6 +2360,13 @@ ligarAbas();
   $('loginSenha').addEventListener('keydown',e=>{if(e.key==='Enter')entrar();});
   $('btnSair').onclick=sair;
   $('btnAddEvento').onclick=addEvento;
+  $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';evPartsSel.clear();sairEdicao();desenharEvParts();};
+  $('evFra').oninput=desenharFraList;
+  $('evFra').onfocus=desenharFraList;
+  $('evFra').onblur=()=>setTimeout(()=>{$('evFraList').style.display='none';},150);
+  $('evFra').addEventListener('change',()=>{if(!$('evFra').value.trim())evFraSel=null;});
+  const bFq=$('btnFrqNova');if(bFq)bFq.onclick=()=>{frqNovaOn=true;frqEdit=null;desenharFrqAdmin();};
+  const iFq=$('frqBusca');if(iFq)iFq.oninput=()=>{clearTimeout(window._fqT);window._fqT=setTimeout(desenharFrqAdmin,250);};
   $('agData').onchange=desenharAgenda;
   $('agData2').onchange=desenharAgenda;
   $('agModo').onchange=desenharAgenda;

@@ -1,0 +1,25 @@
+{
+  "name": "Plantão do Suporte — POP PET",
+  "short_name": "Agenda POP",
+  "description": "Agenda e rotina da equipe de suporte a franqueados",
+  "start_url": "/suporterdp/?aba=agenda",
+  "scope": "/suporterdp/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFFFF",
+  "theme_color": "#F5691D",
+  "icons": [
+    {
+      "src": "icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -176,6 +176,12 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .ev-subs-form{flex-basis:100%;display:none;font-size:13px;border:1px dashed var(--linha);border-radius:10px;padding:8px}
 .ev-subs-form .sitem{display:flex;justify-content:space-between;padding:2px 4px}
 .ev-subs-form .sitem button{border:none;background:none;color:var(--tinta-suave);cursor:pointer;font-weight:700}
+.rel-card{background:#fff;border:1.5px solid var(--linha);border-radius:14px;padding:12px 16px;margin-bottom:12px}
+.rel-barra{height:10px;background:var(--cinza-suave,#EEF2F4);border:1px solid var(--linha);border-radius:6px;overflow:hidden}
+.rel-barra i{display:block;height:100%}
+.rel-grid{display:grid;grid-template-columns:90px 1fr 52px minmax(120px,auto);gap:8px 10px;align-items:center;font-size:13px}
+.pend-card{background:#fff;border:1.5px solid var(--linha);border-radius:14px;padding:12px 16px;margin-bottom:12px}
+.ld-ev .subs-box{margin:4px 0 2px 24px}
 .pv-mais{font-size:10px;color:var(--tinta-suave);margin-top:2px}
 .pv-tl{display:flex;min-width:680px}
 .pv-gut{width:44px;flex-shrink:0;position:relative}
@@ -435,6 +441,8 @@ details.recolhe[open] summary{margin-bottom:8px}
   <!-- ===== MEU DIA ===== -->
   <div class="vista ativa" id="v-dia">
     <div class="rz-faixa" id="rzFaixa" style="display:none">👥 —</div>
+    <div id="relTarefas"></div>
+    <div id="pendTarefas"></div>
     <div class="painel">
       <h3 id="tituloCheck">Seu dia — siga a linha</h3>
       <div class="faixa" id="faixaDia">—</div>
@@ -867,7 +875,60 @@ function totalDe(uid,d){
   if(reguaDe(uid,d).some(b=>b.tipo==='foco'))n+=(atividades[uid]||[]).length;
   return n;
 }
+function redesenharTarefasDia(){desenharRelTarefas();desenharPendTarefas();desenharChecklist();}
+const REL_JANELA=30;
+function relatorioTarefas(uid){
+  const hoje=chaveDia(agora());
+  const ini=new Date(agora());ini.setDate(ini.getDate()-REL_JANELA);
+  const de=chaveDia(ini);
+  const ts=(agenda[uid]||[]).filter(e=>e.tipo==='tarefa'&&e.dono===uid&&e.data>=de&&e.data<=hoje);
+  const concl=ts.filter(e=>e.concluida).length;
+  const venc=ts.filter(e=>!e.concluida&&e.prazo&&e.prazo<hoje).length;
+  const pct=ts.length?Math.round(concl/ts.length*100):null;
+  return{total:ts.length,concl,venc,pct};
+}
+function barraRel(pct){
+  const cor=pct===null?'var(--linha)':(pct>=70?'#639922':(pct>=40?'#BA7517':'#A32D2D'));
+  return'<div class="rel-barra"><i style="width:'+(pct||0)+'%;background:'+cor+'"></i></div>';
+}
+function desenharRelTarefas(){
+  const box=$('relTarefas');if(!box)return;box.innerHTML='';
+  const hoje=diaSemanaExt(chaveDia(agora()));
+  if(usuarioAtual.admin){
+    let linhas='';
+    for(const u of CFG.usuarios){
+      const r=relatorioTarefas(u.id);
+      if(!r.total)continue;
+      linhas+='<span>'+u.nome.split(' ')[0]+'</span>'+barraRel(r.pct)
+        +'<span style="font-weight:800;color:'+(r.pct>=70?'#3B6D11':'#a34608')+'">'+r.pct+'%</span>'
+        +'<span style="font-size:11.5px;color:var(--tinta-suave)">'+r.concl+'/'+r.total+(r.venc?' · <b style="color:#B3241A">'+r.venc+' vencida'+(r.venc>1?'s':'')+'</b>':' · em dia')+'</span>';
+    }
+    box.innerHTML='<div class="rel-card"><div style="font-weight:800;margin-bottom:8px">📊 Relatório de tarefas da equipe — '+hoje+' <span style="font-weight:400;font-size:11.5px;color:var(--tinta-suave)">(janela de '+REL_JANELA+' dias)</span></div>'
+      +(linhas?'<div class="rel-grid">'+linhas+'</div>':'<p class="vazio" style="margin:0">Nenhuma tarefa na janela de '+REL_JANELA+' dias.</p>')+'</div>';
+  }else{
+    const r=relatorioTarefas(usuarioAtual.id);
+    if(!r.total)return;
+    box.innerHTML='<div class="rel-card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
+      +'<span style="font-weight:800">📊 Suas tarefas — '+hoje+'</span>'
+      +'<span style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:22px;color:'+(r.pct>=70?'#3B6D11':'#a34608')+'">'+r.pct+'%</span></div>'
+      +barraRel(r.pct)
+      +'<div style="font-size:12.5px;color:var(--tinta-suave);margin-top:6px">'+r.concl+' de '+r.total+' tarefas concluídas'+(r.venc?' · <b style="color:#B3241A">'+r.venc+' vencida'+(r.venc>1?'s':'')+'</b>':' · em dia')+' <span style="font-size:11px">(últimos '+REL_JANELA+' dias)</span></div></div>';
+  }
+}
+function desenharPendTarefas(){
+  const box=$('pendTarefas');if(!box)return;box.innerHTML='';
+  const hoje=chaveDia(agora());
+  const pends=(agenda[usuarioAtual.id]||[]).filter(e=>e.tipo==='tarefa'&&e.dono===usuarioAtual.id&&!e.concluida&&e.data<hoje)
+    .sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999'));
+  if(!pends.length)return;
+  const card=document.createElement('div');card.className='pend-card';
+  card.innerHTML='<div style="font-weight:800;margin-bottom:8px">📌 Tarefas pendentes <span class="prazo-tag u3">'+pends.length+' em aberto</span></div>';
+  for(const e of pends)card.appendChild(linhaEventoDia(usuarioAtual.id,e));
+  box.appendChild(card);
+}
 function desenharDia(){
+  desenharRelTarefas();
+  desenharPendTarefas();
   const d=agora();
   $('rzFaixa').innerHTML='👥 Hoje: '+CFG.usuarios.filter(u=>!u.admin).map(u=>{
     if(emFerias(u.id,d))return u.nome.split(' ')[0]+' <span style="color:var(--tinta-suave)">· férias até '+u.feriasAte.split('-').reverse().slice(0,2).join('/')+'</span>';
@@ -1005,24 +1066,44 @@ function linhaEventoDia(uid,e){
   const ehT=e.tipo==='tarefa';
   const chave='evd|'+e.id;
   const pend=pendentes.has(chave);
-  const row=document.createElement(ehT?'label':'div');
+  const row=document.createElement('div');
   row.className='tarefa ld-ev'+((e.concluida&&ehT)?' feita':'');
-  row.innerHTML=(ehT?'<input type="checkbox" '+((e.concluida||pend)?'checked':'')+'>':'<span class="ld-ev-ico">🕐</span>')
-    +'<div class="txt">'+e.ini+' · '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
+  const urg=urgencia(e);
+  if(urg)row.classList.add('evento','urg-'+urg.n);
+  const podeDevolver=ehT&&!e.concluida&&e.dono===usuarioAtual.id&&e.por&&e.por!==e.dono;
+  const subsHtml=ehT&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(e.concluida?' disabled':'')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
+    +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'';
+  const pendDesde=ehT&&!e.concluida&&e.data<chaveDia(agora())?Math.round((new Date(chaveDia(agora())+'T12:00:00')-new Date(e.data+'T12:00:00'))/86400000):0;
+  row.innerHTML=(ehT?'<label style="display:inline"><input type="checkbox" class="ck-md" '+((e.concluida||pend)?'checked':'')+'></label>':'<span class="ld-ev-ico">🕐</span>')
+    +'<div class="txt">'+(ehT?'📌':e.ini+' ·')+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
+    +(urg?' <span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
+    +(ehT?'<small>'+(e.por&&e.por!==e.dono?'marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0])+' · ':'')+'agendada '+e.data.split('-').reverse().slice(0,2).join('/')+(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')+((e.fra===0||e.fra)?' · 🏪 '+(frqRotulo(e.fra)||''):'')+(pendDesde?' · <b style="color:#B3241A">pendente há '+pendDesde+' dia'+(pendDesde>1?'s':'')+'</b>':'')+'</small>':'')
     +(e.descricao?'<small>'+e.descricao+'</small>':'')
+    +subsHtml
+    +(podeDevolver?'<div style="margin:5px 0 2px"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
   if(!ehT)return row;
-  row.querySelector('input').onchange=async ev=>{
+  row.querySelectorAll('.subs-box input[data-sid]').forEach(si=>{
+    si.onchange=async ev=>{
+      ev.stopPropagation();
+      const novo=(e.subs||[]).map(s=>s.id===si.dataset.sid?{...s,feita:ev.target.checked}:s);
+      const{error}=await sb.from('agenda_eventos').update({subtarefas:novo}).eq('id',e.id);
+      if(error)erroDB(error);else{await carregarAgenda();redesenharTarefasDia();}
+    };
+  });
+  const bdevMD=row.querySelector('.btn-devolver');
+  if(bdevMD)bdevMD.onclick=ev=>{ev.stopPropagation();iniciarDevolucao(e,true);};
+  row.querySelector('.ck-md').onchange=async ev=>{
     if(ev.target.checked&&!e.concluida){
-      if((e.subs||[]).some(s=>!s.feita)){ev.target.checked=false;alert('Conclua todas as subtarefas desta tarefa na aba Agenda antes de finalizar.');return;}
-      pendentes.add(chave);desenharChecklist();return;
+      if((e.subs||[]).some(s=>!s.feita)){ev.target.checked=false;alert('Conclua todas as subtarefas antes de finalizar a tarefa.');return;}
+      pendentes.add(chave);redesenharTarefasDia();return;
     }
-    if(!ev.target.checked&&pendentes.has(chave)){pendentes.delete(chave);desenharChecklist();return;}
+    if(!ev.target.checked&&pendentes.has(chave)){pendentes.delete(chave);redesenharTarefasDia();return;}
     if(!ev.target.checked&&e.concluida){
       await sb.from('agenda_eventos').update({concluida:false}).eq('id',e.id);
       await sb.from('historico_tarefas').delete().match({user_id:uid,cid:'ag_'+e.id});
-      await carregarAgenda();desenharChecklist();piscar();
+      await carregarAgenda();redesenharTarefasDia();piscar();
     }
   };
   row.querySelectorAll('.dif-chips button').forEach(b=>{
@@ -1034,7 +1115,7 @@ function linhaEventoDia(uid,e){
       const r1=await sb.from('agenda_eventos').update(updMD).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
       if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
-      await carregarAgenda();desenharChecklist();
+      await carregarAgenda();redesenharTarefasDia();
     };
   });
   return row;
@@ -1284,21 +1365,7 @@ function eventoEl(uid,e){
     };
   });
   const bdev=div.querySelector('.btn-devolver');
-  if(bdev)bdev.onclick=()=>{
-    devolverDe=e.id;
-    if($('evQuem').options.length)$('evQuem').value=e.por;
-    $('evTipo').value='tarefa';
-    $('evTitulo').value='Continuidade: '+e.titulo;
-    $('evDesc').value='';$('evData').value=chaveDia(agora());$('evPrazo').value='';
-    evFraSel=(e.fra===0||e.fra)?e.fra:null;
-    $('evFra').value=evFraSel!==null?(frqRotulo(evFraSel)||''):'';
-    evSubsArr=[];desenharEvSubs();
-    atualizarCamposTipo();desenharEvParts();
-    $('btnAddEvento').textContent='↩ Devolver (criar tarefa)';
-    $('btnCancelEdit').style.display='inline-block';
-    $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
-    alert('Descreva a continuidade e o prazo. Ao salvar, a tarefa original será concluída e '+(((uPorId(e.por)||{}).nome||'quem pediu').split(' ')[0])+' receberá o aviso.');
-  };
+  if(bdev)bdev.onclick=()=>iniciarDevolucao(e,false);
   const ck=div.querySelector('.ck-tarefa');
   if(ck)ck.onchange=async ev=>{
     ev.stopPropagation();
@@ -1330,6 +1397,28 @@ function eventoEl(uid,e){
 }
 const DIAS_SEM=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 function diaSemanaExt(iso){return DIAS_SEM[new Date(iso+'T12:00:00').getDay()]+' · '+iso.split('-').reverse().join('/');}
+function iniciarDevolucao(e,irParaAgenda){
+  if(irParaAgenda){
+    document.querySelectorAll('.aba').forEach(x=>x.classList.remove('ativa'));
+    document.querySelectorAll('.vista').forEach(x=>x.classList.remove('ativa'));
+    document.querySelector('.aba[data-v=agenda]').classList.add('ativa');
+    $('v-agenda').classList.add('ativa');
+    desenharAgenda();
+  }
+  devolverDe=e.id;
+  if($('evQuem').options.length)$('evQuem').value=e.por;
+  $('evTipo').value='tarefa';
+  $('evTitulo').value='Continuidade: '+e.titulo;
+  $('evDesc').value='';$('evData').value=chaveDia(agora());$('evPrazo').value='';
+  evFraSel=(e.fra===0||e.fra)?e.fra:null;
+  $('evFra').value=evFraSel!==null?(frqRotulo(evFraSel)||''):'';
+  evSubsArr=[];desenharEvSubs();
+  atualizarCamposTipo();desenharEvParts();
+  $('btnAddEvento').textContent='↩ Devolver (criar tarefa)';
+  $('btnCancelEdit').style.display='inline-block';
+  $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
+  alert('Descreva a continuidade e o prazo. Ao salvar, a tarefa original será concluída e '+(((uPorId(e.por)||{}).nome||'quem pediu').split(' ')[0])+' receberá o aviso.');
+}
 function desenharAvisos(){
   const box=$('agAvisos');if(!box)return;box.innerHTML='';
   const meus=[];
@@ -1375,6 +1464,20 @@ function desenharAgenda(){
     if(modo==='intervalo')return desenharAgendaIntervalo(dia,$('agData2').value||dia,lista);
   }
   const cab=document.createElement('div');cab.className='ag-dia-cab';cab.textContent=diaSemanaExt(dia);lista.appendChild(cab);
+  if(dia===chaveDia(agora())){
+    const escopo=usuarioAtual.admin?CFG.usuarios.map(u=>u.id):[usuarioAtual.id];
+    const vistosP=new Set();
+    const pends=[];
+    escopo.forEach(id=>(agenda[id]||[]).forEach(e=>{
+      if(e.tipo==='tarefa'&&!e.concluida&&e.data<dia&&e.dono===id&&!vistosP.has(e.id)){vistosP.add(e.id);pends.push(e);}
+    }));
+    if(pends.length){
+      const sec=document.createElement('div');sec.className='ag-sec';
+      sec.innerHTML='📌 Tarefas pendentes de dias anteriores <span class="qtd">'+pends.length+' em aberto</span>';
+      lista.appendChild(sec);
+      pends.sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999')).forEach(e=>lista.appendChild(eventoEl(e.dono,e)));
+    }
+  }
   desenharPrevia(dia);
   if(usuarioAtual.admin){
     let totalDia=0;

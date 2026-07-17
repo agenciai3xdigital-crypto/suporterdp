@@ -481,6 +481,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <input id="evTitulo" placeholder="Título">
       <div class="fr-wrap"><input id="evFra" placeholder="Franquia (obrigatório) — nome ou nº" autocomplete="off"><div class="fr-list" id="evFraList" style="display:none"></div></div>
       <input id="evData" type="date" title="Data agendada">
+      <label id="evFimDataLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">até <input id="evDataFim" type="date" title="Data final (opcional)"></label>
       <input id="evIni" type="time" value="09:00">
       <input id="evFim" type="time" value="10:00">
       <label id="evPrazoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Prazo final <input id="evPrazo" type="date"></label>
@@ -501,6 +502,7 @@ details.recolhe[open] summary{margin-bottom:8px}
           <option value="semana">Semana</option>
           <option value="mes">Mês</option>
           <option value="intervalo">Intervalo</option>
+          <option value="meus">Criados por mim</option>
           <option value="franquias">Franquias (histórico)</option>
         </select>
       </label>
@@ -600,6 +602,21 @@ details.recolhe[open] summary{margin-bottom:8px}
         <h3>Por responsável</h3>
         <div class="faixa">Volume · resolução mediana · % no prazo · satisfação</div>
         <div id="insResp"></div>
+      </div>
+    </div>
+
+    <h2 class="sec">Tarefas & Processos (tarefas da agenda)</h2>
+    <div class="rodizio" id="insTPKpis"></div>
+    <div class="grade">
+      <div class="painel">
+        <h3>Carga em aberto por pessoa</h3>
+        <div class="faixa">Pendentes · vencidas · vencendo em ≤3 dias</div>
+        <div id="insTPCarga"></div>
+      </div>
+      <div class="painel">
+        <h3>Top 10 franquias por tarefas</h3>
+        <div class="faixa">Onde a equipe mais gasta energia — candidatas a automação/treinamento</div>
+        <div id="insTPFrq"></div>
       </div>
     </div>
 
@@ -763,7 +780,7 @@ async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[]};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:e.data_fim||null};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -851,7 +868,7 @@ async function iniciarSessao(user){
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display=usuarioAtual.admin?'inline-block':'none';
   if(!usuarioAtual.admin){
-    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="franquias">Franquias (histórico)</option>';
+    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
   }
   $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
@@ -989,7 +1006,7 @@ function desenharChecklist(){
   const blocos=reguaDe(uid,d),ts=tarefasDe(uid,d);
   const min=d.getHours()*60+d.getMinutes();
   const hoje=chaveDia(d);
-  const evs=(agenda[uid]||[]).filter(e=>e.data===hoje).map(e=>({...e,iniMin:hm(e.ini)})).sort((a,b)=>a.iniMin-b.iniMin);
+  const evs=(agenda[uid]||[]).filter(e=>noDia(e,hoje)).map(e=>({...e,iniMin:hm(e.ini)})).sort((a,b)=>a.iniMin-b.iniMin);
   if(!blocos.length){
     $('faixaDia').textContent=papelTexto(uid,d);
     let msg=emFerias(uid,d)?'Você está de férias até '+((uPorId(uid)||{}).feriasAte||'').split('-').reverse().join('/')+'. Sua rotina volta na sequência.':(d.getDay()===0?'Domingo — sem expediente.':(d.getDay()===6?'Sábado: expediente apenas do plantão de produtos (8h–12h).':'Sem rotina configurada para hoje — o gestor define na aba Rotina.'));
@@ -1075,7 +1092,7 @@ function linhaEventoDia(uid,e){
     +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'';
   const pendDesde=ehT&&!e.concluida&&e.data<chaveDia(agora())?Math.round((new Date(chaveDia(agora())+'T12:00:00')-new Date(e.data+'T12:00:00'))/86400000):0;
   row.innerHTML=(ehT?'<label style="display:inline"><input type="checkbox" class="ck-md" '+((e.concluida||pend)?'checked':'')+'></label>':'<span class="ld-ev-ico">🕐</span>')
-    +'<div class="txt">'+(ehT?'📌':e.ini+' ·')+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
+    +'<div class="txt">'+(ehT?'📌':(e.dataFim?'🔒 Ocupado '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/')+' ·':e.ini+' ·'))+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
     +(urg?' <span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
     +(ehT?'<small>'+(e.por&&e.por!==e.dono?'marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0])+' · ':'')+'agendada '+e.data.split('-').reverse().slice(0,2).join('/')+(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')+((e.fra===0||e.fra)?' · 🏪 '+(frqRotulo(e.fra)||''):'')+(pendDesde?' · <b style="color:#B3241A">pendente há '+pendDesde+' dia'+(pendDesde>1?'s':'')+'</b>':'')+'</small>':'')
     +(e.descricao?'<small>'+e.descricao+'</small>':'')
@@ -1266,7 +1283,7 @@ function desenharPrevia(dia){
       const col=document.createElement('div');col.className='pv-col';
       col.innerHTML='<div class="pv-nome"><span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span>'+u.nome+'</div>';
       const corpo=document.createElement('div');corpo.className='pv-corpo';corpo.style.height=ALT+'px';
-      const evs=(agenda[u.id]||[]).filter(e=>e.data===dia&&e.tipo!=='tarefa');
+      const evs=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo!=='tarefa');
       const nTar=(agenda[u.id]||[]).filter(e=>e.data===dia&&e.tipo==='tarefa').length;
       if(nTar){const t=document.createElement('div');t.style.cssText='font-size:10.5px;font-weight:700;color:var(--tinta-suave);padding:2px 4px';t.textContent='📌 '+nTar+' tarefa'+(nTar>1?'s':'')+' (sem horário)';corpo.appendChild(t);}
       if(!evs.length&&!nTar){const v=document.createElement('div');v.className='pv-livre';v.textContent='livre';corpo.appendChild(v);}
@@ -1297,10 +1314,10 @@ function desenharPrevia(dia){
       const cel=document.createElement('div');
       cel.className='pv-dia'+(iso===dia?' sel':'')+(iso===hojeISO?' hoje':'');
       cel.innerHTML='<div class="pv-rot">'+ROT[i]+'</div><div class="pv-num">'+d.getDate()+'</div>';
-      const evs=(agenda[uid]||[]).filter(e=>e.data===iso).sort((a,b)=>a.ini.localeCompare(b.ini));
+      const evs=(agenda[uid]||[]).filter(e=>noDia(e,iso)).sort((a,b)=>a.ini.localeCompare(b.ini));
       evs.slice(0,3).forEach(e=>{
         const c=document.createElement('div');c.className='pv-chip';c.style.background=corDe(uid);
-        c.title=e.titulo+(e.tipo==='tarefa'?' · tarefa':' · '+e.ini+'–'+e.fim);c.textContent=(e.tipo==='tarefa'?'📌 ':e.ini+' ')+e.titulo;
+        c.title=e.titulo+(e.dataFim?' · ocupado':(e.tipo==='tarefa'?' · tarefa':' · '+e.ini+'–'+e.fim));c.textContent=(e.dataFim?'🔒 ':(e.tipo==='tarefa'?'📌 ':e.ini+' '))+e.titulo;
         cel.appendChild(c);
       });
       if(evs.length>3){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-3)+' mais';cel.appendChild(mm);}
@@ -1323,7 +1340,8 @@ function eventoEl(uid,e){
   const outros=(e.participantes||[]).filter(p=>p!==e.dono);
   const nomesPart=outros.map(p=>((uPorId(p)||{}).nome||'—').split(' ')[0]).join(', ');
   const pend=pendEv.has(e.id);
-  div.innerHTML='<div class="hora">'+(ehTarefa?'📌 tarefa':e.ini+'–'+e.fim)+'</div><div class="det">'
+  const perEv=e.dataFim?e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):null;
+  div.innerHTML='<div class="hora">'+(ehTarefa?'📌 tarefa':(perEv?'🔒 '+perEv:e.ini+'–'+e.fim))+'</div><div class="det">'
     +'<div class="t" style="'+(e.concluida?'text-decoration:line-through;color:var(--tinta-suave)':'')+'">'
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
     +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'
@@ -1457,6 +1475,10 @@ function desenharAgenda(){
     $('agPrevia').innerHTML='';
     return desenharAgendaFranquias(lista);
   }
+  if(modo==='meus'){
+    $('agPrevia').innerHTML='';
+    return desenharAgendaMeus(lista);
+  }
   if(usuarioAtual.admin&&modo!=='dia'){
     $('agPrevia').innerHTML='';
     if(modo==='semana')return desenharAgendaSemana(dia,lista);
@@ -1482,7 +1504,7 @@ function desenharAgenda(){
   if(usuarioAtual.admin){
     let totalDia=0;
     for(const u of CFG.usuarios){
-      const evs=(agenda[u.id]||[]).filter(e=>e.data===dia).sort((a,b)=>a.ini.localeCompare(b.ini));
+      const evs=(agenda[u.id]||[]).filter(e=>noDia(e,dia)).sort((a,b)=>a.ini.localeCompare(b.ini));
       totalDia+=evs.length;
       const sec=document.createElement('div');sec.className='ag-sec';
       sec.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span>'+u.nome+' <span class="qtd">'+(evs.length?evs.length+' compromisso'+(evs.length>1?'s':''):'livre neste dia')+'</span>';
@@ -1491,7 +1513,7 @@ function desenharAgenda(){
     }
     if(!totalDia){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum compromisso em nenhuma agenda neste dia.';lista.appendChild(p);}
   }else{
-    const evs=(agenda[usuarioAtual.id]||[]).filter(e=>e.data===dia).sort((a,b)=>a.ini.localeCompare(b.ini));
+    const evs=(agenda[usuarioAtual.id]||[]).filter(e=>noDia(e,dia)).sort((a,b)=>a.ini.localeCompare(b.ini));
     if(!evs.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum compromisso neste dia. Adicione acima — e envie ao Google Agenda com um clique.';lista.appendChild(p);}
     for(const e of evs)lista.appendChild(eventoEl(usuarioAtual.id,e));
   }
@@ -1532,6 +1554,11 @@ function atualizarCamposTipo(){
   $('evFim').style.display=tarefa?'none':'inline-block';
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
+  $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-block':'none';
+}
+function noDia(e,dia){return e.data===dia||(e.dataFim&&dia>=e.data&&dia<=e.dataFim);}
+function ocupadoEm(uid,dia,ignorarId){
+  return (agenda[uid]||[]).find(c=>c.tipo==='compromisso'&&c.dataFim&&c.id!==ignorarId&&dia>=c.data&&dia<=c.dataFim);
 }
 function urgencia(e){
   if(e.tipo!=='tarefa'||!e.prazo||e.concluida)return null;
@@ -1565,6 +1592,8 @@ async function addEvento(){
   const titulo=$('evTitulo').value.trim(),data=$('evData').value;
   const ini=ehTarefa?'00:00':$('evIni').value,fim=ehTarefa?'00:00':$('evFim').value;
   const prazo=ehTarefa?$('evPrazo').value:null;
+  const dataFim=(tipo==='compromisso'&&$('evDataFim').value)?$('evDataFim').value:null;
+  if(dataFim&&dataFim<data){alert('A data final não pode ser anterior à data inicial.');return;}
   if(!titulo||!data||(!ehTarefa&&(!$('evIni').value||!$('evFim').value)))return;
   if(ehTarefa&&!prazo){alert('Informe o prazo final da tarefa.');$('evPrazo').focus();return;}
   if(ehTarefa&&prazo<data){alert('O prazo final não pode ser anterior à data agendada.');return;}
@@ -1573,12 +1602,23 @@ async function addEvento(){
   const retro=ehTarefa?(data<chaveDia(agora())):retroativo(data,ini);
   if(mudouHorario&&retro){alert(ehTarefa?'Data retroativa não permitida para a tarefa.':'Data/hora retroativa não permitida. Escolha um horário a partir de agora.');return;}
   const participantes=ehTarefa?[]:[...evPartsSel].filter(p=>p!==uid);
+  const envolvidos=[uid,...(ehTarefa?[]:[...evPartsSel])];
+  const diasNovos=[];{let dd=new Date(data+'T12:00:00');const fimD=new Date((dataFim||data)+'T12:00:00');while(dd<=fimD){diasNovos.push(chaveDia(dd));dd.setDate(dd.getDate()+1);} }
+  for(const p of envolvidos){
+    let occ=null,diaOcc=null;
+    for(const dn of diasNovos){const o=ocupadoEm(p,dn,editEvId);if(o){occ=o;diaOcc=dn;break;}}
+    if(occ){
+      const nomeP=((uPorId(p)||{}).nome||'—').split(' ')[0];
+      const per=occ.data.split('-').reverse().slice(0,2).join('/')+'–'+occ.dataFim.split('-').reverse().slice(0,2).join('/');
+      if(!confirm('⚠️ '+nomeP+' está OCUPADO no período '+per+' ("'+occ.titulo+'"), que inclui '+diaOcc.split('-').reverse().slice(0,2).join('/')+'.\n\nMarcar mesmo assim?'))return;
+    }
+  }
   const subtarefas=ehTarefa?evSubsArr.map(s=>({id:s.id||novoId('s'),txt:s.txt,feita:!!s.feita})):[];
   let error;
   if(editEvId){
-    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,subtarefas}).eq('id',editEvId));
+    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,subtarefas,data_fim:dataFim}).eq('id',editEvId));
   }else{
-    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,subtarefas,tarefa_origem:devolverDe,criado_por:usuarioAtual.id}));
+    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id}));
   }
   if(error){erroDB(error);return;}
   if(devolverDe){
@@ -1589,7 +1629,7 @@ async function addEvento(){
     }
     devolverDe=null;
   }
-  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();
+  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();
   await carregarAgenda();desenharAgenda();piscar();
 }
 function entrarEdicao(e){
@@ -1597,7 +1637,7 @@ function entrarEdicao(e){
   if(usuarioAtual.admin&&$('evQuem').options.length)$('evQuem').value=e.dono;
   $('evTipo').value=e.tipo;$('evTitulo').value=e.titulo;$('evData').value=e.data;
   $('evIni').value=e.ini;$('evFim').value=e.fim;$('evDesc').value=e.descricao||'';
-  $('evPrazo').value=e.prazo||'';
+  $('evPrazo').value=e.prazo||'';$('evDataFim').value=e.dataFim||'';
   evSubsArr=(e.subs||[]).map(s=>({...s}));desenharEvSubs();
   devolverDe=null;
   atualizarCamposTipo();
@@ -1623,6 +1663,33 @@ function desenharFraList(){
   });
 }
 
+
+/* ===== Visão "Criados por mim" ===== */
+function desenharAgendaMeus(lista){
+  const hoje=chaveDia(agora());
+  const meus=todosEventosUnicos().filter(e=>e.por===usuarioAtual.id);
+  if(!meus.length){const p=document.createElement('p');p.className='vazio';p.textContent='Você ainda não criou nenhum item.';lista.appendChild(p);return;}
+  const aberto=meus.filter(e=>e.tipo==='tarefa'?!e.concluida:((e.dataFim||e.data)>=hoje));
+  const passado=meus.filter(e=>!aberto.includes(e));
+  const sec=(titulo,itens,ordAsc)=>{
+    if(!itens.length)return;
+    const s=document.createElement('div');s.className='ag-sec';
+    s.innerHTML=titulo+' <span class="qtd">'+itens.length+'</span>';
+    lista.appendChild(s);
+    itens.sort((a,b)=>ordAsc?(a.prazo||a.data).localeCompare(b.prazo||b.data):(b.data.localeCompare(a.data)));
+    itens.forEach(e=>{
+      if(e.dono!==usuarioAtual.id){
+        const p=document.createElement('div');
+        p.style.cssText='font-size:11.5px;font-weight:700;color:var(--tinta-suave);margin:6px 0 -4px 2px';
+        p.textContent='👤 Para: '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0]);
+        lista.appendChild(p);
+      }
+      lista.appendChild(eventoEl(e.dono,e));
+    });
+  };
+  sec('⏳ Em aberto',aberto,true);
+  sec('✅ Concluídos / passados',passado,false);
+}
 
 /* ===== Visão Franquias: histórico por FR ===== */
 let frqHistAberta=new Set(),frqHistPeriodo='tri',frqHistBusca='';
@@ -1680,7 +1747,7 @@ function evsDoDia(iso){
   const vistos=new Set(),out=[];
   for(const u of CFG.usuarios){
     for(const e of (agenda[u.id]||[])){
-      if(e.data!==iso||vistos.has(e.id))continue;
+      if(!noDia(e,iso)||vistos.has(e.id))continue;
       vistos.add(e.id);out.push(e);
     }
   }
@@ -1690,8 +1757,9 @@ function chipEv(e){
   const c=document.createElement('div');c.className='pv-chip';
   c.style.background=corDe(e.dono);
   const nome=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
-  c.title=e.titulo+' · '+e.ini+'–'+e.fim+' · '+nome+((e.participantes||[]).length?' +'+e.participantes.filter(p=>p!==e.dono).length:'');
-  c.textContent=(e.tipo==='tarefa'?'📌 ':e.ini+' ')+nome+' · '+e.titulo;
+  const per=e.dataFim?e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):null;
+  c.title=e.titulo+(per?' · ocupado '+per:' · '+e.ini+'–'+e.fim)+' · '+nome+((e.participantes||[]).length?' +'+e.participantes.filter(p=>p!==e.dono).length:'');
+  c.textContent=(per?'🔒 ':(e.tipo==='tarefa'?'📌 ':e.ini+' '))+nome+' · '+e.titulo;
   return c;
 }
 function desenharAgendaSemana(dia,lista){
@@ -2133,10 +2201,63 @@ function horas(a,b){if(!a||!b)return null;return (new Date(b)-new Date(a))/36000
 function kpiCard(rotulo,valor,sub){return '<div class="card"><div class="rotulo">'+rotulo+'</div><div class="valor">'+valor+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';}
 function insLinha(t,pct,v){return '<div class="ins-linha"><span class="t" title="'+t+'">'+t+'</span><span class="b"><i style="width:'+pct+'%"></i></span><span class="v">'+v+'</span></div>';}
 
+async function desenharInsightsTP(dias,desdeISO){
+  const hoje=chaveDia(agora());
+  const ts=todosEventosUnicos().filter(e=>e.tipo==='tarefa'&&e.data>=desdeISO);
+  // conclusões registradas no histórico (dia da avaliação = dia de conclusão)
+  const{data:hist}=await sb.from('historico_tarefas').select('user_id,cid,dia').like('cid','ag_%').gte('dia',desdeISO);
+  const conclDia={};(hist||[]).forEach(h=>{conclDia[h.cid.slice(3)]=h.dia;});
+  // 1) Lead time mediano (dias entre data agendada e conclusão)
+  const leads=[];let noPrazoN=0,noPrazoD=0;
+  ts.forEach(e=>{
+    const cd=conclDia[e.id];
+    if(!cd)return;
+    leads.push(Math.max(0,Math.round((new Date(cd+'T12:00:00')-new Date(e.data+'T12:00:00'))/86400000)));
+    if(e.prazo){noPrazoD++;if(cd<=e.prazo)noPrazoN++;}
+  });
+  leads.sort((a,b)=>a-b);
+  const med=leads.length?leads[Math.floor(leads.length/2)]:null;
+  const pctPrazo=noPrazoD?Math.round(noPrazoN/noPrazoD*100):null;
+  const abertas=ts.filter(e=>!e.concluida);
+  const vencidas=abertas.filter(e=>e.prazo&&e.prazo<hoje).length;
+  $('insTPKpis').innerHTML=[
+    ['Tarefas no período',ts.length,''],
+    ['Lead time mediano',med===null?'—':med+'d','agendada → concluída'],
+    ['% concluídas no prazo',pctPrazo===null?'—':pctPrazo+'%','das que têm prazo'],
+    ['Em aberto agora',abertas.length,vencidas?vencidas+' vencida'+(vencidas>1?'s':''):'nenhuma vencida']
+  ].map(k=>'<div class="kpi"><div class="v">'+k[1]+'</div><div class="l">'+k[0]+'</div><div class="s">'+k[2]+'</div></div>').join('');
+  // 5) Carga por pessoa
+  let cg='';
+  for(const u of CFG.usuarios){
+    const minhas=abertas.filter(e=>e.dono===u.id);
+    if(!minhas.length)continue;
+    const v=minhas.filter(e=>e.prazo&&e.prazo<hoje).length;
+    const lim3=chaveDia(new Date(agora().getTime()+3*86400000));
+    const breve=minhas.filter(e=>e.prazo&&e.prazo>=hoje&&e.prazo<=lim3).length;
+    cg+='<div class="frq-row" style="cursor:default"><span>'+u.nome.split(' ')[0]+'</span><span style="font-size:12px">'
+      +minhas.length+' pendente'+(minhas.length>1?'s':'')
+      +(v?' · <b style="color:#B3241A">'+v+' vencida'+(v>1?'s':'')+'</b>':'')
+      +(breve?' · <b style="color:#a34608">'+breve+' em ≤3d</b>':'')+'</span></div>';
+  }
+  $('insTPCarga').innerHTML=cg||'<p class="vazio">Nenhuma tarefa em aberto. 🎉</p>';
+  // 4) Top FRs
+  const porFra={};
+  ts.forEach(e=>{if(e.fra===0||e.fra){porFra[e.fra]=(porFra[e.fra]||0)+1;}});
+  const top=Object.entries(porFra).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const max=top.length?top[0][1]:1;
+  $('insTPFrq').innerHTML=top.length?top.map(([fra,n])=>{
+    const f=frqPorId(Number(fra));
+    return'<div style="display:grid;grid-template-columns:minmax(120px,1fr) 3fr 30px;gap:8px;align-items:center;font-size:12.5px;padding:3px 0">'
+      +'<span>'+(f?(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome):'FRA '+fra)+'</span>'
+      +'<div class="rel-barra"><i style="width:'+Math.round(n/max*100)+'%;background:var(--laranja)"></i></div>'
+      +'<b>'+n+'</b></div>';
+  }).join(''):'<p class="vazio">Sem tarefas vinculadas a FR no período.</p>';
+}
 async function desenharInsights(){
   const dias=Number($('insPeriodo').value);
   const desdeISO=new Date(Date.now()-dias*24*3600*1000).toISOString().slice(0,10);
   const desdeAntISO=new Date(Date.now()-2*dias*24*3600*1000).toISOString().slice(0,10);
+  desenharInsightsTP(dias,desdeISO);
 
   /* ---- Chamados: período atual + anterior (comparação) + fila aberta ---- */
   const{data:cham2}=await sb.from('chamados_sults').select('*').gte('aberto',desdeAntISO+'T00:00:00Z');

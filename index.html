@@ -492,7 +492,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <label class="ev-lbl" id="evIniLbl">Hora início <input id="evIni" type="time" value="09:00"></label>
       <label class="ev-lbl" id="evFimDataLbl" style="display:none">Data fim <input id="evDataFim" type="date" title="Data final (opcional)"></label>
       <label class="ev-lbl" id="evFimLbl">Hora fim <input id="evFim" type="time" value="10:00"></label>
-      <label id="evPrazoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Prazo final <input id="evPrazo" type="date"></label>
+      <label id="evPrazoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Prazo final <input id="evPrazo" type="date"> <input id="evPrazoHora" type="time" title="Hora limite de entrega"></label>
       <button class="btn laranja" id="btnAddEvento">Adicionar</button>
       <button class="btn claro" id="btnCancelEdit" style="display:none">Cancelar edição</button>
       <input id="evDesc" placeholder="Descrição (opcional)" style="flex-basis:100%">
@@ -518,6 +518,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <label style="font-size:13px;font-weight:700;display:none" id="agLbl2">até <input type="date" id="agData2"></label>
       <span class="esp"></span>
       <button class="btn verde" id="btnRotinaGoogle" title="Baixa um arquivo .ics com os blocos de hoje para importar no seu Google Agenda">Rotina de hoje → Google Agenda</button>
+      <button class="btn claro" id="btnAtivarPush" title="Receba avisos de prazo de tarefa neste aparelho, mesmo com o painel fechado">🔔 Ativar avisos</button>
     </div>
     <div id="agAvisos"></div>
     <div class="previa" id="agPrevia"></div>
@@ -788,7 +789,7 @@ async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:e.data_fim||null};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:e.data_fim||null};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -799,6 +800,59 @@ async function carregarAbas(){
   const {data:itens}=await sb.from('itens_aba').select('*').order('criado_em',{ascending:false});
   ITENS=itens||[];
 }
+
+/* ================================================================
+   WEB PUSH — aviso de prazo de tarefa (10 min antes), com painel fechado
+================================================================ */
+const VAPID_PUBLIC_KEY='BKOrWl2t8jSfEMxzeqEWxarhHeU8Nz-5AvmMaiewHy2mTJXE2Ky8brFwv8ZXV0NWGLiuZrbfR3Nf4rdwp8QXAwU';
+function b64ParaUint8(b64){const p='='.repeat((4-b64.length%4)%4);const s=(b64+p).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(s);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
+async function registrarSW(){
+  if(!('serviceWorker' in navigator))return null;
+  try{return await navigator.serviceWorker.register('sw.js');}catch(e){console.warn('SW falhou',e);return null;}
+}
+async function ativarPush(){
+  const btn=$('btnAtivarPush');
+  if(!('Notification' in window)||!('PushManager' in window)){alert('Este navegador não suporta avisos push. No iPhone, adicione o painel à tela de início (Compartilhar → Adicionar à Tela de Início) e tente por lá.');return;}
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted'){alert('Permissão de notificação negada. Libere nas configurações do navegador para receber os avisos.');return;}
+  const reg=await registrarSW();if(!reg){alert('Não foi possível registrar o service worker.');return;}
+  await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ParaUint8(VAPID_PUBLIC_KEY)});
+  const{error}=await sb.from('push_subscriptions').upsert({user_id:usuarioAtual.id,subscription:sub.toJSON()},{onConflict:'user_id,endpoint'});
+  if(error){erroDB(error);return;}
+  btn.textContent='🔔 Avisos ativos neste aparelho';btn.disabled=true;
+  piscar();
+}
+async function estadoPushInicial(){
+  const btn=$('btnAtivarPush');if(!btn)return;
+  btn.onclick=ativarPush;
+  if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+  try{
+    const reg=await navigator.serviceWorker.getRegistration('sw.js');
+    const sub=reg&&await reg.pushManager.getSubscription();
+    if(sub&&Notification.permission==='granted'){btn.textContent='🔔 Avisos ativos neste aparelho';btn.disabled=true;}
+  }catch(e){}
+}
+/* Verificador local (painel aberto): bip + notificação 10 min antes do prazo */
+const prazosAvisadosLocal=new Set();
+function bipCurto(){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.setValueAtTime(.25,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.5);o.start();o.stop(ctx.currentTime+.5);}catch(e){}}
+function checarPrazosLocais(){
+  if(!usuarioAtual)return;
+  const ag=agora(),hoje=chaveDia(ag);
+  const hmAgora=ag.getHours()*60+ag.getMinutes();
+  (agenda[usuarioAtual.id]||[]).forEach(e=>{
+    if(e.tipo!=='tarefa'||e.concluida||e.dono!==usuarioAtual.id||e.prazo!==hoje||!e.prazoHora)return;
+    const[h,m]=e.prazoHora.split(':').map(Number);
+    const falta=(h*60+m)-hmAgora;
+    if(falta<=10&&falta>=-1&&!prazosAvisadosLocal.has(e.id)){
+      prazosAvisadosLocal.add(e.id);
+      bipCurto();
+      if('Notification' in window&&Notification.permission==='granted'){try{new Notification('⏰ Prazo de tarefa',{body:'"'+e.titulo+'" vence às '+e.prazoHora+'.',tag:'prazo-'+e.id});}catch(err){}}
+    }
+  });
+}
+setInterval(checarPrazosLocais,30000);
 
 /* ================================================================
    REALTIME — o "se atualizar sozinho"
@@ -871,6 +925,7 @@ async function iniciarSessao(user){
   sb.from('acessos').insert({user_id:user.id}).then(()=>{});
   await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas()]);
   ligarRealtime();
+  registrarSW();estadoPushInicial();
   $('telaLogin').style.display='none';$('app').style.display='block';
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
@@ -943,7 +998,7 @@ function desenharRelTarefas(){
 function desenharPendTarefas(){
   const box=$('pendTarefas');if(!box)return;box.innerHTML='';
   const hoje=chaveDia(agora());
-  const pends=(agenda[usuarioAtual.id]||[]).filter(e=>e.tipo==='tarefa'&&e.dono===usuarioAtual.id&&!e.concluida&&e.data<hoje)
+  const pends=(agenda[usuarioAtual.id]||[]).filter(e=>e.tipo==='tarefa'&&e.dono===usuarioAtual.id&&!e.concluida&&(e.dataFim||e.data)<hoje)
     .sort((a,b)=>(a.prazo||'9999').localeCompare(b.prazo||'9999'));
   if(!pends.length)return;
   const card=document.createElement('div');card.className='pend-card';
@@ -1292,7 +1347,7 @@ function desenharPrevia(dia){
       col.innerHTML='<div class="pv-nome"><span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span>'+u.nome+'</div>';
       const corpo=document.createElement('div');corpo.className='pv-corpo';corpo.style.height=ALT+'px';
       const evs=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo!=='tarefa');
-      const tars=(agenda[u.id]||[]).filter(e=>e.data===dia&&e.tipo==='tarefa');
+      const tars=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo==='tarefa');
       for(const t of tars){
         const c=document.createElement('div');c.className='pv-chip pv-tarefa';
         c.textContent='📌 '+t.titulo;c.title=t.titulo+' · tarefa · clique para abrir';
@@ -1356,7 +1411,7 @@ function eventoEl(uid,e){
   const nomesPart=outros.map(p=>((uPorId(p)||{}).nome||'—').split(' ')[0]).join(', ');
   const pend=pendEv.has(e.id);
   const perEv=e.dataFim?e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):null;
-  div.innerHTML='<div class="hora">'+(ehTarefa?'📌 tarefa':(perEv?'🔒 '+perEv:e.ini+'–'+e.fim))+'</div><div class="det">'
+  div.innerHTML='<div class="hora">'+(ehTarefa?(perEv?'📌 '+perEv:'📌 tarefa'):(perEv?'🔒 '+perEv:e.ini+'–'+e.fim))+'</div><div class="det">'
     +'<div class="t" style="'+(e.concluida?'text-decoration:line-through;color:var(--tinta-suave)':'')+'">'
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
     +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'
@@ -1367,7 +1422,7 @@ function eventoEl(uid,e){
     +'<div class="ev-extra">'
     +(ehTarefa?'<div class="n">👤 Para: '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0])
       +(e.por?' · marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0]):'')
-      +' · agendada '+e.data.split('-').reverse().slice(0,2).join('/')
+      +(e.dataFim?' · período '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):' · agendada '+e.data.split('-').reverse().slice(0,2).join('/'))
       +(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')
       +(e.origem?' · 🔗 continuidade':'')+'</div>':'')
     +(ehTarefa&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(podeConcluir&&!e.concluida?'':' disabled')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
@@ -1515,7 +1570,7 @@ function desenharAgenda(){
     const vistosP=new Set();
     const pends=[];
     escopo.forEach(id=>(agenda[id]||[]).forEach(e=>{
-      if(e.tipo==='tarefa'&&!e.concluida&&e.data<dia&&e.dono===id&&!vistosP.has(e.id)){vistosP.add(e.id);pends.push(e);}
+      if(e.tipo==='tarefa'&&!e.concluida&&(e.dataFim||e.data)<dia&&e.dono===id&&!vistosP.has(e.id)){vistosP.add(e.id);pends.push(e);}
     }));
     if(pends.length){
       const sec=document.createElement('div');sec.className='ag-sec';
@@ -1578,7 +1633,7 @@ function atualizarCamposTipo(){
   $('evFimLbl').style.display=tarefa?'none':'inline-flex';
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
-  $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
+  $('evFimDataLbl').style.display=($('evTipo').value==='compromisso'||$('evTipo').value==='tarefa')?'inline-flex':'none';
 }
 function noDia(e,dia){return e.data===dia||(e.dataFim&&dia>=e.data&&dia<=e.dataFim);}
 function ocupadoEm(uid,dia,ignorarId){
@@ -1588,7 +1643,14 @@ function urgencia(e){
   if(e.tipo!=='tarefa'||!e.prazo||e.concluida)return null;
   const dias=Math.round((new Date(e.prazo+'T12:00:00')-new Date(chaveDia(agora())+'T12:00:00'))/86400000);
   if(dias<0)return{n:4,txt:'vencida há '+(-dias)+'d'};
-  if(dias===0)return{n:3,txt:'vence HOJE'};
+  if(dias===0){
+    if(e.prazoHora){
+      const ag=agora(),hm=String(ag.getHours()).padStart(2,'0')+':'+String(ag.getMinutes()).padStart(2,'0');
+      if(hm>e.prazoHora)return{n:4,txt:'venceu às '+e.prazoHora};
+      return{n:3,txt:'vence HOJE às '+e.prazoHora};
+    }
+    return{n:3,txt:'vence HOJE'};
+  }
   if(dias<=3)return{n:2,txt:'vence em '+dias+'d'};
   if(dias<=7)return{n:1,txt:'vence em '+dias+'d'};
   return{n:0,txt:'prazo '+e.prazo.split('-').reverse().slice(0,2).join('/')};
@@ -1616,7 +1678,8 @@ async function addEvento(){
   const titulo=$('evTitulo').value.trim(),data=$('evData').value;
   const ini=ehTarefa?'00:00':$('evIni').value,fim=ehTarefa?'00:00':$('evFim').value;
   const prazo=ehTarefa?$('evPrazo').value:null;
-  const dataFim=(tipo==='compromisso'&&$('evDataFim').value)?$('evDataFim').value:null;
+  const prazoHora=(ehTarefa&&prazo&&$('evPrazoHora').value)?$('evPrazoHora').value:null;
+  const dataFim=((tipo==='compromisso'||tipo==='tarefa')&&$('evDataFim').value)?$('evDataFim').value:null;
   if(dataFim&&dataFim<data){alert('A data final não pode ser anterior à data inicial.');return;}
   if(!titulo||!data||(!ehTarefa&&(!$('evIni').value||!$('evFim').value)))return;
   if(ehTarefa&&!prazo){alert('Informe o prazo final da tarefa.');$('evPrazo').focus();return;}
@@ -1640,9 +1703,9 @@ async function addEvento(){
   const subtarefas=ehTarefa?evSubsArr.map(s=>({id:s.id||novoId('s'),txt:s.txt,feita:!!s.feita})):[];
   let error;
   if(editEvId){
-    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,subtarefas,data_fim:dataFim}).eq('id',editEvId));
+    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim}).eq('id',editEvId));
   }else{
-    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id}));
+    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id}));
   }
   if(error){erroDB(error);return;}
   if(devolverDe){
@@ -1653,7 +1716,7 @@ async function addEvento(){
     }
     devolverDe=null;
   }
-  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();
+  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();
   await carregarAgenda();desenharAgenda();piscar();
 }
 function entrarEdicao(e){
@@ -1661,7 +1724,7 @@ function entrarEdicao(e){
   if(usuarioAtual.admin&&$('evQuem').options.length)$('evQuem').value=e.dono;
   $('evTipo').value=e.tipo;$('evTitulo').value=e.titulo;$('evData').value=e.data;
   $('evIni').value=e.ini;$('evFim').value=e.fim;$('evDesc').value=e.descricao||'';
-  $('evPrazo').value=e.prazo||'';$('evDataFim').value=e.dataFim||'';
+  $('evPrazo').value=e.prazo||'';$('evPrazoHora').value=e.prazoHora||'';$('evDataFim').value=e.dataFim||'';
   evSubsArr=(e.subs||[]).map(s=>({...s}));desenharEvSubs();
   devolverDe=null;
   atualizarCamposTipo();

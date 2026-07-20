@@ -789,7 +789,7 @@ async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:e.data_fim||null};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:e.data_fim||((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -1422,7 +1422,7 @@ function eventoEl(uid,e){
     +'<div class="ev-extra">'
     +(ehTarefa?'<div class="n">👤 Para: '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0])
       +(e.por?' · marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0]):'')
-      +(e.dataFim?' · período '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):' · agendada '+e.data.split('-').reverse().slice(0,2).join('/'))
+      +(e.dataFim?' · início '+e.data.split('-').reverse().slice(0,2).join('/'):' · agendada '+e.data.split('-').reverse().slice(0,2).join('/'))
       +(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')
       +(e.origem?' · 🔗 continuidade':'')+'</div>':'')
     +(ehTarefa&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(podeConcluir&&!e.concluida?'':' disabled')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
@@ -1633,7 +1633,7 @@ function atualizarCamposTipo(){
   $('evFimLbl').style.display=tarefa?'none':'inline-flex';
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
-  $('evFimDataLbl').style.display=($('evTipo').value==='compromisso'||$('evTipo').value==='tarefa')?'inline-flex':'none';
+  $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
 }
 function noDia(e,dia){return e.data===dia||(e.dataFim&&dia>=e.data&&dia<=e.dataFim);}
 function ocupadoEm(uid,dia,ignorarId){
@@ -1679,8 +1679,9 @@ async function addEvento(){
   const ini=ehTarefa?'00:00':$('evIni').value,fim=ehTarefa?'00:00':$('evFim').value;
   const prazo=ehTarefa?$('evPrazo').value:null;
   const prazoHora=(ehTarefa&&prazo&&$('evPrazoHora').value)?$('evPrazoHora').value:null;
-  const dataFim=((tipo==='compromisso'||tipo==='tarefa')&&$('evDataFim').value)?$('evDataFim').value:null;
+  const dataFim=(tipo==='compromisso'&&$('evDataFim').value)?$('evDataFim').value:null;
   if(dataFim&&dataFim<data){alert('A data final não pode ser anterior à data inicial.');return;}
+  if(ehTarefa&&prazo&&prazo<data){alert('O prazo final não pode ser anterior à data de início da tarefa.');return;}
   if(!titulo||!data||(!ehTarefa&&(!$('evIni').value||!$('evFim').value)))return;
   if(ehTarefa&&!prazo){alert('Informe o prazo final da tarefa.');$('evPrazo').focus();return;}
   if(ehTarefa&&prazo<data){alert('O prazo final não pode ser anterior à data agendada.');return;}

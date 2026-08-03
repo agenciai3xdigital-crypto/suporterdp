@@ -386,6 +386,23 @@ details.recolhe[open] summary{margin-bottom:8px}
 .status-salvo{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none}
 .status-salvo.show{opacity:.92}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+/* ===== v7.6 — pop-up de detalhes (agenda) ===== */
+#evModalBg{position:fixed;inset:0;background:rgba(22,51,61,.5);display:none;align-items:center;justify-content:center;z-index:1200;padding:18px 14px}
+#evModalBg.aberto{display:flex}
+#evModal{background:var(--papel);border-radius:14px;width:100%;max-width:600px;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(14,90,100,.35);padding:16px 18px 14px}
+#evModal h3{font-family:'Archivo',sans-serif;font-size:17px;line-height:1.3;margin:8px 0 4px}
+.evm-topo{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.evm-x{margin-left:auto;background:none;border:none;font-size:17px;line-height:1;color:var(--tinta-suave);padding:2px 6px}
+.evm-x:hover{color:var(--verm)}
+.evm-l{font-size:13.5px;color:var(--tinta);margin:6px 0;line-height:1.45}
+.evm-desc{white-space:pre-wrap;background:var(--porcelana);border-radius:8px;padding:8px 10px}
+.evm-sub{font-size:13px;margin:3px 0 0 2px}
+.evm-sub.feita{color:var(--tinta-suave);text-decoration:line-through}
+.evm-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--linha)}
+.evm-acoes a.g,.evm-acoes button{font-size:12.5px;font-weight:700;border-radius:8px;padding:6px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta);text-decoration:none;cursor:pointer}
+.evm-acoes a.g{border-color:var(--petroleo);color:var(--petroleo)}
+.evm-acoes #evmEd{border-color:var(--laranja);color:var(--laranja)}
+.evm-acoes #evmFechar{margin-left:auto}
 </style>
 </head>
 <body>
@@ -789,7 +806,7 @@ async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:e.data_fim||((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -1163,7 +1180,7 @@ function linhaEventoDia(uid,e){
     +(podeDevolver?'<div style="margin:5px 0 2px"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
-  if(!ehT)return row;
+  if(!ehT){row.style.cursor='pointer';row.title='Clique para ver os detalhes';row.onclick=()=>abrirDetalheEv(e.id);return row;}
   row.querySelectorAll('.subs-box input[data-sid]').forEach(si=>{
     si.onchange=async ev=>{
       ev.stopPropagation();
@@ -1350,8 +1367,8 @@ function desenharPrevia(dia){
       const tars=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo==='tarefa');
       for(const t of tars){
         const c=document.createElement('div');c.className='pv-chip pv-tarefa';
-        c.textContent='📌 '+t.titulo;c.title=t.titulo+' · tarefa · clique para abrir';
-        c.onclick=ev=>{ev.stopPropagation();evAbertos.add(t.id);desenharAgenda();setTimeout(()=>{const el=document.querySelector('[data-evid="'+t.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},60);};
+        c.textContent='📌 '+t.titulo;c.title=t.titulo+' · tarefa · clique p/ detalhes';
+        c.onclick=ev=>{ev.stopPropagation();abrirDetalheEv(t.id);};
         corpo.appendChild(c);
       }
       if(!evs.length&&!tars.length){const v=document.createElement('div');v.className='pv-livre';v.textContent='livre';corpo.appendChild(v);}
@@ -1361,8 +1378,9 @@ function desenharPrevia(dia){
         const alt=Math.max(20,(((hf*60+mf)-(hi*60+mi))/60)*PXH-2);
         const ev=document.createElement('div');ev.className='pv-ev';
         ev.style.cssText='top:'+top+'px;height:'+alt+'px;background:'+corDe(u.id);
-        ev.title=e.titulo+' · '+e.ini+'–'+e.fim;
+        ev.title=e.titulo+' · '+e.ini+'–'+e.fim+' · clique p/ detalhes';
         ev.innerHTML=e.titulo+'<small>'+e.ini+'–'+e.fim+'</small>';
+        ev.style.cursor='pointer';ev.onclick=()=>abrirDetalheEv(e.id);
         corpo.appendChild(ev);
       }
       col.appendChild(corpo);cols.appendChild(col);
@@ -1385,8 +1403,8 @@ function desenharPrevia(dia){
       const evs=(agenda[uid]||[]).filter(e=>noDia(e,iso)).sort((a,b)=>a.ini.localeCompare(b.ini));
       evs.slice(0,3).forEach(e=>{
         const c=document.createElement('div');c.className='pv-chip'+(e.tipo==='tarefa'?' pv-tarefa':'');if(e.tipo!=='tarefa')c.style.background=corDe(uid);
-        c.title=e.titulo+(e.dataFim?' · ocupado':(e.tipo==='tarefa'?' · tarefa · clique para abrir':' · '+e.ini+'–'+e.fim));c.textContent=(e.dataFim?'🔒 ':(e.tipo==='tarefa'?'📌 ':e.ini+' '))+e.titulo;
-        c.onclick=ev=>{ev.stopPropagation();evAbertos.add(e.id);$('agData').value=iso;desenharAgenda();setTimeout(()=>{const el=document.querySelector('[data-evid="'+e.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},60);};
+        c.title=e.titulo+(e.dataFim?' · ocupado':(e.tipo==='tarefa'?' · tarefa':' · '+e.ini+'–'+e.fim))+' · clique p/ detalhes';c.textContent=(e.dataFim?'🔒 ':(e.tipo==='tarefa'?'📌 ':e.ini+' '))+e.titulo;
+        c.onclick=ev=>{ev.stopPropagation();abrirDetalheEv(e.id);};
         cel.appendChild(c);
       });
       if(evs.length>3){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-3)+' mais';cel.appendChild(mm);}
@@ -1637,7 +1655,12 @@ function atualizarCamposTipo(){
 }
 function noDia(e,dia){return e.data===dia||(e.dataFim&&dia>=e.data&&dia<=e.dataFim);}
 function ocupadoEm(uid,dia,ignorarId){
-  return (agenda[uid]||[]).find(c=>c.tipo==='compromisso'&&c.dataFim&&c.id!==ignorarId&&dia>=c.data&&dia<=c.dataFim);
+  // v7.6: só período de MÚLTIPLOS dias bloqueia o dia inteiro (aviso). Compromisso de 1 dia é tratado por faixa de horário.
+  return (agenda[uid]||[]).find(c=>c.tipo==='compromisso'&&c.dataFim&&c.dataFim>c.data&&c.id!==ignorarId&&dia>=c.data&&dia<=c.dataFim);
+}
+function conflitoHorario(uid,dia,ini,fim,ignorarId){
+  // v7.6 (Frente B): sobreposição de faixa de horário no mesmo dia — compromissos e eventos com hora (tarefas ficam fora)
+  return (agenda[uid]||[]).find(c=>c.id!==ignorarId&&c.tipo!=='tarefa'&&!c.concluida&&!c.dataFim&&c.data===dia&&ini<c.fim&&c.ini<fim);
 }
 function urgencia(e){
   if(e.tipo!=='tarefa'||!e.prazo||e.concluida)return null;
@@ -1679,10 +1702,12 @@ async function addEvento(){
   const ini=ehTarefa?'00:00':$('evIni').value,fim=ehTarefa?'00:00':$('evFim').value;
   const prazo=ehTarefa?$('evPrazo').value:null;
   const prazoHora=(ehTarefa&&prazo&&$('evPrazoHora').value)?$('evPrazoHora').value:null;
-  const dataFim=(tipo==='compromisso'&&$('evDataFim').value)?$('evDataFim').value:null;
-  if(dataFim&&dataFim<data){alert('A data final não pode ser anterior à data inicial.');return;}
+  const dataFimRaw=(tipo==='compromisso'&&$('evDataFim').value)?$('evDataFim').value:null;
+  if(dataFimRaw&&dataFimRaw<data){alert('A data final não pode ser anterior à data inicial.');return;}
+  const dataFim=(dataFimRaw&&dataFimRaw>data)?dataFimRaw:null; // v7.6: "até" igual à data inicial não é período
   if(ehTarefa&&prazo&&prazo<data){alert('O prazo final não pode ser anterior à data de início da tarefa.');return;}
   if(!titulo||!data||(!ehTarefa&&(!$('evIni').value||!$('evFim').value)))return;
+  if(!ehTarefa&&fim<=ini){alert('A hora final deve ser depois da hora inicial.');return;}
   if(ehTarefa&&!prazo){alert('Informe o prazo final da tarefa.');$('evPrazo').focus();return;}
   if(ehTarefa&&prazo<data){alert('O prazo final não pode ser anterior à data agendada.');return;}
   if(evFraSel===null&&evFraSel!==0){alert('Selecione a franquia (FR) do item. Para itens internos, escolha "INTERNO / SEDE".');$('evFra').focus();return;}
@@ -1699,6 +1724,17 @@ async function addEvento(){
       const nomeP=((uPorId(p)||{}).nome||'—').split(' ')[0];
       const per=occ.data.split('-').reverse().slice(0,2).join('/')+'–'+occ.dataFim.split('-').reverse().slice(0,2).join('/');
       if(!confirm('⚠️ '+nomeP+' está OCUPADO no período '+per+' ("'+occ.titulo+'"), que inclui '+diaOcc.split('-').reverse().slice(0,2).join('/')+'.\n\nMarcar mesmo assim?'))return;
+    }
+  }
+  if(!ehTarefa&&!dataFim){ // v7.6 (Frente B): trava DURA — sobreposição de faixa de horário no mesmo dia
+    for(const p of envolvidos){
+      const cf=conflitoHorario(p,data,ini,fim,editEvId);
+      if(cf){
+        const nomeP=((uPorId(p)||{}).nome||'—').split(' ')[0];
+        const dCf=data.split('-').reverse().slice(0,2).join('/');
+        alert('⛔ CONFLITO DE HORÁRIO\n\n'+nomeP+' já tem "'+cf.titulo+'" das '+cf.ini+' às '+cf.fim+' em '+dCf+'.\n\nO horário '+ini+'–'+fim+' sobrepõe esse item. Ajuste a faixa de horário ou os participantes.');
+        return;
+      }
     }
   }
   const subtarefas=ehTarefa?evSubsArr.map(s=>({id:s.id||novoId('s'),txt:s.txt,feita:!!s.feita})):[];
@@ -1786,6 +1822,51 @@ function todosEventosUnicos(){
   for(const u of CFG.usuarios)for(const e of (agenda[u.id]||[])){if(vistos.has(e.id))continue;vistos.add(e.id);out.push(e);}
   return out;
 }
+/* ===== v7.6 — Pop-up de detalhes do item da agenda ===== */
+function escHtml(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function fecharDetalheEv(){const bg=$('evModalBg');if(bg)bg.classList.remove('aberto');}
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')fecharDetalheEv();});
+function abrirDetalheEv(id){
+  const e=todosEventosUnicos().find(x=>x.id===id);
+  const bg=$('evModalBg');if(!e||!bg)return;
+  const ehT=e.tipo==='tarefa';
+  const STC={tarefa:'projeto',compromisso:'ideia',evento:'aprovada'};
+  const nomeDe=u=>((uPorId(u)||{}).nome||'—');
+  const dBR=d=>d?d.split('-').reverse().join('/'):'';
+  const urg=urgencia(e);
+  const per=(!ehT&&e.dataFim)?dBR(e.data)+' – '+dBR(e.dataFim):null;
+  const quando=ehT
+    ?'📅 Agendada em '+dBR(e.data)+(e.prazo?' &nbsp;·&nbsp; ⏰ Prazo final '+dBR(e.prazo)+(e.prazoHora?' às '+e.prazoHora:''):'')
+    :(per?'🔒 Ocupado de '+per+' ('+e.ini+'–'+e.fim+')':'📅 '+diaSemanaExt(e.data)+' &nbsp;·&nbsp; 🕐 '+e.ini+'–'+e.fim);
+  const outros=(e.participantes||[]).filter(p=>p!==e.dono);
+  let h='<div class="evm-topo"><span class="st '+(STC[e.tipo]||'ideia')+'">'+escHtml(e.tipo)+'</span>'
+    +(ehT?(e.concluida?'<span class="st aprovada">✅ concluída</span>':'<span class="st ideia">⏳ em aberto</span>'):'')
+    +(urg?'<span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
+    +'<button type="button" class="evm-x" id="evmX" title="Fechar">✕</button></div>'
+    +'<h3'+(e.concluida?' style="text-decoration:line-through;color:var(--tinta-suave)"':'')+'>'+escHtml(e.titulo)+'</h3>'
+    +'<div class="evm-l">'+quando+'</div>';
+  if(e.fra===0||e.fra)h+='<div class="evm-l">🏪 '+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+'</div>';
+  h+='<div class="evm-l">👤 Responsável: <b>'+escHtml(nomeDe(e.dono))+'</b>'+(e.por&&e.por!==e.dono?' &nbsp;·&nbsp; ✍️ criado por '+escHtml(nomeDe(e.por).split(' ')[0]):'')+'</div>';
+  if(outros.length)h+='<div class="evm-l">👥 Participantes: '+escHtml(outros.map(x=>nomeDe(x).split(' ')[0]).join(', '))+'</div>';
+  if(e.descricao)h+='<div class="evm-l evm-desc">'+escHtml(e.descricao)+'</div>';
+  if(ehT&&(e.subs||[]).length)h+='<div class="evm-l"><b>Subtarefas · '+e.subs.filter(x=>x.feita).length+' de '+e.subs.length+' feitas</b>'
+    +e.subs.map(x=>'<div class="evm-sub'+(x.feita?' feita':'')+'">'+(x.feita?'✅':'⬜')+' '+escHtml(x.txt)+'</div>').join('')+'</div>';
+  if(e.origem)h+='<div class="evm-l">🔗 Tarefa de continuidade (criada a partir de uma devolução)</div>';
+  h+='<div class="evm-acoes">'
+    +(!ehT?'<a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a><button type="button" id="evmIcs">.ics</button>':'')
+    +'<button type="button" id="evmDia">📂 Abrir no dia</button>'
+    +(((e.por||e.dono)===usuarioAtual.id)?'<button type="button" id="evmEd">✎ Editar</button>':'')
+    +'<button type="button" id="evmFechar">Fechar</button></div>';
+  $('evModal').innerHTML=h;
+  bg.classList.add('aberto');
+  bg.onclick=ev=>{if(ev.target===bg)fecharDetalheEv();};
+  const irAgenda=()=>{document.querySelectorAll('.aba').forEach(x=>x.classList.remove('ativa'));document.querySelectorAll('.vista').forEach(x=>x.classList.remove('ativa'));const ab=document.querySelector('.aba[data-v=agenda]');if(ab)ab.classList.add('ativa');$('v-agenda').classList.add('ativa');};
+  $('evmX').onclick=fecharDetalheEv;
+  $('evmFechar').onclick=fecharDetalheEv;
+  const bi=$('evmIcs');if(bi)bi.onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
+  $('evmDia').onclick=()=>{fecharDetalheEv();irAgenda();if($('agModo')){$('agModo').value='dia';$('agModo').dispatchEvent(new Event('change'));}$('agData').value=e.data;evAbertos.add(e.id);desenharAgenda();setTimeout(()=>{const el=document.querySelector('[data-evid="'+e.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);};
+  const be=$('evmEd');if(be)be.onclick=()=>{fecharDetalheEv();irAgenda();entrarEdicao(e);};
+}
 function desenharAgendaFranquias(lista){
   const barra=document.createElement('div');
   barra.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0';
@@ -1846,8 +1927,10 @@ function chipEv(e){
   if(e.tipo!=='tarefa')c.style.background=corDe(e.dono);
   const nome=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
   const per=e.dataFim?e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):null;
-  c.title=e.titulo+(per?' · ocupado '+per:' · '+e.ini+'–'+e.fim)+' · '+nome+((e.participantes||[]).length?' +'+e.participantes.filter(p=>p!==e.dono).length:'');
+  c.title=e.titulo+(per?' · ocupado '+per:' · '+e.ini+'–'+e.fim)+' · '+nome+((e.participantes||[]).length?' +'+e.participantes.filter(p=>p!==e.dono).length:'')+' · clique p/ detalhes';
   c.textContent=(per?'🔒 ':(e.tipo==='tarefa'?'📌 ':e.ini+' '))+nome+' · '+e.titulo;
+  c.style.cursor='pointer';
+  c.onclick=ev=>{ev.stopPropagation();abrirDetalheEv(e.id);};
   return c;
 }
 function desenharAgendaSemana(dia,lista){
@@ -2858,5 +2941,6 @@ ligarAbas();
   if(session)await iniciarSessao(session.user);
 })();
 </script>
+<div id="evModalBg"><div id="evModal"></div></div>
 </body>
 </html>

@@ -528,6 +528,7 @@ details.recolhe[open] summary{margin-bottom:8px}
           <option value="mes">Mês</option>
           <option value="intervalo">Intervalo</option>
           <option value="meus">Criados por mim</option>
+          <option value="conferencia">✅ Conferência</option>
           <option value="franquias">Franquias (histórico)</option>
         </select>
       </label>
@@ -806,7 +807,7 @@ async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -948,7 +949,7 @@ async function iniciarSessao(user){
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display=usuarioAtual.admin?'inline-block':'none';
   if(!usuarioAtual.admin){
-    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
+    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="mes">Mês</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
   }
   $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
@@ -1174,9 +1175,11 @@ function linhaEventoDia(uid,e){
   row.innerHTML=(ehT?'<label style="display:inline"><input type="checkbox" class="ck-md" '+((e.concluida||pend)?'checked':'')+'></label>':'<span class="ld-ev-ico">🕐</span>')
     +'<div class="txt">'+(ehT?'📌':(e.dataFim?'🔒 Ocupado '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/')+' ·':e.ini+' ·'))+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
     +(urg?' <span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
+    +(ehT&&!e.concluida&&(e.reaberturas||[]).length?' <span class="prazo-tag u2">↩ reaberta p/ correção</span>':'')
     +(ehT?'<small>'+(e.por&&e.por!==e.dono?'marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0])+' · ':'')+'agendada '+e.data.split('-').reverse().slice(0,2).join('/')+(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')+((e.fra===0||e.fra)?' · 🏪 '+(frqRotulo(e.fra)||''):'')+(pendDesde?' · <b style="color:#B3241A">pendente há '+pendDesde+' dia'+(pendDesde>1?'s':'')+'</b>':'')+'</small>':'')
     +(e.descricao?'<small>'+e.descricao+'</small>':'')
     +subsHtml
+    +(ehT&&!e.concluida&&(e.reaberturas||[]).length?'<small style="color:#B3241A">↩ Obs da reabertura: "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</small>':'')
     +(podeDevolver?'<div style="margin:5px 0 2px"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
@@ -1198,7 +1201,7 @@ function linhaEventoDia(uid,e){
     }
     if(!ev.target.checked&&pendentes.has(chave)){pendentes.delete(chave);redesenharTarefasDia();return;}
     if(!ev.target.checked&&e.concluida){
-      await sb.from('agenda_eventos').update({concluida:false}).eq('id',e.id);
+      await sb.from('agenda_eventos').update({concluida:false,concluida_em:null}).eq('id',e.id);
       await sb.from('historico_tarefas').delete().match({user_id:uid,cid:'ag_'+e.id});
       await carregarAgenda();redesenharTarefasDia();piscar();
     }
@@ -1207,7 +1210,7 @@ function linhaEventoDia(uid,e){
     b.onclick=async ev=>{
       ev.preventDefault();ev.stopPropagation();
       pendentes.delete(chave);
-      const updMD={concluida:true};
+      const updMD={concluida:true,concluida_em:new Date().toISOString()};
       if(e.por&&e.por!==e.dono)updMD.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,quando:new Date().toISOString(),ciente:false}];
       const r1=await sb.from('agenda_eventos').update(updMD).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
@@ -1434,7 +1437,9 @@ function eventoEl(uid,e){
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
     +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'
     +(urg?'<span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
+    +(ehTarefa&&!e.concluida&&(e.reaberturas||[]).length?'<span class="prazo-tag u2">↩ reaberta p/ correção</span>':'')
     +(ehTarefa&&e.prazo&&(e.concluida)?'<span class="prazo-tag u0">prazo '+e.prazo.split('-').reverse().slice(0,2).join('/')+'</span>':'')
+    +(ehTarefa&&e.concluida&&e.concluidaEm?'<span class="prazo-tag u0" style="background:var(--verde-suave);color:var(--verde)">✅ '+fmtDtHr(e.concluidaEm)+'</span>':'')
     +'<span class="ev-arrow">'+((evAbertos.has(e.id)||pend)?'▲ fechar':'▼ abrir')+'</span>'
     +'</div>'
     +'<div class="ev-extra">'
@@ -1443,6 +1448,7 @@ function eventoEl(uid,e){
       +(e.dataFim?' · início '+e.data.split('-').reverse().slice(0,2).join('/'):' · agendada '+e.data.split('-').reverse().slice(0,2).join('/'))
       +(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')
       +(e.origem?' · 🔗 continuidade':'')+'</div>':'')
+    +(ehTarefa&&(e.reaberturas||[]).length?'<div class="n" style="color:#B3241A">↩ Reaberta por '+escHtml((((uPorId((e.reaberturas[e.reaberturas.length-1]||{}).por)||{}).nome)||'—').split(' ')[0])+' em '+fmtDtHr((e.reaberturas[e.reaberturas.length-1]||{}).quando)+' — "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</div>':'')
     +(ehTarefa&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(podeConcluir&&!e.concluida?'':' disabled')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
       +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'')
     +(ehTarefa&&!e.concluida&&podeConcluir&&e.por&&e.por!==e.dono?'<div style="margin:6px 0"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
@@ -1491,7 +1497,7 @@ function eventoEl(uid,e){
     if(!ev.target.checked&&pendEv.has(e.id)){pendEv.delete(e.id);desenharAgenda();return;}
     if(!ev.target.checked&&e.concluida){
       // desfazer conclusão da tarefa
-      await sb.from('agenda_eventos').update({concluida:false}).eq('id',e.id);
+      await sb.from('agenda_eventos').update({concluida:false,concluida_em:null}).eq('id',e.id);
       await sb.from('historico_tarefas').delete().match({user_id:e.dono||uid,cid:'ag_'+e.id});
       await carregarAgenda();desenharAgenda();piscar();
     }
@@ -1500,7 +1506,7 @@ function eventoEl(uid,e){
     b.onclick=async ev=>{
       ev.preventDefault();ev.stopPropagation();
       pendEv.delete(e.id);
-      const upd={concluida:true};
+      const upd={concluida:true,concluida_em:new Date().toISOString()};
       if(e.por&&e.por!==e.dono)upd.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,quando:new Date().toISOString(),ciente:false}];
       const r1=await sb.from('agenda_eventos').update(upd).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:e.dono||uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
@@ -1543,8 +1549,10 @@ function desenharAvisos(){
     const quem=(((uPorId(a.por)||{}).nome||'—').split(' ')[0]);
     const dt=new Date(a.quando);
     const div=document.createElement('div');div.className='aviso-done';
-    div.innerHTML='<span>'+(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"')
-      +' <span style="color:#3B6D11;font-size:12px">('+dt.toLocaleDateString('pt-BR').slice(0,5)+' às '+dt.toLocaleTimeString('pt-BR').slice(0,5)+')</span></span>'
+    if(a.tipo==='reaberta'){div.style.background='#FDECEA';div.style.border='1px solid #E8B3AC';}
+    const corH=a.tipo==='reaberta'?'#8C271E':'#3B6D11';
+    div.innerHTML='<span>'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'))
+      +' <span style="color:'+corH+';font-size:12px">('+dt.toLocaleDateString('pt-BR').slice(0,5)+' às '+dt.toLocaleTimeString('pt-BR').slice(0,5)+')</span></span>'
       +'<button type="button">OK, ciente</button>';
     div.querySelector('button').onclick=async()=>{
       const novo=(e.avisos||[]).map(x=>x.id===a.id?{...x,ciente:true}:x);
@@ -1567,7 +1575,7 @@ function desenharAgenda(){
   desenharEvParts();
   const modo=$('agModo').value||'dia';
   $('agLbl2').style.display=modo==='intervalo'?'inline-block':'none';
-  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':'De:')));
+  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':(modo==='conferencia'?'Ref.:':'De:'))));
   if(modo==='franquias'){
     $('agPrevia').innerHTML='';
     return desenharAgendaFranquias(lista);
@@ -1575,6 +1583,14 @@ function desenharAgenda(){
   if(modo==='meus'){
     $('agPrevia').innerHTML='';
     return desenharAgendaMeus(lista);
+  }
+  if(modo==='conferencia'&&usuarioAtual.admin){
+    $('agPrevia').innerHTML='';
+    return desenharAgendaConferencia(lista);
+  }
+  if(!usuarioAtual.admin&&modo==='mes'){
+    $('agPrevia').innerHTML='';
+    return desenharAgendaMes(dia,lista,usuarioAtual.id);
   }
   if(usuarioAtual.admin&&modo!=='dia'){
     $('agPrevia').innerHTML='';
@@ -1749,7 +1765,7 @@ async function addEvento(){
     const orig=todosEventosUnicos().find(x=>x.id===devolverDe);
     if(orig){
       const avs=[...(orig.avisos||[]),{id:novoId('av'),para:orig.por,tipo:'devolvida',por:usuarioAtual.id,titulo:orig.titulo,quando:new Date().toISOString(),ciente:false}];
-      await sb.from('agenda_eventos').update({concluida:true,avisos:avs}).eq('id',devolverDe);
+      await sb.from('agenda_eventos').update({concluida:true,concluida_em:new Date().toISOString(),avisos:avs}).eq('id',devolverDe);
     }
     devolverDe=null;
   }
@@ -1802,10 +1818,18 @@ function desenharAgendaMeus(lista){
     lista.appendChild(s);
     itens.sort((a,b)=>ordAsc?(a.prazo||a.data).localeCompare(b.prazo||b.data):(b.data.localeCompare(a.data)));
     itens.forEach(e=>{
-      if(e.dono!==usuarioAtual.id){
+      const ehT=e.tipo==='tarefa';
+      let stTxt='';
+      if(ehT){
+        if(e.concluida)stTxt='✅ concluída'+(e.concluidaEm?' em '+fmtDtHr(e.concluidaEm):'');
+        else if((e.subs||[]).length)stTxt='⏳ andamento: '+e.subs.filter(x=>x.feita).length+' de '+e.subs.length+' subtarefas';
+        else stTxt='⏳ em aberto';
+        if(!e.concluida&&(e.reaberturas||[]).length)stTxt+=' · ↩ reaberta p/ correção';
+      }
+      if(e.dono!==usuarioAtual.id||stTxt){
         const p=document.createElement('div');
         p.style.cssText='font-size:11.5px;font-weight:700;color:var(--tinta-suave);margin:6px 0 -4px 2px';
-        p.textContent='👤 Para: '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0]);
+        p.textContent=(e.dono!==usuarioAtual.id?'👤 Para: '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0])+(stTxt?' · ':''):'')+stTxt;
         lista.appendChild(p);
       }
       lista.appendChild(eventoEl(e.dono,e));
@@ -1852,6 +1876,9 @@ function abrirDetalheEv(id){
   if(ehT&&(e.subs||[]).length)h+='<div class="evm-l"><b>Subtarefas · '+e.subs.filter(x=>x.feita).length+' de '+e.subs.length+' feitas</b>'
     +e.subs.map(x=>'<div class="evm-sub'+(x.feita?' feita':'')+'">'+(x.feita?'✅':'⬜')+' '+escHtml(x.txt)+'</div>').join('')+'</div>';
   if(e.origem)h+='<div class="evm-l">🔗 Tarefa de continuidade (criada a partir de uma devolução)</div>';
+  if(ehT&&e.concluida&&e.concluidaEm)h+='<div class="evm-l">✅ Concluída em <b>'+fmtDtHr(e.concluidaEm)+'</b></div>';
+  if(ehT&&(e.reaberturas||[]).length)h+='<div class="evm-l"><b>↩ Reaberturas pelo admin · '+e.reaberturas.length+'</b>'
+    +e.reaberturas.map(r=>'<div class="evm-sub">'+fmtDtHr(r.quando)+' · '+escHtml((((uPorId(r.por)||{}).nome)||'—').split(' ')[0])+': "'+escHtml(r.obs||'')+'"</div>').join('')+'</div>';
   h+='<div class="evm-acoes">'
     +(!ehT?'<a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a><button type="button" id="evmIcs">.ics</button>':'')
     +'<button type="button" id="evmDia">📂 Abrir no dia</button>'
@@ -1911,6 +1938,74 @@ function desenharAgendaFranquias(lista){
   $('frqHp').onchange=ev=>{frqHistPeriodo=ev.target.value;desenharAgenda();};
 }
 
+/* ===== v8 — Conferência de tarefas concluídas + reabertura (admin) ===== */
+let confPessoa='todas',confPer='mes';
+function fmtDtHr(iso){if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pt-BR').slice(0,5)+' '+d.toLocaleTimeString('pt-BR').slice(0,5);}
+function diaLocal(iso){const d=new Date(iso),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function desenharAgendaConferencia(lista){
+  if(!usuarioAtual.admin)return;
+  const barra=document.createElement('div');
+  barra.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;align-items:center';
+  barra.innerHTML='<select id="confPes"><option value="todas">👥 Todas as pessoas</option>'+CFG.usuarios.map(u=>'<option value="'+u.id+'"'+(confPessoa===u.id?' selected':'')+'>'+escHtml(u.nome)+'</option>').join('')+'</select>'
+    +'<select id="confPerSel"><option value="mes"'+(confPer==='mes'?' selected':'')+'>Este mês</option><option value="mespas"'+(confPer==='mespas'?' selected':'')+'>Mês passado</option><option value="30d"'+(confPer==='30d'?' selected':'')+'>Últimos 30 dias</option><option value="tudo"'+(confPer==='tudo'?' selected':'')+'>Tudo</option></select>';
+  lista.appendChild(barra);
+  const ag=agora();
+  let dIni=null,dFim=null;
+  if(confPer==='mes')dIni=chaveDia(new Date(ag.getFullYear(),ag.getMonth(),1,12));
+  if(confPer==='mespas'){dIni=chaveDia(new Date(ag.getFullYear(),ag.getMonth()-1,1,12));dFim=chaveDia(new Date(ag.getFullYear(),ag.getMonth(),0,12));}
+  if(confPer==='30d'){const d=new Date(ag);d.setDate(d.getDate()-30);dIni=chaveDia(d);}
+  const itens=todosEventosUnicos().filter(e=>{
+    if(e.tipo!=='tarefa'||!e.concluida)return false;
+    if(confPessoa!=='todas'&&e.dono!==confPessoa)return false;
+    if(confPer==='tudo')return true;
+    if(!e.concluidaEm)return false;
+    const dc=diaLocal(e.concluidaEm);
+    if(dIni&&dc<dIni)return false;
+    if(dFim&&dc>dFim)return false;
+    return true;
+  }).sort((a,b)=>String(b.concluidaEm||'').localeCompare(String(a.concluidaEm||'')));
+  const sec=document.createElement('div');sec.className='ag-sec';
+  sec.innerHTML='✅ Conferência de tarefas concluídas <span class="qtd">'+itens.length+'</span>';
+  lista.appendChild(sec);
+  if(!itens.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhuma tarefa concluída no filtro selecionado. Concluídas antigas sem data registrada aparecem apenas em "Tudo".';lista.appendChild(p);}
+  itens.forEach(e=>{
+    const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
+    const criador=e.por?(((uPorId(e.por)||{}).nome||'—').split(' ')[0]):null;
+    const dc=e.concluidaEm?diaLocal(e.concluidaEm):null;
+    const atraso=(dc&&e.prazo)?Math.round((new Date(dc+'T12:00:00')-new Date(e.prazo+'T12:00:00'))/86400000):null;
+    const selo=atraso===null?'<span class="prazo-tag u0">sem prazo/data</span>':(atraso<=0?'<span class="prazo-tag" style="background:var(--verde-suave);color:var(--verde)">no prazo</span>':'<span class="prazo-tag u4">'+atraso+'d após o prazo</span>');
+    const reabTag=(e.reaberturas||[]).length?' <span class="prazo-tag u2">↩ reaberta '+e.reaberturas.length+'x</span>':'';
+    const div=document.createElement('div');div.className='evento ev-tarefa';div.dataset.evid=e.id;
+    div.innerHTML='<div class="hora">✅ '+fmtDtHr(e.concluidaEm)+'</div>'
+      +'<div class="det"><div class="t">📌 '+escHtml(e.titulo)+' '+selo+reabTag+'</div>'
+      +'<div class="n">👤 '+escHtml(dono)+(criador&&criador!==dono?' · ✍️ pedida por '+escHtml(criador):'')
+      +((e.fra===0||e.fra)?' · 🏪 '+escHtml(frqRotulo(e.fra)||('FRA '+e.fra)):'')
+      +(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')
+      +((e.subs||[]).length?' · ☑ '+e.subs.filter(x=>x.feita).length+'/'+e.subs.length:'')+'</div>'
+      +((e.reaberturas||[]).length?'<div class="n" style="color:#B3241A">↩ Última obs: "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</div>':'')
+      +'</div>'
+      +'<div class="acoes"><button type="button" class="reab" style="border-color:var(--verm);color:var(--verm)">↩ Reabrir c/ observação</button></div>';
+    div.onclick=ev=>{if(ev.target.closest('button'))return;abrirDetalheEv(e.id);};
+    div.querySelector('.reab').onclick=ev=>{ev.stopPropagation();reabrirTarefa(e);};
+    lista.appendChild(div);
+  });
+  $('confPes').onchange=ev=>{confPessoa=ev.target.value;desenharAgenda();};
+  $('confPerSel').onchange=ev=>{confPer=ev.target.value;desenharAgenda();};
+}
+async function reabrirTarefa(e){
+  const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
+  const obs=prompt('Reabrir a tarefa "'+e.titulo+'" para '+dono+'.\n\nObservação (motivo / o que corrigir) — obrigatória:');
+  if(obs===null)return;
+  if(!obs.trim()){alert('A observação é obrigatória para reabrir.');return;}
+  const qdo=new Date().toISOString();
+  const reab={id:novoId('rb'),por:usuarioAtual.id,quando:qdo,obs:obs.trim()};
+  const avs=[...(e.avisos||[]),{id:novoId('av'),para:e.dono,tipo:'reaberta',por:usuarioAtual.id,titulo:e.titulo,obs:obs.trim(),quando:qdo,ciente:false}];
+  const r1=await sb.from('agenda_eventos').update({concluida:false,concluida_em:null,reaberturas:[...(e.reaberturas||[]),reab],avisos:avs}).eq('id',e.id);
+  if(r1.error){erroDB(r1.error);return;}
+  await sb.from('historico_tarefas').delete().match({user_id:e.dono,cid:'ag_'+e.id});
+  await carregarAgenda();desenharAgenda();piscar();
+}
+
 /* ===== Agenda consolidada (admin): semana, mês e intervalo ===== */
 function evsDoDia(iso){
   const vistos=new Set(),out=[];
@@ -1957,13 +2052,13 @@ function desenharAgendaSemana(dia,lista){
   box.appendChild(grid);
   legendaEquipe(box);
 }
-function desenharAgendaMes(dia,lista){
+function desenharAgendaMes(dia,lista,apenasUid){
   const base=new Date(dia+'T12:00:00');
   const primeiro=new Date(base.getFullYear(),base.getMonth(),1,12);
   const ini=new Date(primeiro);ini.setDate(primeiro.getDate()-((primeiro.getDay()+6)%7));
   const MES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const box=$('agPrevia');
-  box.innerHTML='<h4>'+MES[base.getMonth()]+' de '+base.getFullYear()+' — toda a equipe (clique num dia para abrir)</h4>';
+  box.innerHTML='<h4>'+MES[base.getMonth()]+' de '+base.getFullYear()+(apenasUid?' — sua agenda':' — toda a equipe')+' (clique num dia para abrir)</h4>';
   const grid=document.createElement('div');grid.className='pv-week pv-mes';
   const ROT=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
   ROT.forEach(r=>{const h=document.createElement('div');h.className='pv-mes-rot';h.textContent=r;grid.appendChild(h);});
@@ -1975,14 +2070,14 @@ function desenharAgendaMes(dia,lista){
     const cel=document.createElement('div');
     cel.className='pv-dia pv-dia-mes'+(iso===hojeISO?' hoje':'')+(d.getMonth()!==base.getMonth()?' fora':'');
     cel.innerHTML='<div class="pv-num">'+d.getDate()+'</div>';
-    const evs=evsDoDia(iso);
+    const evs=apenasUid?(agenda[apenasUid]||[]).filter(e=>noDia(e,iso)).sort((a,b)=>a.ini.localeCompare(b.ini)):evsDoDia(iso);
     evs.slice(0,3).forEach(e=>cel.appendChild(chipEv(e)));
     if(evs.length>3){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-3);cel.appendChild(mm);}
     cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();};
     grid.appendChild(cel);
   }
   box.appendChild(grid);
-  legendaEquipe(box);
+  if(!apenasUid)legendaEquipe(box);
 }
 function desenharAgendaIntervalo(de,ate,lista){
   if(ate<de){const t=de;de=ate;ate=t;}

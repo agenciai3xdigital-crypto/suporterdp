@@ -403,6 +403,10 @@ details.recolhe[open] summary{margin-bottom:8px}
 .evm-acoes a.g{border-color:var(--petroleo);color:var(--petroleo)}
 .evm-acoes #evmEd{border-color:var(--laranja);color:var(--laranja)}
 .evm-acoes #evmFechar{margin-left:auto}
+#evModal .bet-box{background:var(--porcelana);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px;line-height:1.5}
+.bet-box{background:var(--porcelana);border-radius:8px;padding:6px 9px;margin:5px 0;font-size:12.5px;line-height:1.55}
+.bet-box b{font-size:12.5px}
+.bet-box .btn{font-size:12px;padding:4px 10px}
 </style>
 </head>
 <body>
@@ -512,6 +516,8 @@ details.recolhe[open] summary{margin-bottom:8px}
       <label id="evPrazoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Prazo final <input id="evPrazo" type="date"> <input id="evPrazoHora" type="time" title="Hora limite de entrega"></label>
       <button class="btn laranja" id="btnAddEvento">Adicionar</button>
       <button class="btn claro" id="btnCancelEdit" style="display:none">Cancelar edição</button>
+      <button class="btn claro" id="btnModeloBetta" type="button" style="display:none" title="Preenche as 11 normas como subtarefas e libera o campo de custo">🐟 Modelo: Evento Betta</button>
+      <label id="evCustoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Custo do evento (R$) <input id="evCusto" type="number" step="0.01" min="0" style="width:110px"></label>
       <input id="evDesc" placeholder="Descrição (opcional)" style="flex-basis:100%">
       <div class="ev-subs-form" id="evSubsForm">
         <div style="font-weight:700;color:var(--tinta-suave);margin-bottom:4px">Subtarefas (opcional)</div>
@@ -529,6 +535,7 @@ details.recolhe[open] summary{margin-bottom:8px}
           <option value="intervalo">Intervalo</option>
           <option value="meus">Criados por mim</option>
           <option value="conferencia">✅ Conferência</option>
+          <option value="historico_betta">🐟 Histórico Betta</option>
           <option value="franquias">Franquias (histórico)</option>
         </select>
       </label>
@@ -674,6 +681,10 @@ details.recolhe[open] summary{margin-bottom:8px}
     <input id="frqBusca" placeholder="Buscar franquia por nome, nº, cidade ou consultor" style="width:100%;max-width:420px;margin-bottom:8px">
     <div class="painel" id="painelFrq" style="max-height:340px;overflow:auto"></div>
 
+    <h2 class="sec">SKUs do Evento Betta <button class="btn claro" id="btnSkuNovo" style="margin-left:8px">＋ Novo SKU</button></h2>
+    <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Produtos do PDV que contam como "venda direta do evento" ao processar o relatório de vendas (peixe, beteira, anticloro, ração betta etc.).</p>
+    <table class="adm-tab" id="tabSkusBetta"></table>
+
     <h2 class="sec">Registro de acessos</h2>
     <div class="painel" id="painelLog" style="max-height:280px;overflow:auto"></div>
   </div>
@@ -742,6 +753,20 @@ const MODELO_TAREFAS_PRODUTOS={
     fecha:[{id:'t7',txt:'Concluir todos os resolvidos antes das 17h',sub:'Sexta: reunião semanal 16h30–17h'}]},
   sabado:{sabado:[{id:'t1',txt:'Plantão de sábado: 1ª resposta ≤30 min e urgências',sub:'Cadastros de produto que entrarem são seus'},{id:'t2',txt:'Concluir resolvidos e deixar a fila triada p/ segunda',sub:''}]}
 };
+const MODELO_EVENTO_BETTA=[
+  'Fechar o evento com no mínimo 15 dias de antecedência',
+  'Levantar com o cliente a quantidade de produtos desejada (separação/pedido)',
+  'Alinhar com o franqueado o kit básico de anúncio (cartão, carro de som, locutor ou tráfego pago)',
+  'Preencher a planilha de custo do evento',
+  'Orientar o franqueado a ter no mínimo 3 fornecedores ajudando (ideal: 2 rações + 1 medicamento)',
+  'Orientar o franqueado a pedir brindes/verba de colaboração aos fornecedores',
+  'Alinhar com antecedência as escolas da região (autorização mais fácil, principalmente em grandes cidades)',
+  'Garantir freelancer para a fantasia + 1 colaborador da loja para ajudar na distribuição dos peixes',
+  'Definir local estratégico para retirada do peixe, sem constranger o cliente',
+  'Recolher o material da franquia após o evento (mesa, tenda etc.)',
+  'Fechar os produtos de revenda até a quarta-feira da semana seguinte',
+  'Subir o relatório de vendas do dia (gera o faturamento automático do evento)'
+];
 const MODELO_TAREFAS_TECNICO={
   padrao:{
     varredura:[{id:'t1',txt:'Retomar chamados técnicos em aberto',sub:'Se você é a triagem da semana: varrer e triar a fila · produtos → titular'}],
@@ -803,11 +828,73 @@ async function carregarFranquias(){
 }
 function frqPorId(fra){return FRQ.find(f=>f.fra===fra);}
 function frqRotulo(fra){const f=frqPorId(fra);return f?(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome):null;}
+async function carregarSkusBetta(){
+  const {data}=await sb.from('skus_evento_betta').select('*').order('produto');
+  SKUS_BETTA=data||[];
+}
+function roiDireto(d){if(!d||d.faturamento_direto==null||!d.custo_total)return null;return (d.faturamento_direto-d.custo_total)/d.custo_total*100;}
+function roiCarrinho(d){if(!d||d.faturamento_carrinho==null||!d.custo_total)return null;return (d.faturamento_carrinho-d.custo_total)/d.custo_total*100;}
+function fmtRoiTxt(v){return v==null?'sem base':((v>=0?'+':'')+(Math.round(v*10)/10)+'%');}
+function fmtReaisBetta(v){return v==null?'—':('R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));}
+function htmlUploadBetta(e){
+  if(!e.dadosEvento)return '';
+  const d=e.dadosEvento;
+  if(d.faturamento_direto!=null){
+    return '<div class="bet-box"><b>🐟 Evento Betta</b> · custo '+fmtReaisBetta(d.custo_total)+' · direto '+fmtReaisBetta(d.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(d))+') · carrinho '+fmtReaisBetta(d.faturamento_carrinho)+' ('+fmtRoiTxt(roiCarrinho(d))+')</div>';
+  }
+  return '<div class="bet-box"><b>🐟 Evento Betta</b> · custo '+fmtReaisBetta(d.custo_total)+'<br><label class="btn claro" style="display:inline-flex;margin-top:4px;cursor:pointer">📎 Subir relatório de vendas (.xlsx)<input type="file" accept=".xlsx" data-betta-up style="display:none"></label></div>';
+}
+function ligarUploadBetta(container,e){
+  const inp=container.querySelector('[data-betta-up]');
+  if(inp)inp.onchange=ev=>{ev.stopPropagation();processarVendasBetta(e,ev.target.files[0]);};
+}
+async function processarVendasBetta(e,file){
+  if(!file)return;
+  if(!/\.xlsx$/i.test(file.name)){alert('Envie o arquivo .xlsx do relatório analítico de vendas, sem converter de formato.');return;}
+  let wb;
+  try{const buf=await file.arrayBuffer();wb=XLSX.read(buf,{type:'array'});}
+  catch(err){alert('Não consegui ler esse arquivo. Confirme que é o export original do PDV, sem edições.');return;}
+  let linhas=null;
+  for(const nome of wb.SheetNames){
+    const tmp=XLSX.utils.sheet_to_json(wb.Sheets[nome],{defval:null});
+    if(tmp.length&&Object.keys(tmp[0]).some(k=>k.trim()==='Total Item')&&Object.keys(tmp[0]).some(k=>k.trim()==='N. Pedido')){linhas=tmp;break;}
+  }
+  if(!linhas){alert('Não encontrei as colunas esperadas (N. Pedido, Cod. Produto, Total Item, Filial) nesse arquivo. Confirme se é o relatório Analítico de vendas do PDV.');return;}
+  const chaves=Object.keys(linhas[0]);
+  const kCod=chaves.find(k=>k.trim()==='Cod. Produto')||'Cod. Produto';
+  const kTot=chaves.find(k=>k.trim()==='Total Item')||'Total Item';
+  const kPed=chaves.find(k=>k.trim()==='N. Pedido')||'N. Pedido';
+  const kFil=chaves.find(k=>k.trim()==='Filial')||'Filial';
+  const filiais=[...new Set(linhas.map(l=>String(l[kFil]||'').trim()).filter(Boolean))];
+  if(filiais.length>1){alert('Esse arquivo tem mais de uma filial misturada:\n'+filiais.join('\n')+'\n\nExporte só a loja deste evento.');return;}
+  const mFr=filiais[0]&&filiais[0].match(/Fr\.?\s*(\d+)/i);
+  const frArquivo=mFr?parseInt(mFr[1],10):null;
+  if(frArquivo!==null&&(e.fra===0||e.fra)&&frArquivo!==e.fra){
+    if(!confirm('⚠️ O arquivo é da FR '+frArquivo+', mas essa tarefa é da FR '+e.fra+' ('+(frqRotulo(e.fra)||'')+').\n\nSubir mesmo assim?'))return;
+  }
+  const skusAtivos=new Set(SKUS_BETTA.filter(s=>s.ativo!==false).map(s=>String(s.cod_produto).trim()));
+  if(!skusAtivos.size){alert('Não há nenhum SKU cadastrado em Admin → SKUs do Evento Betta. Cadastre ao menos um antes de subir o relatório.');return;}
+  let faturamentoDireto=0;const pedidosEvento=new Set();
+  linhas.forEach(l=>{
+    const cod=String(l[kCod]||'').trim();
+    if(skusAtivos.has(cod)){faturamentoDireto+=Number(l[kTot])||0;pedidosEvento.add(String(l[kPed]));}
+  });
+  if(!pedidosEvento.size){
+    if(!confirm('Não encontrei nenhum item da lista de SKUs do evento nesse arquivo (faturamento ficaria zerado).\n\nConferir a lista em Admin → SKUs do Evento Betta, ou subir mesmo assim?'))return;
+  }
+  let faturamentoCarrinho=0;
+  linhas.forEach(l=>{if(pedidosEvento.has(String(l[kPed])))faturamentoCarrinho+=Number(l[kTot])||0;});
+  const novoDados={...(e.dadosEvento||{}),faturamento_direto:Math.round(faturamentoDireto*100)/100,faturamento_carrinho:Math.round(faturamentoCarrinho*100)/100,filial_arquivo:filiais[0]||null,processado_em:new Date().toISOString()};
+  const{error}=await sb.from('agenda_eventos').update({dados_evento:novoDados}).eq('id',e.id);
+  if(error){erroDB(error);return;}
+  await carregarAgenda();redesenharVistaAtiva();piscar();
+  alert('Vendas processadas ✓\n\nFaturamento direto: '+fmtReaisBetta(novoDados.faturamento_direto)+'\nFaturamento do carrinho completo: '+fmtReaisBetta(novoDados.faturamento_carrinho));
+}
 async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],dadosEvento:e.dados_evento||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -937,6 +1024,7 @@ async function entrar(){
 async function iniciarSessao(user){
   await carregarBase();
   await carregarFranquias();
+  await carregarSkusBetta();
   const perfil=uPorId(user.id);
   if(!perfil){$('loginErro').textContent='Perfil não encontrado — avise o gestor.';await sb.auth.signOut();return;}
   usuarioAtual=perfil;
@@ -1180,6 +1268,7 @@ function linhaEventoDia(uid,e){
     +(e.descricao?'<small>'+e.descricao+'</small>':'')
     +subsHtml
     +(ehT&&!e.concluida&&(e.reaberturas||[]).length?'<small style="color:#B3241A">↩ Obs da reabertura: "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</small>':'')
+    +htmlUploadBetta(e)
     +(podeDevolver?'<div style="margin:5px 0 2px"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
@@ -1192,6 +1281,7 @@ function linhaEventoDia(uid,e){
       if(error)erroDB(error);else{await carregarAgenda();redesenharTarefasDia();}
     };
   });
+  ligarUploadBetta(row,e);
   const bdevMD=row.querySelector('.btn-devolver');
   if(bdevMD)bdevMD.onclick=ev=>{ev.stopPropagation();iniciarDevolucao(e,true);};
   row.querySelector('.ck-md').onchange=async ev=>{
@@ -1451,6 +1541,7 @@ function eventoEl(uid,e){
     +(ehTarefa&&(e.reaberturas||[]).length?'<div class="n" style="color:#B3241A">↩ Reaberta por '+escHtml((((uPorId((e.reaberturas[e.reaberturas.length-1]||{}).por)||{}).nome)||'—').split(' ')[0])+' em '+fmtDtHr((e.reaberturas[e.reaberturas.length-1]||{}).quando)+' — "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</div>':'')
     +(ehTarefa&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(podeConcluir&&!e.concluida?'':' disabled')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
       +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'')
+    +htmlUploadBetta(e)
     +(ehTarefa&&!e.concluida&&podeConcluir&&e.por&&e.por!==e.dono?'<div style="margin:6px 0"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
     +((e.fra===0||e.fra)?'<div class="n">🏪 '+(frqRotulo(e.fra)||'FRA '+e.fra)+'</div>':'')
     +(e.descricao?'<div class="n" style="white-space:pre-wrap">'+e.descricao+'</div>':'')
@@ -1485,6 +1576,7 @@ function eventoEl(uid,e){
       if(error)erroDB(error);else{await carregarAgenda();desenharAgenda();}
     };
   });
+  ligarUploadBetta(div,e);
   const bdev=div.querySelector('.btn-devolver');
   if(bdev)bdev.onclick=()=>iniciarDevolucao(e,false);
   const ck=div.querySelector('.ck-tarefa');
@@ -1575,7 +1667,7 @@ function desenharAgenda(){
   desenharEvParts();
   const modo=$('agModo').value||'dia';
   $('agLbl2').style.display=modo==='intervalo'?'inline-block':'none';
-  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':(modo==='conferencia'?'Ref.:':'De:'))));
+  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':((modo==='conferencia'||modo==='historico_betta')?'Ref.:':'De:'))));
   if(modo==='franquias'){
     $('agPrevia').innerHTML='';
     return desenharAgendaFranquias(lista);
@@ -1587,6 +1679,10 @@ function desenharAgenda(){
   if(modo==='conferencia'&&usuarioAtual.admin){
     $('agPrevia').innerHTML='';
     return desenharAgendaConferencia(lista);
+  }
+  if(modo==='historico_betta'&&usuarioAtual.admin){
+    $('agPrevia').innerHTML='';
+    return desenharHistoricoBetta(lista);
   }
   if(!usuarioAtual.admin&&modo==='mes'){
     $('agPrevia').innerHTML='';
@@ -1651,6 +1747,8 @@ function desenharEvParts(){
   });
 }
 let evSubsArr=[],devolverDe=null;
+let emModoBetta=false,evDadosEventoOrig=null;
+let SKUS_BETTA=[];
 function desenharEvSubs(){
   const box=$('evSubsLista');box.innerHTML='';
   evSubsArr.forEach((s,i)=>{
@@ -1668,6 +1766,8 @@ function atualizarCamposTipo(){
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
   $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
+  $('btnModeloBetta').style.display=tarefa?'inline-block':'none';
+  if(!tarefa){emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';}
 }
 function noDia(e,dia){return e.data===dia||(e.dataFim&&dia>=e.data&&dia<=e.dataFim);}
 function ocupadoEm(uid,dia,ignorarId){
@@ -1754,11 +1854,12 @@ async function addEvento(){
     }
   }
   const subtarefas=ehTarefa?evSubsArr.map(s=>({id:s.id||novoId('s'),txt:s.txt,feita:!!s.feita})):[];
+  const dadosEventoSalvar=emModoBetta?{...(evDadosEventoOrig||{}),custo_total:Number($('evCusto').value)||0}:(evDadosEventoOrig||null);
   let error;
   if(editEvId){
-    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim}).eq('id',editEvId));
+    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar}).eq('id',editEvId));
   }else{
-    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id}));
+    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar}));
   }
   if(error){erroDB(error);return;}
   if(devolverDe){
@@ -1769,7 +1870,7 @@ async function addEvento(){
     }
     devolverDe=null;
   }
-  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();
+  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';
   await carregarAgenda();desenharAgenda();piscar();
 }
 function entrarEdicao(e){
@@ -1779,6 +1880,8 @@ function entrarEdicao(e){
   $('evIni').value=e.ini;$('evFim').value=e.fim;$('evDesc').value=e.descricao||'';
   $('evPrazo').value=e.prazo||'';$('evPrazoHora').value=e.prazoHora||'';$('evDataFim').value=e.dataFim||'';
   evSubsArr=(e.subs||[]).map(s=>({...s}));desenharEvSubs();
+  if(e.dadosEvento){emModoBetta=true;evDadosEventoOrig={...e.dadosEvento};$('evCustoLbl').style.display='inline-flex';$('evCusto').value=e.dadosEvento.custo_total??'';}
+  else{emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';}
   devolverDe=null;
   atualizarCamposTipo();
   evPartsSel.clear();(e.participantes||[]).filter(p=>p!==e.dono).forEach(p=>evPartsSel.add(p));
@@ -1876,6 +1979,14 @@ function abrirDetalheEv(id){
   if(ehT&&(e.subs||[]).length)h+='<div class="evm-l"><b>Subtarefas · '+e.subs.filter(x=>x.feita).length+' de '+e.subs.length+' feitas</b>'
     +e.subs.map(x=>'<div class="evm-sub'+(x.feita?' feita':'')+'">'+(x.feita?'✅':'⬜')+' '+escHtml(x.txt)+'</div>').join('')+'</div>';
   if(e.origem)h+='<div class="evm-l">🔗 Tarefa de continuidade (criada a partir de uma devolução)</div>';
+  if(e.dadosEvento){
+    const dB=e.dadosEvento;
+    h+='<div class="evm-l bet-box"><b>🐟 Evento Betta</b><br>Custo: '+fmtReaisBetta(dB.custo_total)
+      +(dB.faturamento_direto!=null?'<br>Faturamento direto: '+fmtReaisBetta(dB.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(dB))+')':'')
+      +(dB.faturamento_carrinho!=null?'<br>Faturamento do carrinho completo: '+fmtReaisBetta(dB.faturamento_carrinho)+' ('+fmtRoiTxt(roiCarrinho(dB))+')':'')
+      +(dB.faturamento_direto==null?'<br><label class="btn claro" style="display:inline-flex;margin-top:4px;cursor:pointer">📎 Subir relatório de vendas (.xlsx)<input type="file" accept=".xlsx" id="evmBettaUp" style="display:none"></label>':'')
+      +'</div>';
+  }
   if(ehT&&e.concluida&&e.concluidaEm)h+='<div class="evm-l">✅ Concluída em <b>'+fmtDtHr(e.concluidaEm)+'</b></div>';
   if(ehT&&(e.reaberturas||[]).length)h+='<div class="evm-l"><b>↩ Reaberturas pelo admin · '+e.reaberturas.length+'</b>'
     +e.reaberturas.map(r=>'<div class="evm-sub">'+fmtDtHr(r.quando)+' · '+escHtml((((uPorId(r.por)||{}).nome)||'—').split(' ')[0])+': "'+escHtml(r.obs||'')+'"</div>').join('')+'</div>';
@@ -1893,6 +2004,7 @@ function abrirDetalheEv(id){
   const bi=$('evmIcs');if(bi)bi.onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
   $('evmDia').onclick=()=>{fecharDetalheEv();irAgenda();if($('agModo')){$('agModo').value='dia';$('agModo').dispatchEvent(new Event('change'));}$('agData').value=e.data;evAbertos.add(e.id);desenharAgenda();setTimeout(()=>{const el=document.querySelector('[data-evid="'+e.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);};
   const be=$('evmEd');if(be)be.onclick=()=>{fecharDetalheEv();irAgenda();entrarEdicao(e);};
+  const upBetta=$('evmBettaUp');if(upBetta)upBetta.onchange=ev=>{const arq=ev.target.files[0];fecharDetalheEv();processarVendasBetta(e,arq);};
 }
 function desenharAgendaFranquias(lista){
   const barra=document.createElement('div');
@@ -2006,6 +2118,31 @@ async function reabrirTarefa(e){
   await carregarAgenda();desenharAgenda();piscar();
 }
 
+/* ===== v9 — Histórico de Eventos Betta (admin) ===== */
+function desenharHistoricoBetta(lista){
+  if(!usuarioAtual.admin)return;
+  const itens=todosEventosUnicos().filter(e=>e.dadosEvento&&e.dadosEvento.custo_total!=null)
+    .sort((a,b)=>{const rb=roiCarrinho(b.dadosEvento),ra=roiCarrinho(a.dadosEvento);return(rb==null?-999:rb)-(ra==null?-999:ra);});
+  const sec=document.createElement('div');sec.className='ag-sec';
+  sec.innerHTML='🐟 Histórico de Eventos Betta <span class="qtd">'+itens.length+'</span>';
+  lista.appendChild(sec);
+  if(!itens.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum Evento Betta com custo registrado ainda. Use o botão "🐟 Modelo: Evento Betta" ao criar a tarefa na Agenda.';lista.appendChild(p);return;}
+  let sC=0,sD=0,sV=0,pendentesUpload=0;
+  itens.forEach(e=>{sC+=e.dadosEvento.custo_total||0;sD+=e.dadosEvento.faturamento_direto||0;sV+=e.dadosEvento.faturamento_carrinho||0;if(e.dadosEvento.faturamento_direto==null)pendentesUpload++;});
+  const resumo=document.createElement('div');resumo.style.cssText='font-size:12.5px;color:var(--tinta-suave);margin:-4px 0 10px';
+  resumo.textContent='Custo total: '+fmtReaisBetta(sC)+' · direto: '+fmtReaisBetta(sD)+' · carrinho completo: '+fmtReaisBetta(sV)+(pendentesUpload?' · '+pendentesUpload+' evento(s) aguardando upload':'');
+  lista.appendChild(resumo);
+  itens.forEach(e=>{
+    const d=e.dadosEvento;
+    const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
+    const div=document.createElement('div');div.className='evento ev-tarefa';div.dataset.evid=e.id;
+    div.innerHTML='<div class="hora">🐟 '+e.data.split('-').reverse().slice(0,2).join('/')+'</div>'
+      +'<div class="det"><div class="t">'+escHtml(e.titulo)+((e.fra===0||e.fra)?' <span class="st ideia">'+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+'</span>':'')+'</div>'
+      +'<div class="n">👤 '+escHtml(dono)+' · custo '+fmtReaisBetta(d.custo_total)+' · direto '+fmtReaisBetta(d.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(d))+') · carrinho '+fmtReaisBetta(d.faturamento_carrinho)+' ('+fmtRoiTxt(roiCarrinho(d))+')</div></div>';
+    div.onclick=()=>abrirDetalheEv(e.id);
+    lista.appendChild(div);
+  });
+}
 /* ===== Agenda consolidada (admin): semana, mês e intervalo ===== */
 function evsDoDia(iso){
   const vistos=new Set(),out=[];
@@ -2794,7 +2931,7 @@ function fmtH(h){if(h<1)return Math.round(h*60)+' min';if(h<48)return h.toFixed(
 /* ================================================================
    ADMIN
 ================================================================ */
-function desenharAdmin(){desenharUsuarios();desenharFrqAdmin();desenharLog();}
+function desenharAdmin(){desenharUsuarios();desenharFrqAdmin();desenharSkusBetta();desenharLog();}
 function frqForm(f){
   const v=k=>f&&f[k]!=null?String(f[k]).replace(/"/g,'&quot;'):'';
   const box=document.createElement('div');
@@ -2845,6 +2982,28 @@ function desenharFrqAdmin(){
     el.appendChild(row);
   }
   if(!frs.length)el.innerHTML='<p class="vazio">Nenhuma franquia encontrada.</p>';
+}
+function desenharSkusBetta(){
+  const t=$('tabSkusBetta');if(!t)return;
+  t.innerHTML='<tr><th>Cód. Produto</th><th>Produto</th><th>Ativo</th><th></th></tr>';
+  SKUS_BETTA.forEach(s=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+escHtml(s.cod_produto)+'</td><td><input value="'+escHtml(s.produto)+'"></td><td><input type="checkbox" '+(s.ativo!==false?'checked':'')+'></td><td><button class="btn claro" style="padding:2px 10px;font-size:12px">Remover</button></td>';
+    const inP=tr.querySelector('input:not([type=checkbox])'),inA=tr.querySelector('input[type=checkbox]'),bx=tr.querySelector('button');
+    inP.onchange=async()=>{const{error}=await sb.from('skus_evento_betta').update({produto:inP.value.trim()}).eq('cod_produto',s.cod_produto);if(error)erroDB(error);else{s.produto=inP.value.trim();piscar();}};
+    inA.onchange=async()=>{const{error}=await sb.from('skus_evento_betta').update({ativo:inA.checked}).eq('cod_produto',s.cod_produto);if(error)erroDB(error);else{s.ativo=inA.checked;piscar();}};
+    bx.onclick=async()=>{if(!confirm('Remover o SKU '+s.cod_produto+' — '+s.produto+' da lista?'))return;const{error}=await sb.from('skus_evento_betta').delete().eq('cod_produto',s.cod_produto);if(error)erroDB(error);else{await carregarSkusBetta();desenharSkusBetta();piscar();}};
+    t.appendChild(tr);
+  });
+  const trNovo=document.createElement('tr');
+  trNovo.innerHTML='<td><input id="skuNovoCod" placeholder="ex.: 484775" style="width:100px"></td><td><input id="skuNovoNome" placeholder="Nome do produto"></td><td></td><td><button class="btn laranja" id="btnSkuSalvar" style="padding:2px 10px;font-size:12px">Adicionar</button></td>';
+  t.appendChild(trNovo);
+  $('btnSkuSalvar').onclick=async()=>{
+    const cod=$('skuNovoCod').value.trim(),nome=$('skuNovoNome').value.trim();
+    if(!cod||!nome){alert('Preencha o código e o nome do produto.');return;}
+    const{error}=await sb.from('skus_evento_betta').insert({cod_produto:cod,produto:nome});
+    if(error)erroDB(error);else{await carregarSkusBetta();desenharSkusBetta();piscar();}
+  };
 }
 function desenharUsuarios(){
   const t=$('tabUsuarios');
@@ -3003,7 +3162,7 @@ ligarAbas();
   $('loginSenha').addEventListener('keydown',e=>{if(e.key==='Enter')entrar();});
   $('btnSair').onclick=sair;
   $('btnAddEvento').onclick=addEvento;
-  $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();};
+  $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';};
   $('btnEvSubAdd').onclick=()=>{const t=$('evSubNovo').value.trim();if(!t)return;evSubsArr.push({id:novoId('s'),txt:t,feita:false});$('evSubNovo').value='';desenharEvSubs();};
   $('evSubNovo').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('btnEvSubAdd').click();}});
   $('evFra').oninput=desenharFraList;
@@ -3011,11 +3170,19 @@ ligarAbas();
   $('evFra').onblur=()=>setTimeout(()=>{$('evFraList').style.display='none';},150);
   $('evFra').addEventListener('change',()=>{if(!$('evFra').value.trim())evFraSel=null;});
   const bFq=$('btnFrqNova');if(bFq)bFq.onclick=()=>{frqNovaOn=true;frqEdit=null;desenharFrqAdmin();};
+  const bSkuNovo=$('btnSkuNovo');if(bSkuNovo)bSkuNovo.onclick=()=>{const el=$('skuNovoCod');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});if(el)el.focus();};
   const iFq=$('frqBusca');if(iFq)iFq.oninput=()=>{clearTimeout(window._fqT);window._fqT=setTimeout(desenharFrqAdmin,250);};
   $('agData').onchange=desenharAgenda;
   $('agData2').onchange=desenharAgenda;
   $('agModo').onchange=desenharAgenda;
   $('evTipo').onchange=()=>{atualizarCamposTipo();desenharEvParts();};
+  $('btnModeloBetta').onclick=()=>{
+    emModoBetta=true;
+    evSubsArr=MODELO_EVENTO_BETTA.map(txt=>({id:novoId('s'),txt,feita:false}));
+    desenharEvSubs();
+    $('evCustoLbl').style.display='inline-flex';
+    if(!$('evTitulo').value.trim())$('evTitulo').value='Evento Betta';
+  };
   $('evQuem').onchange=desenharEvParts;
   $('rotPessoa').onchange=desenharRotina;
   $('rotStatus').onchange=desenharRotina;

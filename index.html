@@ -52,6 +52,8 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .abas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .aba{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:8px 18px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave)}
 .aba.ativa{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.fin-sub{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:8px 18px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave);cursor:pointer}
+.fin-sub.ativa{background:var(--tinta);border-color:var(--tinta);color:#fff}
 .vista{display:none}
 .vista.ativa{display:block}
 .sync{font-size:11px;color:var(--verde);font-weight:700}
@@ -444,6 +446,7 @@ details.recolhe[open] summary{margin-bottom:8px}
     <button class="aba" data-v="agenda">Agenda</button>
     <span id="abasCustom" style="display:contents"></span>
     <button class="aba" data-v="insights" id="abaInsights" style="display:none">Insights</button>
+    <button class="aba" data-v="financeiro" id="abaFinanceiro" style="display:none">Financeiro</button>
     <button class="aba" data-v="rotina" id="abaRotina" style="display:none">Rotina</button>
     <button class="aba" data-v="admin" id="abaAdmin" style="display:none">Admin</button>
     <button class="aba" id="btnNovaAba" style="display:none" title="Criar nova aba">＋ Aba</button>
@@ -674,6 +677,39 @@ details.recolhe[open] summary{margin-bottom:8px}
       </div>
     </div>
     <p class="aviso" id="insAvisoSync"></p>
+  </div>
+
+  <!-- ===== FINANCEIRO (admin) ===== -->
+  <div class="vista" id="v-financeiro">
+    <div class="ag-topo">
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="finSubAbas">
+        <button class="fin-sub ativa" data-fin="faturamento">📈 Faturamento</button>
+        <button class="fin-sub" data-fin="inadimplencia">🚨 Inadimplência</button>
+        <button class="fin-sub" data-fin="receita">💰 Receita</button>
+      </div>
+      <span class="esp"></span>
+      <label class="btn claro" style="display:inline-flex;cursor:pointer" id="finBtnUpload">
+        ⬆️ Atualizar faturamento (.xlsx)
+        <input type="file" accept=".xlsx" id="finUploadFat" style="display:none">
+      </label>
+    </div>
+
+    <div id="fin-faturamento" class="fin-painel-sub">
+      <div id="finRecordeBanner"></div>
+      <h2 class="sec">Faturamento por loja</h2>
+      <p class="aviso" id="finFatMesRef"></p>
+      <div class="painel">
+        <div style="overflow-x:auto"><table class="rot-tab" id="finFatTab"></table></div>
+      </div>
+    </div>
+
+    <div id="fin-inadimplencia" class="fin-painel-sub" style="display:none">
+      <div class="painel"><p class="vazio">🚧 Ainda não configurado — depende da migração da tabela de inadimplência (próximo passo).</p></div>
+    </div>
+
+    <div id="fin-receita" class="fin-painel-sub" style="display:none">
+      <div class="painel"><p class="vazio">🚧 Ainda não configurado — depende da migração da tabela de receita/recebidos (próximo passo).</p></div>
+    </div>
   </div>
 
   <!-- ===== ADMIN ===== -->
@@ -1032,6 +1068,7 @@ function redesenharVistaAtiva(){
   if(v==='dia')desenharDia();
   if(v==='agenda')desenharAgenda();
   if(v==='insights')desenharInsights();
+  if(v==='financeiro')desenharFinanceiro();
   if(v==='admin')desenharAdmin();
   if(v==='rotina')desenharRotina();
   if(v==='board')desenharBoard();
@@ -1086,6 +1123,7 @@ async function iniciarSessao(user){
   $('telaLogin').style.display='none';$('app').style.display='block';
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
+  $('abaFinanceiro').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display=usuarioAtual.admin?'inline-block':'none';
   if(!usuarioAtual.admin){
     $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="mes">Mês</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
@@ -2758,6 +2796,18 @@ async function desenharInsightsTP(dias,desdeISO){
       +'<b>'+n+'</b></div>';
   }).join(''):'<p class="vazio">Sem tarefas vinculadas a FR no período.</p>';
 }
+async function fetchAllSB(builderFn,step){
+  step=step||1000;
+  let all=[],from=0;
+  while(true){
+    const{data,error}=await builderFn().range(from,from+step-1);
+    if(error){console.error('fetchAllSB error',error);break;}
+    all=all.concat(data||[]);
+    if(!data||data.length<step)break;
+    from+=step;
+  }
+  return all;
+}
 async function desenharInsights(){
   const dias=Number($('insPeriodo').value);
   const desdeISO=new Date(Date.now()-dias*24*3600*1000).toISOString().slice(0,10);
@@ -2765,16 +2815,14 @@ async function desenharInsights(){
   desenharInsightsTP(dias,desdeISO);
 
   /* ---- Chamados: período atual + anterior (comparação) + fila aberta ---- */
-  const{data:cham2}=await sb.from('chamados_sults').select('*').gte('aberto',desdeAntISO+'T00:00:00Z');
-  const TODOS=cham2||[];
+  /* v: paginado com fetchAllSB — consultas de 90+ dias passam de 1000 linhas e o Supabase corta silenciosamente sem isso */
+  const TODOS=await fetchAllSB(()=>sb.from('chamados_sults').select('*').gte('aberto',desdeAntISO+'T00:00:00Z').order('aberto',{ascending:true}));
   const C=TODOS.filter(c=>c.aberto>=desdeISO);
   const ANT=TODOS.filter(c=>c.aberto<desdeISO);
-  const{data:filaData}=await sb.from('chamados_sults').select('*').not('situacao','in','(2,3)');
-  const FILA=filaData||[];
+  const FILA=await fetchAllSB(()=>sb.from('chamados_sults').select('*').not('situacao','in','(2,3)').order('aberto',{ascending:true}));
 
   /* ---- Tarefas do painel + esforço avaliado dos chamados ---- */
-  const{data:hist}=await sb.from('historico_tarefas').select('*').gte('dia',desdeISO);
-  const H=hist||[];
+  const H=await fetchAllSB(()=>sb.from('historico_tarefas').select('*').gte('dia',desdeISO).order('dia',{ascending:true}));
   const difCh={};
   H.filter(h=>h.origem==='chamado').forEach(h=>{
     const as=h.titulo.split(' #')[0];
@@ -2796,6 +2844,131 @@ async function desenharInsights(){
 
   const ultimo=TODOS.reduce((a,c)=>c.sincronizado_em>a?c.sincronizado_em:a,'');
   $('insAvisoSync').textContent=ultimo?'Última sincronização com o Sults: '+new Date(ultimo).toLocaleString('pt-BR'):'';
+}
+
+/* ================================================================
+   FINANCEIRO (admin) — Faturamento / Inadimplência / Receita
+================================================================ */
+function fmtReaisFin(v){return v==null?'—':('R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));}
+function mesLabelFin(iso){ // '2026-07-01' -> 'Julho/2026'
+  const NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const[y,m]=iso.split('-').map(Number);
+  return NOMES[m-1]+'/'+y;
+}
+function mesAnteriorISO(iso){
+  const[y,m]=iso.split('-').map(Number);
+  const d=new Date(y,m-2,1); // m-1 é o mês atual (0-index), -1 pra voltar um mês
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01';
+}
+function ligarSubAbasFinanceiro(){
+  document.querySelectorAll('.fin-sub').forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll('.fin-sub').forEach(b=>b.classList.remove('ativa'));
+      btn.classList.add('ativa');
+      document.querySelectorAll('.fin-painel-sub').forEach(p=>p.style.display='none');
+      $('fin-'+btn.dataset.fin).style.display='';
+    };
+  });
+  const inp=$('finUploadFat');
+  if(inp)inp.onchange=ev=>{processarUploadFaturamento(ev.target.files[0]);ev.target.value='';};
+}
+async function desenharFinanceiro(){
+  ligarSubAbasFinanceiro();
+  const{data:fatData}=await sb.from('financeiro_faturamento_mensal').select('fra,mes_ano,valor').order('mes_ano',{ascending:false});
+  const FAT=fatData||[];
+  if(!FAT.length){
+    $('finFatTab').innerHTML='';
+    $('finFatMesRef').textContent='Nenhum dado de faturamento carregado ainda. Use "Atualizar faturamento" pra subir a primeira planilha.';
+    $('finRecordeBanner').innerHTML='';
+    return;
+  }
+  const mesAtualISO=FAT[0].mes_ano; // já ordenado desc
+  const mesAntISO=mesAnteriorISO(mesAtualISO);
+  $('finFatMesRef').textContent='Mês de referência: '+mesLabelFin(mesAtualISO)+' · '+new Set(FAT.map(f=>f.fra)).size+' lojas com histórico';
+
+  // agrupa por FRA
+  const porFra={};
+  FAT.forEach(f=>{(porFra[f.fra]=porFra[f.fra]||[]).push(f);});
+
+  const linhas=Object.keys(porFra).map(fraStr=>{
+    const fra=Number(fraStr);
+    const hist=porFra[fra];
+    const atual=hist.find(h=>h.mes_ano===mesAtualISO);
+    const anterior=hist.find(h=>h.mes_ano===mesAntISO);
+    const recorde=hist.reduce((max,h)=>h.valor>(max?max.valor:-1)?h:max,null);
+    const bateuRecorde=atual&&recorde&&recorde.mes_ano===mesAtualISO&&hist.length>1;
+    const fr=frqPorId(fra);
+    return{
+      fra,nome:fr?fr.nome:('FRA '+fra+' (fora do cadastro atual)'),
+      ativa:!!fr&&fr.ativo!==false,
+      valorAtual:atual?atual.valor:null,
+      valorAnterior:anterior?anterior.valor:null,
+      recordeValor:recorde?recorde.valor:null,
+      recordeMes:recorde?recorde.mes_ano:null,
+      bateuRecorde
+    };
+  }).filter(l=>l.ativa) // só lojas ativas hoje na listagem principal
+    .sort((a,b)=>(b.valorAtual||0)-(a.valorAtual||0));
+
+  const recordistas=linhas.filter(l=>l.bateuRecorde);
+  $('finRecordeBanner').innerHTML=recordistas.length
+    ?'<div class="rodizio"><div class="card k-ok" style="grid-column:1/-1">'
+      +'<div class="rotulo">🏆 Recorde histórico de faturamento em '+mesLabelFin(mesAtualISO)+'</div>'
+      +'<div style="font-size:13px;margin-top:6px;line-height:1.6">'+recordistas.map(l=>'<b>'+l.nome+'</b> — '+fmtReaisFin(l.valorAtual)).join('<br>')+'</div>'
+      +'</div></div>'
+    :'';
+
+  $('finFatTab').innerHTML=
+    '<tr><th>FRA</th><th>Loja</th><th>'+mesLabelFin(mesAtualISO)+'</th><th>vs. mês anterior</th><th>Recorde histórico</th><th>Status</th></tr>'
+    +linhas.map(l=>{
+      const varPct=(l.valorAtual!=null&&l.valorAnterior)?Math.round((l.valorAtual-l.valorAnterior)/l.valorAnterior*100):null;
+      const varTxt=varPct==null?'—':((varPct>=0?'▲ +':'▼ ')+varPct+'%');
+      const varCor=varPct==null?'':(varPct>=0?'color:var(--verde)':'color:#B3241A');
+      const status=l.bateuRecorde?'🏆 Recorde':(l.valorAtual==null?'— sem dado no mês':(varPct!=null&&varPct>=0?'▲ Crescendo':'▼ Caindo'));
+      return'<tr>'
+        +'<td>'+l.fra+'</td>'
+        +'<td>'+l.nome+'</td>'
+        +'<td><b>'+fmtReaisFin(l.valorAtual)+'</b></td>'
+        +'<td style="'+varCor+'">'+varTxt+'</td>'
+        +'<td>'+fmtReaisFin(l.recordeValor)+(l.recordeMes?' <span style="color:var(--tinta-suave);font-size:11px">('+mesLabelFin(l.recordeMes)+')</span>':'')+'</td>'
+        +'<td>'+status+'</td>'
+        +'</tr>';
+    }).join('');
+}
+async function processarUploadFaturamento(file){
+  if(!file)return;
+  if(!/\.xlsx$/i.test(file.name)){alert('Envie o arquivo .xlsx no mesmo modelo da última planilha de faturamento mensal.');return;}
+  let wb;
+  try{const buf=await file.arrayBuffer();wb=XLSX.read(buf,{type:'array'});}
+  catch(err){alert('Não consegui ler esse arquivo. Confirme que é um .xlsx válido.');return;}
+  // procura a aba que tem as colunas esperadas: FRA, LOJA, e uma coluna começando com FATURAMENTO
+  let linhas=null,colValor=null;
+  for(const nome of wb.SheetNames){
+    const tmp=XLSX.utils.sheet_to_json(wb.Sheets[nome],{defval:null});
+    if(!tmp.length)continue;
+    const chaves=Object.keys(tmp[0]);
+    const kFra=chaves.find(k=>k.trim().toUpperCase()==='FRA');
+    const kFat=chaves.find(k=>k.trim().toUpperCase().startsWith('FATURAMENTO'));
+    if(kFra&&kFat){linhas=tmp;colValor=kFat;break;}
+  }
+  if(!linhas){alert('Não encontrei as colunas esperadas (FRA + FATURAMENTO ...) em nenhuma aba desse arquivo. Confirme se é o modelo padrão (FRA, LOJA, FATURAMENTO <MÊS>, CNPJ, OBSERVAÇÃO).');return;}
+  // pede confirmação do mês de referência (a coluna traz o mês no nome, mas o valor real fica em mes_ano explícito)
+  const mesSugestao=chaveDia(agora()).slice(0,7)+'-01';
+  const mesInformado=prompt('Confirme o mês de referência deste faturamento (formato AAAA-MM-01):',mesSugestao);
+  if(!mesInformado||!/^\d{4}-\d{2}-01$/.test(mesInformado)){alert('Mês inválido, upload cancelado.');return;}
+  const registros=linhas.map(l=>{
+    const fra=Number(l['FRA']);
+    const valor=Number(l[colValor]);
+    if(!Number.isFinite(fra)||!Number.isFinite(valor))return null;
+    return{fra,mes_ano:mesInformado,valor,registros_no_mes:1,fonte:'upload_mensal'};
+  }).filter(Boolean);
+  if(!registros.length){alert('Nenhuma linha válida encontrada (FRA ou valor não numérico).');return;}
+  if(!confirm('Vou atualizar o faturamento de '+registros.length+' lojas para '+mesLabelFin(mesInformado)+'.\n\nSe já existir dado desse mês pra alguma loja, ele será substituído.\n\nConfirma?'))return;
+  const{error}=await sb.from('financeiro_faturamento_mensal').upsert(registros,{onConflict:'fra,mes_ano'});
+  if(error){alert('Erro ao salvar: '+error.message);return;}
+  piscar();
+  alert('✅ Faturamento de '+mesLabelFin(mesInformado)+' atualizado ('+registros.length+' lojas)');
+  desenharFinanceiro();
 }
 
 function kpiSemaforo(rotulo,valor,sub,nivel,delta){

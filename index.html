@@ -681,20 +681,25 @@ details.recolhe[open] summary{margin-bottom:8px}
 
   <!-- ===== FINANCEIRO (admin) ===== -->
   <div class="vista" id="v-financeiro">
+    <h2 class="sec">Painel da Diretoria</h2>
+    <div class="rodizio" id="finKpis"></div>
+
     <div class="ag-topo">
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="finSubAbas">
         <button class="fin-sub ativa" data-fin="faturamento">📈 Faturamento</button>
         <button class="fin-sub" data-fin="inadimplencia">🚨 Inadimplência</button>
         <button class="fin-sub" data-fin="receita">💰 Receita</button>
       </div>
-      <span class="esp"></span>
-      <label class="btn claro" style="display:inline-flex;cursor:pointer" id="finBtnUpload">
-        ⬆️ Atualizar faturamento (.xlsx)
-        <input type="file" accept=".xlsx" id="finUploadFat" style="display:none">
-      </label>
     </div>
 
     <div id="fin-faturamento" class="fin-painel-sub">
+      <div class="ag-topo">
+        <span class="esp"></span>
+        <label class="btn claro" style="display:inline-flex;cursor:pointer">
+          ⬆️ Atualizar faturamento (.xlsx)
+          <input type="file" accept=".xlsx" id="finUploadFat" style="display:none">
+        </label>
+      </div>
       <div id="finRecordeBanner"></div>
       <h2 class="sec">Faturamento por loja</h2>
       <p class="aviso" id="finFatMesRef"></p>
@@ -704,11 +709,33 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
 
     <div id="fin-inadimplencia" class="fin-painel-sub" style="display:none">
-      <div class="painel"><p class="vazio">🚧 Ainda não configurado — depende da migração da tabela de inadimplência (próximo passo).</p></div>
+      <div class="ag-topo">
+        <span class="esp"></span>
+        <label class="btn claro" style="display:inline-flex;cursor:pointer">
+          ⬆️ Atualizar inadimplência (.xlsx)
+          <input type="file" accept=".xlsx" id="finUploadInad" style="display:none">
+        </label>
+      </div>
+      <p class="aviso" id="finInadMesRef"></p>
+      <h2 class="sec">Mapa de calor por faixa de atraso</h2>
+      <div class="painel">
+        <div style="overflow-x:auto"><table class="rot-tab" id="finInadHeat"></table></div>
+      </div>
+      <div id="finInadNaoVinc"></div>
     </div>
 
     <div id="fin-receita" class="fin-painel-sub" style="display:none">
-      <div class="painel"><p class="vazio">🚧 Ainda não configurado — depende da migração da tabela de receita/recebidos (próximo passo).</p></div>
+      <div class="ag-topo">
+        <span class="esp"></span>
+        <label class="btn claro" style="display:inline-flex;cursor:pointer">
+          ⬆️ Atualizar recebidos (.xls/.xlsx)
+          <input type="file" accept=".xls,.xlsx" id="finUploadReceb" style="display:none">
+        </label>
+      </div>
+      <h2 class="sec">Receita recebida por mês</h2>
+      <div class="painel">
+        <div style="overflow-x:auto"><table class="rot-tab" id="finRecebTab"></table></div>
+      </div>
     </div>
   </div>
 
@@ -2869,24 +2896,61 @@ function ligarSubAbasFinanceiro(){
       $('fin-'+btn.dataset.fin).style.display='';
     };
   });
-  const inp=$('finUploadFat');
-  if(inp)inp.onchange=ev=>{processarUploadFaturamento(ev.target.files[0]);ev.target.value='';};
+  const i1=$('finUploadFat');   if(i1)i1.onchange=ev=>{processarUploadFaturamento(ev.target.files[0]);ev.target.value='';};
+  const i2=$('finUploadInad');  if(i2)i2.onchange=ev=>{processarUploadInadimplencia(ev.target.files[0]);ev.target.value='';};
+  const i3=$('finUploadReceb'); if(i3)i3.onchange=ev=>{processarUploadRecebidos(ev.target.files[0]);ev.target.value='';};
 }
+function normCliente(s){return(s||'').toString().trim().toUpperCase().replace(/\s+/g,' ');}
 async function desenharFinanceiro(){
   ligarSubAbasFinanceiro();
-  const{data:fatData}=await sb.from('financeiro_faturamento_mensal').select('fra,mes_ano,valor').order('mes_ano',{ascending:false});
-  const FAT=fatData||[];
+  const[{data:fatData},{data:inadData},{data:recebData},{data:mapaData}]=await Promise.all([
+    sb.from('financeiro_faturamento_mensal').select('fra,mes_ano,valor').order('mes_ano',{ascending:false}),
+    sb.from('financeiro_inadimplencia').select('*').order('mes_referencia',{ascending:false}),
+    sb.from('financeiro_recebidos_mensal').select('fra,cnpj,mes_ano,valor').order('mes_ano',{ascending:false}),
+    sb.from('financeiro_mapa_clientes').select('cliente_norm,fra')
+  ]);
+  const FAT=fatData||[],INAD=inadData||[],RECEB=recebData||[],MAPA=mapaData||[];
+  const mapaLookup={};MAPA.forEach(m=>mapaLookup[m.cliente_norm]=m.fra);
+
+  const linhasFat=desenharFinFaturamento(FAT);
+  const linhasInad=desenharFinInadimplencia(INAD,mapaLookup);
+  const linhasReceb=desenharFinReceita(RECEB);
+  desenharFinKpis(linhasFat,linhasInad,linhasReceb);
+}
+function desenharFinKpis(linhasFat,infoInad,infoReceb){
+  const faturamentoTotal=(linhasFat.linhas||[]).reduce((s,l)=>s+(l.valorAtual||0),0);
+  const faturamentoAnterior=(linhasFat.linhas||[]).reduce((s,l)=>s+(l.valorAnterior||0),0);
+  const varTotalPct=faturamentoAnterior?Math.round((faturamentoTotal-faturamentoAnterior)/faturamentoAnterior*100):null;
+  const qtdRecorde=(linhasFat.linhas||[]).filter(l=>l.bateuRecorde).length;
+
+  const inadVinculado=infoInad.totalVinculado||0;
+  const pctInad=faturamentoTotal?(inadVinculado/faturamentoTotal*100):null;
+  const lojasCriticas=infoInad.lojasCriticas||0;
+
+  const recebMesAtual=infoReceb.totalMesAtual||0;
+
+  const kpis=[
+    {rot:'Faturamento da rede (mês)',val:fmtReaisFin(faturamentoTotal),sub:linhasFat.mesLabel||'—',nivel:'ok'},
+    {rot:'Variação vs. mês anterior',val:varTotalPct==null?'—':((varTotalPct>=0?'▲ +':'▼ ')+varTotalPct+'%'),sub:'rede toda',nivel:varTotalPct==null?'warn':(varTotalPct>=0?'ok':'bad')},
+    {rot:'Lojas com recorde no mês',val:String(qtdRecorde),sub:'histórico batido',nivel:qtdRecorde>0?'ok':'warn'},
+    {rot:'Inadimplência vinculada',val:fmtReaisFin(inadVinculado),sub:infoInad.mesLabel||'—',nivel:'bad'},
+    {rot:'% inadimplência s/ faturamento',val:pctInad==null?'—':pctInad.toFixed(1)+'%',sub:'saúde da rede',nivel:pctInad==null?'warn':(pctInad<3?'ok':pctInad<7?'warn':'bad')},
+    {rot:'Receita recebida (mês)',val:fmtReaisFin(recebMesAtual),sub:infoReceb.mesLabel||'—',nivel:'ok'},
+    {rot:'Lojas em risco crítico (+180d)',val:String(lojasCriticas),sub:'atraso severo',nivel:lojasCriticas>0?'bad':'ok'}
+  ];
+  $('finKpis').innerHTML=kpis.map(k=>kpiSemaforo(k.rot,k.val,k.sub,k.nivel)).join('');
+}
+function desenharFinFaturamento(FAT){
   if(!FAT.length){
     $('finFatTab').innerHTML='';
     $('finFatMesRef').textContent='Nenhum dado de faturamento carregado ainda. Use "Atualizar faturamento" pra subir a primeira planilha.';
     $('finRecordeBanner').innerHTML='';
-    return;
+    return{linhas:[],mesLabel:null};
   }
-  const mesAtualISO=FAT[0].mes_ano; // já ordenado desc
+  const mesAtualISO=FAT[0].mes_ano; // já vem ordenado desc
   const mesAntISO=mesAnteriorISO(mesAtualISO);
   $('finFatMesRef').textContent='Mês de referência: '+mesLabelFin(mesAtualISO)+' · '+new Set(FAT.map(f=>f.fra)).size+' lojas com histórico';
 
-  // agrupa por FRA
   const porFra={};
   FAT.forEach(f=>{(porFra[f.fra]=porFra[f.fra]||[]).push(f);});
 
@@ -2907,7 +2971,7 @@ async function desenharFinanceiro(){
       recordeMes:recorde?recorde.mes_ano:null,
       bateuRecorde
     };
-  }).filter(l=>l.ativa) // só lojas ativas hoje na listagem principal
+  }).filter(l=>l.ativa)
     .sort((a,b)=>(b.valorAtual||0)-(a.valorAtual||0));
 
   const recordistas=linhas.filter(l=>l.bateuRecorde);
@@ -2934,6 +2998,97 @@ async function desenharFinanceiro(){
         +'<td>'+status+'</td>'
         +'</tr>';
     }).join('');
+  return{linhas,mesLabel:mesLabelFin(mesAtualISO)};
+}
+function corHeat(v,max){
+  if(!v)return'background:transparent';
+  const p=Math.min(1,v/(max||1));
+  const r=255,g=Math.round(240-160*p),b=Math.round(240-200*p);
+  return'background:rgb('+r+','+g+','+b+');font-weight:'+(p>0.5?'700':'400');
+}
+function desenharFinInadimplencia(INAD,mapaLookup){
+  if(!INAD.length){
+    $('finInadHeat').innerHTML='';
+    $('finInadMesRef').textContent='Nenhum dado de inadimplência carregado ainda. Use "Atualizar inadimplência" pra subir o relatório do Conta Azul.';
+    $('finInadNaoVinc').innerHTML='';
+    return{totalVinculado:0,lojasCriticas:0,mesLabel:null};
+  }
+  const mesRef=INAD[0].mes_referencia;
+  const doMes=INAD.filter(i=>i.mes_referencia===mesRef);
+  $('finInadMesRef').textContent='Snapshot de: '+mesLabelFin(mesRef)+' · '+doMes.length+' lançamentos';
+
+  // resolve fra: já vem da tabela, ou via vínculo manual salvo depois do upload original
+  const porCliente={};
+  doMes.forEach(i=>{
+    const fra=i.fra||mapaLookup[i.cliente_norm]||null;
+    const key=fra||('__'+i.cliente_norm);
+    if(!porCliente[key])porCliente[key]={fra,nome:fra?(frqPorId(fra)?frqPorId(fra).nome:('FRA '+fra)):i.cliente_raw,cliente_norm:i.cliente_norm,ate_30:0,d31_60:0,d61_90:0,d91_180:0,acima_180:0,valor_vencido:0};
+    const c=porCliente[key];
+    c.ate_30+=Number(i.ate_30||0);c.d31_60+=Number(i.d31_60||0);c.d61_90+=Number(i.d61_90||0);
+    c.d91_180+=Number(i.d91_180||0);c.acima_180+=Number(i.acima_180||0);c.valor_vencido+=Number(i.valor_vencido||0);
+  });
+  const todas=Object.values(porCliente).sort((a,b)=>b.valor_vencido-a.valor_vencido);
+  const vinculadas=todas.filter(c=>c.fra);
+  const naoVinculadas=todas.filter(c=>!c.fra&&c.valor_vencido>0);
+
+  const maxCol={ate_30:Math.max(1,...todas.map(c=>c.ate_30)),d31_60:Math.max(1,...todas.map(c=>c.d31_60)),d61_90:Math.max(1,...todas.map(c=>c.d61_90)),d91_180:Math.max(1,...todas.map(c=>c.d91_180)),acima_180:Math.max(1,...todas.map(c=>c.acima_180))};
+
+  $('finInadHeat').innerHTML=
+    '<tr><th>Loja</th><th>Até 30d</th><th>31-60d</th><th>61-90d</th><th>91-180d</th><th>+180d</th><th>Total vencido</th></tr>'
+    +vinculadas.map(c=>'<tr>'
+      +'<td>'+c.nome+'</td>'
+      +'<td style="'+corHeat(c.ate_30,maxCol.ate_30)+'">'+fmtReaisFin(c.ate_30)+'</td>'
+      +'<td style="'+corHeat(c.d31_60,maxCol.d31_60)+'">'+fmtReaisFin(c.d31_60)+'</td>'
+      +'<td style="'+corHeat(c.d61_90,maxCol.d61_90)+'">'+fmtReaisFin(c.d61_90)+'</td>'
+      +'<td style="'+corHeat(c.d91_180,maxCol.d91_180)+'">'+fmtReaisFin(c.d91_180)+'</td>'
+      +'<td style="'+corHeat(c.acima_180,maxCol.acima_180)+'">'+fmtReaisFin(c.acima_180)+'</td>'
+      +'<td><b>'+fmtReaisFin(c.valor_vencido)+'</b></td>'
+      +'</tr>').join('');
+
+  if(naoVinculadas.length){
+    const opcoesLojas=(FRQ||[]).filter(f=>f.ativo!==false).sort((a,b)=>a.nome.localeCompare(b.nome))
+      .map(f=>'<option value="'+f.fra+'">'+f.nome+' (FRA '+f.fra+')</option>').join('');
+    $('finInadNaoVinc').innerHTML=
+      '<h2 class="sec">⚠️ Clientes não vinculados a nenhuma loja ('+naoVinculadas.length+')</h2>'
+      +'<p class="aviso">A razão social no Conta Azul não bate com o cadastro. Vincule uma vez e fica salvo pros próximos uploads.</p>'
+      +'<div class="painel"><div style="overflow-x:auto"><table class="rot-tab">'
+      +'<tr><th>Razão social (Conta Azul)</th><th>Valor vencido</th><th>Vincular à loja</th></tr>'
+      +naoVinculadas.map(c=>'<tr>'
+        +'<td>'+c.nome+'</td>'
+        +'<td>'+fmtReaisFin(c.valor_vencido)+'</td>'
+        +'<td><select data-cliente="'+c.cliente_norm.replace(/"/g,'&quot;')+'" class="fin-vincular-sel"><option value="">— selecione —</option>'+opcoesLojas+'</select></td>'
+        +'</tr>').join('')
+      +'</table></div></div>';
+    document.querySelectorAll('.fin-vincular-sel').forEach(sel=>{
+      sel.onchange=async()=>{
+        if(!sel.value)return;
+        const{error}=await sb.from('financeiro_mapa_clientes').upsert({cliente_norm:sel.dataset.cliente,fra:Number(sel.value)},{onConflict:'cliente_norm'});
+        if(error){alert('Erro ao vincular: '+error.message);return;}
+        piscar();desenharFinanceiro();
+      };
+    });
+  }else{
+    $('finInadNaoVinc').innerHTML='';
+  }
+
+  const totalVinculado=vinculadas.reduce((s,c)=>s+c.valor_vencido,0);
+  const lojasCriticas=vinculadas.filter(c=>c.acima_180>0).length;
+  return{totalVinculado,lojasCriticas,mesLabel:mesLabelFin(mesRef)};
+}
+function desenharFinReceita(RECEB){
+  if(!RECEB.length){
+    $('finRecebTab').innerHTML='';
+    return{totalMesAtual:0,mesLabel:null};
+  }
+  const porMes={};
+  RECEB.forEach(r=>{porMes[r.mes_ano]=(porMes[r.mes_ano]||0)+Number(r.valor||0);});
+  const meses=Object.keys(porMes).sort((a,b)=>b.localeCompare(a)).slice(0,13); // últimos 13 meses
+  const maxV=Math.max(1,...meses.map(m=>porMes[m]));
+  $('finRecebTab').innerHTML=
+    '<tr><th>Mês</th><th>Receita recebida</th><th></th></tr>'
+    +meses.map(m=>'<tr><td>'+mesLabelFin(m)+'</td><td><b>'+fmtReaisFin(porMes[m])+'</b></td>'
+      +'<td style="width:40%"><div style="background:var(--verde);height:14px;border-radius:4px;width:'+Math.round(porMes[m]/maxV*100)+'%"></div></td></tr>').join('');
+  return{totalMesAtual:porMes[meses[0]]||0,mesLabel:mesLabelFin(meses[0])};
 }
 async function processarUploadFaturamento(file){
   if(!file)return;
@@ -2968,6 +3123,108 @@ async function processarUploadFaturamento(file){
   if(error){alert('Erro ao salvar: '+error.message);return;}
   piscar();
   alert('✅ Faturamento de '+mesLabelFin(mesInformado)+' atualizado ('+registros.length+' lojas)');
+  desenharFinanceiro();
+}
+const FIN_JUNK_CLIENTES=new Set(['TOTAL GERAL','(EM BRANCO)','DIVERSOS','CREDITO A IDENTIFICAR']);
+function fnumBR(x){
+  if(x==null)return 0;
+  if(typeof x==='number')return x;
+  let s=String(x).trim();
+  if(!s)return 0;
+  s=s.replace(/\./g,'').replace(',','.');
+  const n=Number(s);
+  return Number.isFinite(n)?n:0;
+}
+async function processarUploadInadimplencia(file){
+  if(!file)return;
+  if(!/\.xlsx$/i.test(file.name)){alert('Envie o arquivo .xlsx exportado do Conta Azul (Financeiro > Inadimplência > Relatório > Análise de inadimplência).');return;}
+  let wb;
+  try{const buf=await file.arrayBuffer();wb=XLSX.read(buf,{type:'array'});}
+  catch(err){alert('Não consegui ler esse arquivo. Confirme que é um .xlsx válido.');return;}
+  let brutas=null;
+  for(const nome of wb.SheetNames){
+    const tmp=XLSX.utils.sheet_to_json(wb.Sheets[nome],{header:1,defval:null});
+    const idxHeader=tmp.findIndex(row=>row&&row.some(c=>typeof c==='string'&&c.trim()==='Nome do cliente ou fornecedor'));
+    if(idxHeader>=0){brutas=tmp.slice(idxHeader+1);break;}
+  }
+  if(!brutas){alert('Não encontrei a coluna "Nome do cliente ou fornecedor" em nenhuma aba. Confirme que é o export de Análise de inadimplência do Conta Azul.');return;}
+  const mesSugestao=chaveDia(agora()).slice(0,7)+'-01';
+  const mesInformado=prompt('Confirme o mês de referência deste snapshot de inadimplência (formato AAAA-MM-01):',mesSugestao);
+  if(!mesInformado||!/^\d{4}-\d{2}-01$/.test(mesInformado)){alert('Mês inválido, upload cancelado.');return;}
+
+  const registros=[];
+  for(const r of brutas){
+    const nome=r[0];
+    if(!nome||String(nome).trim().endsWith('Total'))continue;
+    const n=normCliente(nome);
+    if(FIN_JUNK_CLIENTES.has(n))continue;
+    const categoria=(r[1]||'').toString().trim();
+    const fr=(FRQ||[]).find(f=>normCliente(f.razao_social)===n);
+    registros.push({
+      cliente_raw:String(nome).trim(),cliente_norm:n,categoria,
+      fra:fr?fr.fra:null,
+      d31_60:fnumBR(r[2]),d61_90:fnumBR(r[3]),d91_180:fnumBR(r[4]),acima_180:fnumBR(r[5]),ate_30:fnumBR(r[6]),
+      valor_vencido:fnumBR(r[7]),mes_referencia:mesInformado
+    });
+  }
+  if(!registros.length){alert('Nenhuma linha válida encontrada.');return;}
+  const vinculados=registros.filter(r=>r.fra).length;
+  if(!confirm('Vou gravar '+registros.length+' linhas de inadimplência para '+mesLabelFin(mesInformado)+'.\n\n'+vinculados+' de '+registros.length+' já batem automaticamente com uma loja — o resto você vincula manualmente na tela.\n\nConfirma?'))return;
+  const{error}=await sb.from('financeiro_inadimplencia').upsert(registros,{onConflict:'cliente_norm,categoria,mes_referencia'});
+  if(error){alert('Erro ao salvar: '+error.message);return;}
+  piscar();
+  alert('✅ Inadimplência de '+mesLabelFin(mesInformado)+' atualizada ('+registros.length+' linhas, '+vinculados+' já vinculadas)');
+  desenharFinanceiro();
+}
+async function processarUploadRecebidos(file){
+  if(!file)return;
+  if(!/\.xlsx?$/i.test(file.name)){alert('Envie o arquivo .xls ou .xlsx exportado do Conta Azul (Extrato Financeiro).');return;}
+  let wb;
+  try{const buf=await file.arrayBuffer();wb=XLSX.read(buf,{type:'array'});}
+  catch(err){alert('Não consegui ler esse arquivo.');return;}
+  let linhas=null;
+  for(const nome of wb.SheetNames){
+    const tmp=XLSX.utils.sheet_to_json(wb.Sheets[nome],{defval:null});
+    if(!tmp.length)continue;
+    const chaves=Object.keys(tmp[0]);
+    if(chaves.includes('Identificador do fornecedor/cliente')&&chaves.includes('Data de competência')){linhas=tmp;break;}
+  }
+  if(!linhas){alert('Não encontrei as colunas esperadas (Identificador do fornecedor/cliente, Data de competência...). Confirme que é o Extrato Financeiro do Conta Azul.');return;}
+
+  // forward-fill (células mescladas do Conta Azul viram vazio nas linhas seguintes)
+  let ultimoId=null;
+  for(const l of linhas){
+    if(l['Identificador do fornecedor/cliente']!=null)ultimoId=l['Identificador do fornecedor/cliente'];
+    else l['Identificador do fornecedor/cliente']=ultimoId;
+  }
+  const cnpjPorFra={};(FRQ||[]).forEach(f=>{if(f.cnpj)cnpjPorFra[String(f.cnpj).replace(/\D/g,'')]=f.fra;});
+
+  const agregado={}; // chave: cnpj|mes
+  let ignoradas=0;
+  for(const l of linhas){
+    const idRaw=l['Identificador do fornecedor/cliente'];
+    const dataComp=l['Data de competência'];
+    const valor=Number(l['Valor (R$)']);
+    if(idRaw==null||!dataComp||!Number.isFinite(valor)){ignoradas++;continue;}
+    const cnpj=String(Math.round(Number(idRaw))).padStart(14,'0');
+    const partes=String(dataComp).split('/'); // DD/MM/AAAA
+    if(partes.length!==3){ignoradas++;continue;}
+    const mesAno=partes[2]+'-'+partes[1]+'-01';
+    const fra=cnpjPorFra[cnpj]||null;
+    const key=cnpj+'|'+mesAno;
+    if(!agregado[key])agregado[key]={fra,cnpj,mes_ano:mesAno,valor:0,qtd_lancamentos:0};
+    agregado[key].valor+=valor;agregado[key].qtd_lancamentos+=1;
+  }
+  const registros=Object.values(agregado);
+  if(!registros.length){alert('Nenhum lançamento válido encontrado.');return;}
+  const vinculados=registros.filter(r=>r.fra).length;
+  const valorTotal=registros.reduce((s,r)=>s+r.valor,0);
+  const valorVinc=registros.filter(r=>r.fra).reduce((s,r)=>s+r.valor,0);
+  if(!confirm('Vou gravar '+registros.length+' registros mensais de receita (de '+linhas.length+' lançamentos, '+ignoradas+' ignorados por dado incompleto).\n\n'+vinculados+' de '+registros.length+' grupos já batem com uma loja pelo CNPJ, cobrindo '+fmtReaisFin(valorVinc)+' de '+fmtReaisFin(valorTotal)+' em valor.\n\nConfirma?'))return;
+  const{error}=await sb.from('financeiro_recebidos_mensal').upsert(registros,{onConflict:'cnpj,mes_ano'});
+  if(error){alert('Erro ao salvar: '+error.message);return;}
+  piscar();
+  alert('✅ Receita recebida atualizada ('+registros.length+' registros)');
   desenharFinanceiro();
 }
 

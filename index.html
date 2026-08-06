@@ -13,6 +13,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icone-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
 :root{
@@ -517,7 +518,11 @@ details.recolhe[open] summary{margin-bottom:8px}
       <button class="btn laranja" id="btnAddEvento">Adicionar</button>
       <button class="btn claro" id="btnCancelEdit" style="display:none">Cancelar edição</button>
       <button class="btn claro" id="btnModeloBetta" type="button" style="display:none" title="Preenche as 11 normas como subtarefas e libera o campo de custo">🐟 Modelo: Evento Betta</button>
-      <label id="evCustoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Custo do evento (R$) <input id="evCusto" type="number" step="0.01" min="0" style="width:110px"></label>
+      <label id="evCustoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Custo do evento (R$)
+  <input id="evCusto" type="number" step="0.01" min="0" style="width:110px">
+  <label class="btn claro" style="display:inline-flex;cursor:pointer;margin-left:4px;font-weight:400">📎 Ler PDF do pedido<input type="file" accept=".pdf" id="inputPdfBetta" style="display:none"></label>
+  <span id="btnPdfBettaNome" style="font-size:11px;color:var(--tinta-suave)"></span>
+</label>
       <input id="evDesc" placeholder="Descrição (opcional)" style="flex-basis:100%">
       <div class="ev-subs-form" id="evSubsForm">
         <div style="font-weight:700;color:var(--tinta-suave);margin-bottom:4px">Subtarefas (opcional)</div>
@@ -685,6 +690,10 @@ details.recolhe[open] summary{margin-bottom:8px}
     <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Produtos do PDV que contam como "venda direta do evento" ao processar o relatório de vendas (peixe, beteira, anticloro, ração betta etc.).</p>
     <table class="adm-tab" id="tabSkusBetta"></table>
 
+    <h2 class="sec">Regras do Evento Betta <button class="btn claro" id="btnRegraNova" style="margin-left:8px">＋ Nova regra</button></h2>
+    <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Cada linha vira uma tarefa gerada automaticamente ao criar um Evento Betta. "Dias antes/depois" contam a partir da data do evento; "dia do evento" e "dia da criação" ignoram o campo dias.</p>
+    <table class="adm-tab" id="tabRegrasBetta"></table>
+
     <h2 class="sec">Registro de acessos</h2>
     <div class="painel" id="painelLog" style="max-height:280px;overflow:auto"></div>
   </div>
@@ -753,20 +762,6 @@ const MODELO_TAREFAS_PRODUTOS={
     fecha:[{id:'t7',txt:'Concluir todos os resolvidos antes das 17h',sub:'Sexta: reunião semanal 16h30–17h'}]},
   sabado:{sabado:[{id:'t1',txt:'Plantão de sábado: 1ª resposta ≤30 min e urgências',sub:'Cadastros de produto que entrarem são seus'},{id:'t2',txt:'Concluir resolvidos e deixar a fila triada p/ segunda',sub:''}]}
 };
-const MODELO_EVENTO_BETTA=[
-  'Fechar o evento com no mínimo 15 dias de antecedência',
-  'Levantar com o cliente a quantidade de produtos desejada (separação/pedido)',
-  'Alinhar com o franqueado o kit básico de anúncio (cartão, carro de som, locutor ou tráfego pago)',
-  'Preencher a planilha de custo do evento',
-  'Orientar o franqueado a ter no mínimo 3 fornecedores ajudando (ideal: 2 rações + 1 medicamento)',
-  'Orientar o franqueado a pedir brindes/verba de colaboração aos fornecedores',
-  'Alinhar com antecedência as escolas da região (autorização mais fácil, principalmente em grandes cidades)',
-  'Garantir freelancer para a fantasia + 1 colaborador da loja para ajudar na distribuição dos peixes',
-  'Definir local estratégico para retirada do peixe, sem constranger o cliente',
-  'Recolher o material da franquia após o evento (mesa, tenda etc.)',
-  'Fechar os produtos de revenda até a quarta-feira da semana seguinte',
-  'Subir o relatório de vendas do dia (gera o faturamento automático do evento)'
-];
 const MODELO_TAREFAS_TECNICO={
   padrao:{
     varredura:[{id:'t1',txt:'Retomar chamados técnicos em aberto',sub:'Se você é a triagem da semana: varrer e triar a fila · produtos → titular'}],
@@ -832,6 +827,61 @@ async function carregarSkusBetta(){
   const {data}=await sb.from('skus_evento_betta').select('*').order('produto');
   SKUS_BETTA=data||[];
 }
+async function carregarRegrasBetta(){
+  const {data}=await sb.from('regras_evento_betta').select('*').order('ordem');
+  REGRAS_BETTA=data||[];
+}
+function addDiasISO(iso,n){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function proximaSegundaISO(iso){const d=new Date(iso+'T12:00:00');const dow=d.getDay();const add=dow===0?1:(dow===1?7:(8-dow));const r=new Date(d);r.setDate(d.getDate()+add);return r.toISOString().slice(0,10);}
+function proximaQuartaISO(iso){const d=new Date(iso+'T12:00:00');const dow=d.getDay();const diffSeg=(dow===0?-6:1-dow);const seg=new Date(d);seg.setDate(d.getDate()+diffSeg);const segSeg=new Date(seg);segSeg.setDate(seg.getDate()+7);const qua=new Date(segSeg);qua.setDate(segSeg.getDate()+2);return qua.toISOString().slice(0,10);}
+function calcPrazoRegra(dataEvento,dataCriacao,regra,dias){
+  if(regra==='dias_antes')return addDiasISO(dataEvento,-(dias||0));
+  if(regra==='dias_depois')return addDiasISO(dataEvento,dias||0);
+  if(regra==='dia_evento')return dataEvento;
+  if(regra==='dia_criacao')return dataCriacao;
+  if(regra==='proxima_segunda')return proximaSegundaISO(dataEvento);
+  if(regra==='proxima_quarta')return proximaQuartaISO(dataEvento);
+  return dataEvento;
+}
+async function salvarEventoBetta(){
+  const titulo=$('evTitulo').value.trim()||'Evento Betta';
+  const data=$('agData').value;
+  if(!data){alert('Defina a data do evento.');return;}
+  const dataCriacao=chaveDia(agora());
+  const custo=Number($('evCusto').value)||0;
+  const dados={custo_total:custo,faturamento_direto:null,faturamento_carrinho:null,filial_arquivo:null,processado_em:null,pedido_num:pdfBettaExtra.pedido_num||null};
+  const {data:pai,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini:null,fim:null,tipo:'evento',descricao:$('evDesc').value.trim(),participantes:[...evPartsSel],franquia_fra:evFraSel,dados_evento:dados,criado_por:usuarioAtual.id}).select().single();
+  if(error){erroDB(error);return;}
+  const ativos=REGRAS_BETTA.filter(r=>r.ativo!==false);
+  if(!ativos.length){alert('Evento criado, mas não há regras cadastradas em Admin → Regras do Evento Betta — nenhuma tarefa foi gerada.');}
+  for(const r of ativos){
+    const prazo=calcPrazoRegra(data,dataCriacao,r.regra,r.dias);
+    const {error:e2}=await sb.from('agenda_eventos').insert({user_id:uid,titulo:r.titulo,data:dataCriacao,tipo:'tarefa',franquia_fra:evFraSel,prazo,evento_pai:pai.id,criado_por:usuarioAtual.id,subtarefas:[]});
+    if(e2)erroDB(e2);
+  }
+  $('evTitulo').value='';$('evDesc').value='';$('evCusto').value='';evPartsSel.clear();sairEdicao();desenharEvParts();
+  emModoBetta=false;evDadosEventoOrig=null;pdfBettaExtra={};$('evCustoLbl').style.display='none';$('btnPdfBettaNome').textContent='';
+  await carregarAgenda();desenharAgenda();piscar();
+  alert('Evento Betta criado ✓\n\n'+ativos.length+' tarefa(s) gerada(s) automaticamente com prazo calculado.');
+}
+let pdfBettaExtra={};
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function extrairValorPDF(file){
+  const buf=await file.arrayBuffer();
+  const doc=await pdfjsLib.getDocument({data:buf}).promise;
+  let texto='';
+  for(let i=1;i<=doc.numPages;i++){
+    const pg=await doc.getPage(i);
+    const cont=await pg.getTextContent();
+    texto+=cont.items.map(it=>it.str).join(' ')+'\n';
+  }
+  const ms=[...texto.matchAll(/VALOR TOTAL\s*R\$\s*([\d.]+,\d{2})/gi)];
+  if(!ms.length)return null;
+  const bruto=ms[ms.length-1][1];
+  const valor=Number(bruto.replace(/\./g,'').replace(',','.'));
+  const mPed=texto.match(/#(\d+)/);
+  return {valor,pedido_num:mPed?mPed[1]:null};
+}
 function roiDireto(d){if(!d||d.faturamento_direto==null||!d.custo_total)return null;return (d.faturamento_direto-d.custo_total)/d.custo_total*100;}
 function roiCarrinho(d){if(!d||d.faturamento_carrinho==null||!d.custo_total)return null;return (d.faturamento_carrinho-d.custo_total)/d.custo_total*100;}
 function fmtRoiTxt(v){return v==null?'sem base':((v>=0?'+':'')+(Math.round(v*10)/10)+'%');}
@@ -894,7 +944,7 @@ async function carregarAgenda(){
   const {data}=await sb.from('agenda_eventos').select('*').order('ini');
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],dadosEvento:e.dados_evento||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -1025,6 +1075,7 @@ async function iniciarSessao(user){
   await carregarBase();
   await carregarFranquias();
   await carregarSkusBetta();
+  await carregarRegrasBetta();
   const perfil=uPorId(user.id);
   if(!perfil){$('loginErro').textContent='Perfil não encontrado — avise o gestor.';await sb.auth.signOut();return;}
   usuarioAtual=perfil;
@@ -1261,15 +1312,17 @@ function linhaEventoDia(uid,e){
     +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'';
   const pendDesde=ehT&&!e.concluida&&e.data<chaveDia(agora())?Math.round((new Date(chaveDia(agora())+'T12:00:00')-new Date(e.data+'T12:00:00'))/86400000):0;
   row.innerHTML=(ehT?'<label style="display:inline"><input type="checkbox" class="ck-md" '+((e.concluida||pend)?'checked':'')+'></label>':'<span class="ld-ev-ico">🕐</span>')
-    +'<div class="txt">'+(ehT?'📌':(e.dataFim?'🔒 Ocupado '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/')+' ·':e.ini+' ·'))+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'
+    +'<div class="txt">'+(ehT?'📌':(e.dataFim?'🔒 Ocupado '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/')+' ·':e.ini+' ·'))+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'+tagCategoria(e.categoria)
     +(urg?' <span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
     +(ehT&&!e.concluida&&(e.reaberturas||[]).length?' <span class="prazo-tag u2">↩ reaberta p/ correção</span>':'')
+    +(ehT&&!e.concluida&&(e.reagendamentos||[]).length?' <span class="prazo-tag u1">📅 reagendada '+e.reagendamentos.length+'x</span>':'')
     +(ehT?'<small>'+(e.por&&e.por!==e.dono?'marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0])+' · ':'')+'agendada '+e.data.split('-').reverse().slice(0,2).join('/')+(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')+((e.fra===0||e.fra)?' · 🏪 '+(frqRotulo(e.fra)||''):'')+(pendDesde?' · <b style="color:#B3241A">pendente há '+pendDesde+' dia'+(pendDesde>1?'s':'')+'</b>':'')+'</small>':'')
     +(e.descricao?'<small>'+e.descricao+'</small>':'')
     +subsHtml
     +(ehT&&!e.concluida&&(e.reaberturas||[]).length?'<small style="color:#B3241A">↩ Obs da reabertura: "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</small>':'')
     +htmlUploadBetta(e)
     +(podeDevolver?'<div style="margin:5px 0 2px"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
+    +(podeReagendar(e)?'<div style="margin:5px 0 2px"><button type="button" class="btn-reagendar" style="border:1.5px solid var(--laranja);color:var(--laranja);background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">📅 Reagendar</button></div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
   if(!ehT){row.style.cursor='pointer';row.title='Clique para ver os detalhes';row.onclick=()=>abrirDetalheEv(e.id);return row;}
@@ -1282,6 +1335,7 @@ function linhaEventoDia(uid,e){
     };
   });
   ligarUploadBetta(row,e);
+  const bragMD=row.querySelector('.btn-reagendar');if(bragMD)bragMD.onclick=ev=>{ev.stopPropagation();reagendarTarefa(e);};
   const bdevMD=row.querySelector('.btn-devolver');
   if(bdevMD)bdevMD.onclick=ev=>{ev.stopPropagation();iniciarDevolucao(e,true);};
   row.querySelector('.ck-md').onchange=async ev=>{
@@ -1299,9 +1353,12 @@ function linhaEventoDia(uid,e){
   row.querySelectorAll('.dif-chips button').forEach(b=>{
     b.onclick=async ev=>{
       ev.preventDefault();ev.stopPropagation();
+      const obsC=prompt('Observação da conclusão (o que foi feito):');
+      if(obsC===null)return;
+      if(!obsC.trim()){alert('A observação é obrigatória para concluir.');return;}
       pendentes.delete(chave);
-      const updMD={concluida:true,concluida_em:new Date().toISOString()};
-      if(e.por&&e.por!==e.dono)updMD.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,quando:new Date().toISOString(),ciente:false}];
+      const updMD={concluida:true,concluida_em:new Date().toISOString(),concluida_obs:obsC.trim()};
+      if(e.por&&e.por!==e.dono)updMD.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,obs:obsC.trim(),quando:new Date().toISOString(),ciente:false}];
       const r1=await sb.from('agenda_eventos').update(updMD).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
       if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
@@ -1525,7 +1582,7 @@ function eventoEl(uid,e){
   div.innerHTML='<div class="hora">'+(ehTarefa?(perEv?'📌 '+perEv:'📌 tarefa'):(perEv?'🔒 '+perEv:e.ini+'–'+e.fim))+'</div><div class="det">'
     +'<div class="t" style="'+(e.concluida?'text-decoration:line-through;color:var(--tinta-suave)':'')+'">'
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
-    +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'
+    +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'+tagCategoria(e.categoria)
     +(urg?'<span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
     +(ehTarefa&&!e.concluida&&(e.reaberturas||[]).length?'<span class="prazo-tag u2">↩ reaberta p/ correção</span>':'')
     +(ehTarefa&&e.prazo&&(e.concluida)?'<span class="prazo-tag u0">prazo '+e.prazo.split('-').reverse().slice(0,2).join('/')+'</span>':'')
@@ -1543,6 +1600,7 @@ function eventoEl(uid,e){
       +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'')
     +htmlUploadBetta(e)
     +(ehTarefa&&!e.concluida&&podeConcluir&&e.por&&e.por!==e.dono?'<div style="margin:6px 0"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
+    +(podeReagendar(e)?'<div style="margin:6px 0"><button type="button" class="btn-reagendar" style="border:1.5px solid var(--laranja);color:var(--laranja);background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">📅 Reagendar</button></div>':'')
     +((e.fra===0||e.fra)?'<div class="n">🏪 '+(frqRotulo(e.fra)||'FRA '+e.fra)+'</div>':'')
     +(e.descricao?'<div class="n" style="white-space:pre-wrap">'+e.descricao+'</div>':'')
     +(outros.length?'<div class="n">👥 '+((uPorId(e.dono)||{}).nome||'—').split(' ')[0]+' + '+nomesPart+'</div>':'')
@@ -1577,6 +1635,7 @@ function eventoEl(uid,e){
     };
   });
   ligarUploadBetta(div,e);
+  const brag=div.querySelector('.btn-reagendar');if(brag)brag.onclick=ev=>{ev.stopPropagation();reagendarTarefa(e);};
   const bdev=div.querySelector('.btn-devolver');
   if(bdev)bdev.onclick=()=>iniciarDevolucao(e,false);
   const ck=div.querySelector('.ck-tarefa');
@@ -1597,9 +1656,12 @@ function eventoEl(uid,e){
   div.querySelectorAll('.dif-chips button').forEach(b=>{
     b.onclick=async ev=>{
       ev.preventDefault();ev.stopPropagation();
+      const obsC=prompt('Observação da conclusão (o que foi feito):');
+      if(obsC===null)return;
+      if(!obsC.trim()){alert('A observação é obrigatória para concluir.');return;}
       pendEv.delete(e.id);
-      const upd={concluida:true,concluida_em:new Date().toISOString()};
-      if(e.por&&e.por!==e.dono)upd.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,quando:new Date().toISOString(),ciente:false}];
+      const upd={concluida:true,concluida_em:new Date().toISOString(),concluida_obs:obsC.trim()};
+      if(e.por&&e.por!==e.dono)upd.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,obs:obsC.trim(),quando:new Date().toISOString(),ciente:false}];
       const r1=await sb.from('agenda_eventos').update(upd).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:e.dono||uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
       if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
@@ -1643,7 +1705,7 @@ function desenharAvisos(){
     const div=document.createElement('div');div.className='aviso-done';
     if(a.tipo==='reaberta'){div.style.background='#FDECEA';div.style.border='1px solid #E8B3AC';}
     const corH=a.tipo==='reaberta'?'#8C271E':'#3B6D11';
-    div.innerHTML='<span>'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'))
+    div.innerHTML='<span>'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')))
       +' <span style="color:'+corH+';font-size:12px">('+dt.toLocaleDateString('pt-BR').slice(0,5)+' às '+dt.toLocaleTimeString('pt-BR').slice(0,5)+')</span></span>'
       +'<button type="button">OK, ciente</button>';
     div.querySelector('button').onclick=async()=>{
@@ -1749,6 +1811,7 @@ function desenharEvParts(){
 let evSubsArr=[],devolverDe=null;
 let emModoBetta=false,evDadosEventoOrig=null;
 let SKUS_BETTA=[];
+let REGRAS_BETTA=[];
 function desenharEvSubs(){
   const box=$('evSubsLista');box.innerHTML='';
   evSubsArr.forEach((s,i)=>{
@@ -1766,8 +1829,9 @@ function atualizarCamposTipo(){
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
   $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
-  $('btnModeloBetta').style.display=tarefa?'inline-block':'none';
-  if(!tarefa){emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';}
+  const ehEvento=$('evTipo').value==='evento';
+  $('btnModeloBetta').style.display=ehEvento?'inline-block':'none';
+  if(!ehEvento){emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';}
 }
 function noDia(e,dia){return e.data===dia||(e.dataFim&&dia>=e.data&&dia<=e.dataFim);}
 function ocupadoEm(uid,dia,ignorarId){
@@ -1855,18 +1919,19 @@ async function addEvento(){
   }
   const subtarefas=ehTarefa?evSubsArr.map(s=>({id:s.id||novoId('s'),txt:s.txt,feita:!!s.feita})):[];
   const dadosEventoSalvar=emModoBetta?{...(evDadosEventoOrig||{}),custo_total:Number($('evCusto').value)||0}:(evDadosEventoOrig||null);
+  const categoria=tipo==='compromisso'?categorizarCompromisso(titulo):null;
   let error;
   if(editEvId){
-    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar}).eq('id',editEvId));
+    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar,categoria}).eq('id',editEvId));
   }else{
-    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar}));
+    ({error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria}));
   }
   if(error){erroDB(error);return;}
   if(devolverDe){
     const orig=todosEventosUnicos().find(x=>x.id===devolverDe);
     if(orig){
       const avs=[...(orig.avisos||[]),{id:novoId('av'),para:orig.por,tipo:'devolvida',por:usuarioAtual.id,titulo:orig.titulo,quando:new Date().toISOString(),ciente:false}];
-      await sb.from('agenda_eventos').update({concluida:true,concluida_em:new Date().toISOString(),avisos:avs}).eq('id',devolverDe);
+      await sb.from('agenda_eventos').update({concluida:true,concluida_em:new Date().toISOString(),concluida_obs:descricao||null,avisos:avs}).eq('id',devolverDe);
     }
     devolverDe=null;
   }
@@ -1987,7 +2052,18 @@ function abrirDetalheEv(id){
       +(dB.faturamento_direto==null?'<br><label class="btn claro" style="display:inline-flex;margin-top:4px;cursor:pointer">📎 Subir relatório de vendas (.xlsx)<input type="file" accept=".xlsx" id="evmBettaUp" style="display:none"></label>':'')
       +'</div>';
   }
-  if(ehT&&e.concluida&&e.concluidaEm)h+='<div class="evm-l">✅ Concluída em <b>'+fmtDtHr(e.concluidaEm)+'</b></div>';
+  if(e.tipo==='evento'){
+    const filhos=todosEventosUnicos().filter(x=>x.eventoPai===e.id);
+    if(filhos.length){
+      const feitos=filhos.filter(x=>x.concluida).length;
+      const atrasados=filhos.filter(x=>!x.concluida&&x.prazo&&x.prazo<chaveDia(agora())).length;
+      h+='<div class="evm-l"><b>Acompanhamento · '+feitos+' de '+filhos.length+' tarefas concluídas</b>'+(atrasados?' <span class="prazo-tag u3">'+atrasados+' atrasada'+(atrasados>1?'s':'')+'</span>':'')
+        +filhos.sort((a,b)=>(a.prazo||'').localeCompare(b.prazo||'')).map(x=>'<div class="evm-sub'+(x.concluida?' feita':'')+'">'+(x.concluida?'✅':(x.prazo&&x.prazo<chaveDia(agora())?'🔴':'⬜'))+' '+escHtml(x.titulo)+' <span style="color:var(--tinta-suave)">· prazo '+dBR(x.prazo)+' · '+escHtml(nomeDe(x.dono).split(' ')[0])+'</span></div>').join('')+'</div>';
+    }
+  }
+  if(ehT&&e.concluida&&e.concluidaEm)h+='<div class="evm-l">✅ Concluída em <b>'+fmtDtHr(e.concluidaEm)+'</b>'+(e.concluidaObs?'<br><span style="color:var(--tinta-suave)">obs: "'+escHtml(e.concluidaObs)+'"</span>':'')+'</div>';
+  if(ehT&&(e.reagendamentos||[]).length)h+='<div class="evm-l"><b>📅 Reagendamentos · '+e.reagendamentos.length+'</b>'
+    +e.reagendamentos.map(r=>'<div class="evm-sub">'+dBR(r.prazo_anterior)+' → '+dBR(r.prazo_novo)+' · '+escHtml((((uPorId(r.por)||{}).nome)||'—').split(' ')[0])+': "'+escHtml(r.obs||'')+'"</div>').join('')+'</div>';
   if(ehT&&(e.reaberturas||[]).length)h+='<div class="evm-l"><b>↩ Reaberturas pelo admin · '+e.reaberturas.length+'</b>'
     +e.reaberturas.map(r=>'<div class="evm-sub">'+fmtDtHr(r.quando)+' · '+escHtml((((uPorId(r.por)||{}).nome)||'—').split(' ')[0])+': "'+escHtml(r.obs||'')+'"</div>').join('')+'</div>';
   h+='<div class="evm-acoes">'
@@ -2104,6 +2180,31 @@ function desenharAgendaConferencia(lista){
   $('confPes').onchange=ev=>{confPessoa=ev.target.value;desenharAgenda();};
   $('confPerSel').onchange=ev=>{confPer=ev.target.value;desenharAgenda();};
 }
+function categorizarCompromisso(titulo){
+  const t=(titulo||'').toLowerCase();
+  if(/reuni[aã]o|reunir/.test(t))return 'reuniao';
+  if(/treinamento|treinar|capacita[cç][aã]o/.test(t))return 'treinamento';
+  if(/f[eé]rias/.test(t))return 'ferias';
+  if(/m[eé]dic[oa]|dentista|consulta|exame/.test(t))return 'medico';
+  return null;
+}
+const CAT_COMPROMISSO={reuniao:{txt:'reunião',bg:'var(--petroleo-suave)',fg:'var(--petroleo)'},treinamento:{txt:'treinamento',bg:'var(--verde-suave)',fg:'var(--verde)'},ferias:{txt:'férias',bg:'var(--laranja-suave)',fg:'var(--laranja)'},medico:{txt:'médico',bg:'var(--foco-suave)',fg:'var(--foco)'}};
+function tagCategoria(cat){if(!cat||!CAT_COMPROMISSO[cat])return'';const c=CAT_COMPROMISSO[cat];return ' <span class="prazo-tag" style="background:'+c.bg+';color:'+c.fg+'">'+c.txt+'</span>';}
+function podeReagendar(e){return e.tipo==='tarefa'&&!e.concluida&&e.prazo&&e.prazo<chaveDia(agora())&&(e.dono===usuarioAtual.id||usuarioAtual.admin);}
+async function reagendarTarefa(e){
+  const novaData=prompt('Nova data prevista (DD/MM/AAAA) para "'+e.titulo+'":');
+  if(!novaData)return;
+  const m=novaData.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m){alert('Data inválida. Use o formato DD/MM/AAAA.');return;}
+  const iso=m[3]+'-'+m[2]+'-'+m[1];
+  const obs=prompt('Motivo do reagendamento (obrigatório):');
+  if(obs===null)return;
+  if(!obs.trim()){alert('O motivo é obrigatório para reagendar.');return;}
+  const reg={id:novoId('rg'),por:usuarioAtual.id,quando:new Date().toISOString(),prazo_anterior:e.prazo,prazo_novo:iso,obs:obs.trim()};
+  const{error}=await sb.from('agenda_eventos').update({prazo:iso,prazo_avisado:false,reagendamentos:[...(e.reagendamentos||[]),reg]}).eq('id',e.id);
+  if(error){erroDB(error);return;}
+  await carregarAgenda();redesenharVistaAtiva();piscar();
+}
 async function reabrirTarefa(e){
   const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
   const obs=prompt('Reabrir a tarefa "'+e.titulo+'" para '+dono+'.\n\nObservação (motivo / o que corrigir) — obrigatória:');
@@ -2126,7 +2227,7 @@ function desenharHistoricoBetta(lista){
   const sec=document.createElement('div');sec.className='ag-sec';
   sec.innerHTML='🐟 Histórico de Eventos Betta <span class="qtd">'+itens.length+'</span>';
   lista.appendChild(sec);
-  if(!itens.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum Evento Betta com custo registrado ainda. Use o botão "🐟 Modelo: Evento Betta" ao criar a tarefa na Agenda.';lista.appendChild(p);return;}
+  if(!itens.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum Evento Betta com custo registrado ainda. Crie um Evento na Agenda e use o botão "🐟 Modelo: Evento Betta".';lista.appendChild(p);return;}
   let sC=0,sD=0,sV=0,pendentesUpload=0;
   itens.forEach(e=>{sC+=e.dadosEvento.custo_total||0;sD+=e.dadosEvento.faturamento_direto||0;sV+=e.dadosEvento.faturamento_carrinho||0;if(e.dadosEvento.faturamento_direto==null)pendentesUpload++;});
   const resumo=document.createElement('div');resumo.style.cssText='font-size:12.5px;color:var(--tinta-suave);margin:-4px 0 10px';
@@ -2138,7 +2239,8 @@ function desenharHistoricoBetta(lista){
     const div=document.createElement('div');div.className='evento ev-tarefa';div.dataset.evid=e.id;
     div.innerHTML='<div class="hora">🐟 '+e.data.split('-').reverse().slice(0,2).join('/')+'</div>'
       +'<div class="det"><div class="t">'+escHtml(e.titulo)+((e.fra===0||e.fra)?' <span class="st ideia">'+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+'</span>':'')+'</div>'
-      +'<div class="n">👤 '+escHtml(dono)+' · custo '+fmtReaisBetta(d.custo_total)+' · direto '+fmtReaisBetta(d.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(d))+') · carrinho '+fmtReaisBetta(d.faturamento_carrinho)+' ('+fmtRoiTxt(roiCarrinho(d))+')</div></div>';
+      +'<div class="n">👤 '+escHtml(dono)+' · custo '+fmtReaisBetta(d.custo_total)+(d.pedido_num?' (pedido #'+escHtml(d.pedido_num)+')':'')+' · direto '+fmtReaisBetta(d.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(d))+') · carrinho '+fmtReaisBetta(d.faturamento_carrinho)+' ('+fmtRoiTxt(roiCarrinho(d))+')'
+      +' · tarefas '+todosEventosUnicos().filter(x=>x.eventoPai===e.id&&x.concluida).length+'/'+todosEventosUnicos().filter(x=>x.eventoPai===e.id).length+'</div></div>';
     div.onclick=()=>abrirDetalheEv(e.id);
     lista.appendChild(div);
   });
@@ -2931,7 +3033,7 @@ function fmtH(h){if(h<1)return Math.round(h*60)+' min';if(h<48)return h.toFixed(
 /* ================================================================
    ADMIN
 ================================================================ */
-function desenharAdmin(){desenharUsuarios();desenharFrqAdmin();desenharSkusBetta();desenharLog();}
+function desenharAdmin(){desenharUsuarios();desenharFrqAdmin();desenharSkusBetta();desenharRegrasBetta();desenharLog();}
 function frqForm(f){
   const v=k=>f&&f[k]!=null?String(f[k]).replace(/"/g,'&quot;'):'';
   const box=document.createElement('div');
@@ -3003,6 +3105,48 @@ function desenharSkusBetta(){
     if(!cod||!nome){alert('Preencha o código e o nome do produto.');return;}
     const{error}=await sb.from('skus_evento_betta').insert({cod_produto:cod,produto:nome});
     if(error)erroDB(error);else{await carregarSkusBetta();desenharSkusBetta();piscar();}
+  };
+}
+function desenharRegrasBetta(){
+  const t=$('tabRegrasBetta');if(!t)return;
+  const OPCOES=[['dias_antes','dias antes'],['dias_depois','dias depois'],['dia_evento','dia do evento'],['dia_criacao','dia da criação'],['proxima_segunda','próxima segunda'],['proxima_quarta','próxima quarta']];
+  t.innerHTML='<tr><th>Ordem</th><th>Título da tarefa</th><th>Regra</th><th>Dias</th><th>Ativo</th><th></th></tr>';
+  REGRAS_BETTA.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><input type="number" value="'+(r.ordem||0)+'" style="width:50px"></td>'
+      +'<td><input value="'+escHtml(r.titulo)+'" style="width:220px"></td>'
+      +'<td><select>'+OPCOES.map(o=>'<option value="'+o[0]+'"'+(r.regra===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></td>'
+      +'<td><input type="number" value="'+(r.dias??'')+'" style="width:55px"></td>'
+      +'<td><input type="checkbox" '+(r.ativo!==false?'checked':'')+'></td>'
+      +'<td><button class="btn claro" style="padding:2px 10px;font-size:12px">Remover</button></td>';
+    const inOrdem=tr.querySelector('input[type=number]');
+    const inTitulo=tr.querySelector('input:not([type])');
+    const selRegra=tr.querySelector('select');
+    const inDiasEl=tr.querySelectorAll('input[type=number]')[1];
+    const inAtivo=tr.querySelector('input[type=checkbox]');
+    const bx=tr.querySelector('button');
+    const salvar=async campo=>{
+      const upd={ordem:Number(inOrdem.value)||0,titulo:inTitulo.value.trim(),regra:selRegra.value,dias:inDiasEl.value===''?null:Number(inDiasEl.value),ativo:inAtivo.checked};
+      const{error}=await sb.from('regras_evento_betta').update(upd).eq('id',r.id);
+      if(error)erroDB(error);else{Object.assign(r,upd);piscar();}
+    };
+    inOrdem.onchange=()=>salvar('ordem');inTitulo.onchange=()=>salvar('titulo');selRegra.onchange=()=>salvar('regra');inDiasEl.onchange=()=>salvar('dias');inAtivo.onchange=()=>salvar('ativo');
+    bx.onclick=async()=>{if(!confirm('Remover a regra "'+r.titulo+'"?'))return;const{error}=await sb.from('regras_evento_betta').delete().eq('id',r.id);if(error)erroDB(error);else{await carregarRegrasBetta();desenharRegrasBetta();piscar();}};
+    t.appendChild(tr);
+  });
+  const trNovo=document.createElement('tr');
+  trNovo.innerHTML='<td><input type="number" id="regNovoOrdem" value="'+(REGRAS_BETTA.length+1)+'" style="width:50px"></td>'
+    +'<td><input id="regNovoTitulo" placeholder="Título da nova tarefa" style="width:220px"></td>'
+    +'<td><select id="regNovoRegra">'+OPCOES.map(o=>'<option value="'+o[0]+'">'+o[1]+'</option>').join('')+'</select></td>'
+    +'<td><input type="number" id="regNovoDias" placeholder="0" style="width:55px"></td><td></td>'
+    +'<td><button class="btn laranja" id="btnRegraSalvar" style="padding:2px 10px;font-size:12px">Adicionar</button></td>';
+  t.appendChild(trNovo);
+  $('btnRegraSalvar').onclick=async()=>{
+    const titulo=$('regNovoTitulo').value.trim();
+    if(!titulo){alert('Preencha o título da tarefa.');return;}
+    const ins={ordem:Number($('regNovoOrdem').value)||0,titulo,regra:$('regNovoRegra').value,dias:$('regNovoDias').value===''?null:Number($('regNovoDias').value),ativo:true};
+    const{error}=await sb.from('regras_evento_betta').insert(ins);
+    if(error)erroDB(error);else{await carregarRegrasBetta();desenharRegrasBetta();piscar();}
   };
 }
 function desenharUsuarios(){
@@ -3161,7 +3305,7 @@ ligarAbas();
   $('btnEntrar').onclick=entrar;
   $('loginSenha').addEventListener('keydown',e=>{if(e.key==='Enter')entrar();});
   $('btnSair').onclick=sair;
-  $('btnAddEvento').onclick=addEvento;
+  $('btnAddEvento').onclick=()=>{if(emModoBetta&&!editEvId)salvarEventoBetta();else addEvento();};
   $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';};
   $('btnEvSubAdd').onclick=()=>{const t=$('evSubNovo').value.trim();if(!t)return;evSubsArr.push({id:novoId('s'),txt:t,feita:false});$('evSubNovo').value='';desenharEvSubs();};
   $('evSubNovo').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('btnEvSubAdd').click();}});
@@ -3171,6 +3315,7 @@ ligarAbas();
   $('evFra').addEventListener('change',()=>{if(!$('evFra').value.trim())evFraSel=null;});
   const bFq=$('btnFrqNova');if(bFq)bFq.onclick=()=>{frqNovaOn=true;frqEdit=null;desenharFrqAdmin();};
   const bSkuNovo=$('btnSkuNovo');if(bSkuNovo)bSkuNovo.onclick=()=>{const el=$('skuNovoCod');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});if(el)el.focus();};
+  const bRegraNovo=$('btnRegraNova');if(bRegraNovo)bRegraNovo.onclick=()=>{const el=$('regNovoTitulo');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});if(el)el.focus();};
   const iFq=$('frqBusca');if(iFq)iFq.oninput=()=>{clearTimeout(window._fqT);window._fqT=setTimeout(desenharFrqAdmin,250);};
   $('agData').onchange=desenharAgenda;
   $('agData2').onchange=desenharAgenda;
@@ -3178,10 +3323,21 @@ ligarAbas();
   $('evTipo').onchange=()=>{atualizarCamposTipo();desenharEvParts();};
   $('btnModeloBetta').onclick=()=>{
     emModoBetta=true;
-    evSubsArr=MODELO_EVENTO_BETTA.map(txt=>({id:novoId('s'),txt,feita:false}));
-    desenharEvSubs();
     $('evCustoLbl').style.display='inline-flex';
     if(!$('evTitulo').value.trim())$('evTitulo').value='Evento Betta';
+    const n=REGRAS_BETTA.filter(r=>r.ativo!==false).length;
+    alert('Modo Evento Betta ativado.\n\nAo salvar, '+n+' tarefa(s) serão geradas automaticamente com prazo calculado a partir da data do evento (regras em Admin → Regras do Evento Betta).\n\nSuba o PDF do pedido de compra para preencher o custo, ou digite manualmente.');
+  };
+  $('inputPdfBetta').onchange=async ev=>{
+    const f=ev.target.files[0];if(!f)return;
+    $('btnPdfBettaNome').textContent='Lendo '+f.name+'…';
+    try{
+      const r=await extrairValorPDF(f);
+      if(!r||r.valor==null){$('btnPdfBettaNome').textContent='';alert('Não consegui achar "VALOR TOTAL" nesse PDF. Confirme o arquivo ou digite o custo manualmente.');return;}
+      $('evCusto').value=r.valor;
+      pdfBettaExtra={pedido_num:r.pedido_num};
+      $('btnPdfBettaNome').textContent='✓ '+f.name+(r.pedido_num?' · pedido #'+r.pedido_num:'')+' — confira o valor antes de salvar';
+    }catch(err){$('btnPdfBettaNome').textContent='';alert('Não consegui ler esse PDF. Confirme que é o pedido gerado pela Central de Compras, ou digite o custo manualmente.');}
   };
   $('evQuem').onchange=desenharEvParts;
   $('rotPessoa').onchange=desenharRotina;

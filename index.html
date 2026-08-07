@@ -63,6 +63,14 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 #insAlertas{grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}
 #insAlertas .card .valor{font-size:24px}
 .card{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}
+.card.kpi-clicavel{cursor:pointer;transition:transform .1s,box-shadow .1s}
+.card.kpi-clicavel:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.modal-box{background:#fff;border-radius:14px;padding:22px 24px;max-width:720px;width:100%;max-height:85vh;overflow-y:auto;position:relative}
+.modal-fechar{position:absolute;top:14px;right:16px;border:none;background:transparent;font-size:22px;cursor:pointer;color:var(--tinta-suave);line-height:1}
+.modal-fechar:hover{color:var(--tinta)}
+.fin-total-somado{font-size:14px;color:var(--tinta-suave);margin:4px 0 16px}
+.fin-total-somado b{color:var(--tinta);font-size:16px}
 .card .rotulo{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tinta-suave);margin-bottom:4px}
 .card .valor{font-family:'Archivo',sans-serif;font-weight:800;font-size:19px}
 .card .sub{font-size:12px;color:var(--tinta-suave);margin-top:2px}
@@ -717,6 +725,7 @@ details.recolhe[open] summary{margin-bottom:8px}
         </label>
       </div>
       <p class="aviso" id="finInadMesRef"></p>
+      <p class="fin-total-somado" id="finInadTotal"></p>
       <h2 class="sec">Mapa de calor por faixa de atraso</h2>
       <div class="painel">
         <div style="overflow-x:auto"><table class="rot-tab" id="finInadHeat"></table></div>
@@ -732,9 +741,17 @@ details.recolhe[open] summary{margin-bottom:8px}
           <input type="file" accept=".xls,.xlsx" id="finUploadReceb" style="display:none">
         </label>
       </div>
+      <p class="fin-total-somado" id="finRecebTotal"></p>
       <h2 class="sec">Receita recebida por mês</h2>
       <div class="painel">
         <div style="overflow-x:auto"><table class="rot-tab" id="finRecebTab"></table></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay" style="display:none">
+      <div class="modal-box">
+        <button class="modal-fechar" id="modalFechar">✕</button>
+        <div id="modalConteudo"></div>
       </div>
     </div>
   </div>
@@ -2899,8 +2916,21 @@ function ligarSubAbasFinanceiro(){
   const i1=$('finUploadFat');   if(i1)i1.onchange=ev=>{processarUploadFaturamento(ev.target.files[0]);ev.target.value='';};
   const i2=$('finUploadInad');  if(i2)i2.onchange=ev=>{processarUploadInadimplencia(ev.target.files[0]);ev.target.value='';};
   const i3=$('finUploadReceb'); if(i3)i3.onchange=ev=>{processarUploadRecebidos(ev.target.files[0]);ev.target.value='';};
+  const mf=$('modalFechar'); if(mf)mf.onclick=fecharModalFin;
+  const mo=$('modalOverlay'); if(mo)mo.onclick=ev=>{if(ev.target===mo)fecharModalFin();};
 }
 function normCliente(s){return(s||'').toString().trim().toUpperCase().replace(/\s+/g,' ');}
+function abrirModalFin(titulo,htmlConteudo){
+  $('modalConteudo').innerHTML='<h2 class="sec" style="margin-top:0">'+titulo+'</h2>'+htmlConteudo;
+  $('modalOverlay').style.display='flex';
+}
+function fecharModalFin(){$('modalOverlay').style.display='none';}
+function tabelaSimplesFin(linhas,cols){
+  return'<div style="overflow-x:auto"><table class="rot-tab">'
+    +'<tr>'+cols.map(c=>'<th>'+c.titulo+'</th>').join('')+'</tr>'
+    +linhas.map(l=>'<tr>'+cols.map(c=>'<td>'+c.render(l)+'</td>').join('')+'</tr>').join('')
+    +'</table></div>';
+}
 async function desenharFinanceiro(){
   ligarSubAbasFinanceiro();
   const[{data:fatData},{data:inadData},{data:recebData},{data:mapaData}]=await Promise.all([
@@ -2912,33 +2942,56 @@ async function desenharFinanceiro(){
   const FAT=fatData||[],INAD=inadData||[],RECEB=recebData||[],MAPA=mapaData||[];
   const mapaLookup={};MAPA.forEach(m=>mapaLookup[m.cliente_norm]=m.fra);
 
-  const linhasFat=desenharFinFaturamento(FAT);
-  const linhasInad=desenharFinInadimplencia(INAD,mapaLookup);
-  const linhasReceb=desenharFinReceita(RECEB);
-  desenharFinKpis(linhasFat,linhasInad,linhasReceb);
+  const infoFat=desenharFinFaturamento(FAT);
+  const infoInad=desenharFinInadimplencia(INAD,mapaLookup);
+  const infoReceb=desenharFinReceita(RECEB);
+  desenharFinKpis(infoFat,infoInad,infoReceb);
 }
-function desenharFinKpis(linhasFat,infoInad,infoReceb){
-  const faturamentoTotal=(linhasFat.linhas||[]).reduce((s,l)=>s+(l.valorAtual||0),0);
-  const faturamentoAnterior=(linhasFat.linhas||[]).reduce((s,l)=>s+(l.valorAnterior||0),0);
+function desenharFinKpis(infoFat,infoInad,infoReceb){
+  const linhas=infoFat.linhas||[];
+  const faturamentoTotal=linhas.reduce((s,l)=>s+(l.valorAtual||0),0);
+  const faturamentoAnterior=linhas.reduce((s,l)=>s+(l.valorAnterior||0),0);
   const varTotalPct=faturamentoAnterior?Math.round((faturamentoTotal-faturamentoAnterior)/faturamentoAnterior*100):null;
-  const qtdRecorde=(linhasFat.linhas||[]).filter(l=>l.bateuRecorde).length;
+  const recordistas=linhas.filter(l=>l.bateuRecorde);
+  const historicoTotalRede=linhas.reduce((s,l)=>s+(l.historicoTotal||0),0);
 
+  const vinculadas=infoInad.vinculadas||[];
+  const naoVinculadas=infoInad.naoVinculadas||[];
   const inadVinculado=infoInad.totalVinculado||0;
+  const inadTotalGeral=infoInad.totalGeral||0;
   const pctInad=faturamentoTotal?(inadVinculado/faturamentoTotal*100):null;
-  const lojasCriticas=infoInad.lojasCriticas||0;
+  const criticas=vinculadas.filter(c=>c.acima_180>0);
 
+  const recebPorLoja=infoReceb.porLojaMesAtual||[];
   const recebMesAtual=infoReceb.totalMesAtual||0;
 
+  const colFat=[{titulo:'Loja',render:l=>l.nome},{titulo:'Valor',render:l=>'<b>'+fmtReaisFin(l.valorAtual)+'</b>'}];
+  const colVar=[{titulo:'Loja',render:l=>l.nome},{titulo:'Mês atual',render:l=>fmtReaisFin(l.valorAtual)},{titulo:'Variação',render:l=>{const p=(l.valorAtual!=null&&l.valorAnterior)?Math.round((l.valorAtual-l.valorAnterior)/l.valorAnterior*100):null;return p==null?'—':((p>=0?'▲ +':'▼ ')+p+'%');}}];
+  const colInad=[{titulo:'Loja',render:c=>c.nome},{titulo:'Total vencido',render:c=>'<b>'+fmtReaisFin(c.valor_vencido)+'</b>'},{titulo:'+180 dias',render:c=>fmtReaisFin(c.acima_180)}];
+  const colReceb=[{titulo:'Loja',render:r=>r.nome},{titulo:'Recebido no mês',render:r=>'<b>'+fmtReaisFin(r.valor)+'</b>'}];
+  const colHist=[{titulo:'Loja',render:l=>l.nome},{titulo:'Total faturado (histórico)',render:l=>'<b>'+fmtReaisFin(l.historicoTotal)+'</b>'}];
+
   const kpis=[
-    {rot:'Faturamento da rede (mês)',val:fmtReaisFin(faturamentoTotal),sub:linhasFat.mesLabel||'—',nivel:'ok'},
-    {rot:'Variação vs. mês anterior',val:varTotalPct==null?'—':((varTotalPct>=0?'▲ +':'▼ ')+varTotalPct+'%'),sub:'rede toda',nivel:varTotalPct==null?'warn':(varTotalPct>=0?'ok':'bad')},
-    {rot:'Lojas com recorde no mês',val:String(qtdRecorde),sub:'histórico batido',nivel:qtdRecorde>0?'ok':'warn'},
-    {rot:'Inadimplência vinculada',val:fmtReaisFin(inadVinculado),sub:infoInad.mesLabel||'—',nivel:'bad'},
-    {rot:'% inadimplência s/ faturamento',val:pctInad==null?'—':pctInad.toFixed(1)+'%',sub:'saúde da rede',nivel:pctInad==null?'warn':(pctInad<3?'ok':pctInad<7?'warn':'bad')},
-    {rot:'Receita recebida (mês)',val:fmtReaisFin(recebMesAtual),sub:infoReceb.mesLabel||'—',nivel:'ok'},
-    {rot:'Lojas em risco crítico (+180d)',val:String(lojasCriticas),sub:'atraso severo',nivel:lojasCriticas>0?'bad':'ok'}
+    {rot:'Faturamento da rede (mês)',val:fmtReaisFin(faturamentoTotal),sub:infoFat.mesLabel||'—',nivel:'ok',
+      detalhe:()=>abrirModalFin('Faturamento por loja — '+(infoFat.mesLabel||''),tabelaSimplesFin([...linhas].sort((a,b)=>(b.valorAtual||0)-(a.valorAtual||0)),colFat))},
+    {rot:'Variação vs. mês anterior',val:varTotalPct==null?'—':((varTotalPct>=0?'▲ +':'▼ ')+varTotalPct+'%'),sub:'rede toda',nivel:varTotalPct==null?'warn':(varTotalPct>=0?'ok':'bad'),
+      detalhe:()=>abrirModalFin('Variação por loja vs. mês anterior',tabelaSimplesFin([...linhas].filter(l=>l.valorAtual!=null&&l.valorAnterior).sort((a,b)=>((b.valorAtual-b.valorAnterior)/b.valorAnterior)-((a.valorAtual-a.valorAnterior)/a.valorAnterior)),colVar))},
+    {rot:'Lojas com recorde no mês',val:String(recordistas.length),sub:'histórico batido',nivel:recordistas.length>0?'ok':'warn',
+      detalhe:()=>abrirModalFin('Lojas que bateram recorde histórico',recordistas.length?tabelaSimplesFin(recordistas,colFat):'<p class="vazio">Nenhuma loja bateu recorde neste mês.</p>')},
+    {rot:'Inadimplência vinculada',val:fmtReaisFin(inadVinculado),sub:infoInad.mesLabel||'—',nivel:'bad',
+      detalhe:()=>abrirModalFin('Inadimplência por loja — '+(infoInad.mesLabel||''),vinculadas.length?tabelaSimplesFin(vinculadas,colInad):'<p class="vazio">Sem dados.</p>')},
+    {rot:'% inadimplência s/ faturamento',val:pctInad==null?'—':pctInad.toFixed(1)+'%',sub:'saúde da rede',nivel:pctInad==null?'warn':(pctInad<3?'ok':pctInad<7?'warn':'bad'),
+      detalhe:()=>abrirModalFin('% inadimplência sobre faturamento','<p class="aviso">Inadimplência vinculada ('+fmtReaisFin(inadVinculado)+') dividida pelo faturamento do mês ('+fmtReaisFin(faturamentoTotal)+'). Considera só clientes já vinculados a uma loja — '+fmtReaisFin(inadTotalGeral-inadVinculado)+' ainda não vinculados não entram nessa conta.</p>'+tabelaSimplesFin(vinculadas,colInad))},
+    {rot:'Receita recebida (mês)',val:fmtReaisFin(recebMesAtual),sub:infoReceb.mesLabel||'—',nivel:'ok',
+      detalhe:()=>abrirModalFin('Receita recebida por loja — '+(infoReceb.mesLabel||''),recebPorLoja.length?tabelaSimplesFin(recebPorLoja,colReceb):'<p class="vazio">Sem dados.</p>')},
+    {rot:'Lojas em risco crítico (+180d)',val:String(criticas.length),sub:'atraso severo',nivel:criticas.length>0?'bad':'ok',
+      detalhe:()=>abrirModalFin('Lojas com inadimplência acima de 180 dias',criticas.length?tabelaSimplesFin(criticas,colInad):'<p class="vazio">Nenhuma loja em risco crítico.</p>')},
+    {rot:'Faturamento histórico da rede',val:fmtReaisFin(historicoTotalRede),sub:'desde o início dos dados',nivel:'ok',
+      detalhe:()=>abrirModalFin('Faturamento histórico total por loja',tabelaSimplesFin([...linhas].sort((a,b)=>(b.historicoTotal||0)-(a.historicoTotal||0)),colHist))}
   ];
-  $('finKpis').innerHTML=kpis.map(k=>kpiSemaforo(k.rot,k.val,k.sub,k.nivel)).join('');
+  $('finKpis').innerHTML=kpis.map((k,i)=>'<div onclick="window.__finKpiClick('+i+')">'+kpiSemaforo(k.rot,k.val,k.sub,k.nivel)+'</div>').join('')
+    .replace(/<div class="card /g,'<div class="card kpi-clicavel ');
+  window.__finKpiClick=(i)=>kpis[i].detalhe();
 }
 function desenharFinFaturamento(FAT){
   if(!FAT.length){
@@ -2961,6 +3014,7 @@ function desenharFinFaturamento(FAT){
     const anterior=hist.find(h=>h.mes_ano===mesAntISO);
     const recorde=hist.reduce((max,h)=>h.valor>(max?max.valor:-1)?h:max,null);
     const bateuRecorde=atual&&recorde&&recorde.mes_ano===mesAtualISO&&hist.length>1;
+    const historicoTotal=hist.reduce((s,h)=>s+(h.valor||0),0);
     const fr=frqPorId(fra);
     return{
       fra,nome:fr?fr.nome:('FRA '+fra+' (fora do cadastro atual)'),
@@ -2969,7 +3023,7 @@ function desenharFinFaturamento(FAT){
       valorAnterior:anterior?anterior.valor:null,
       recordeValor:recorde?recorde.valor:null,
       recordeMes:recorde?recorde.mes_ano:null,
-      bateuRecorde
+      bateuRecorde,historicoTotal
     };
   }).filter(l=>l.ativa)
     .sort((a,b)=>(b.valorAtual||0)-(a.valorAtual||0));
@@ -2983,7 +3037,7 @@ function desenharFinFaturamento(FAT){
     :'';
 
   $('finFatTab').innerHTML=
-    '<tr><th>FRA</th><th>Loja</th><th>'+mesLabelFin(mesAtualISO)+'</th><th>vs. mês anterior</th><th>Recorde histórico</th><th>Status</th></tr>'
+    '<tr><th>FRA</th><th>Loja</th><th>'+mesLabelFin(mesAtualISO)+'</th><th>vs. mês anterior</th><th>Recorde histórico</th><th>Total faturado (toda a história)</th><th>Status</th></tr>'
     +linhas.map(l=>{
       const varPct=(l.valorAtual!=null&&l.valorAnterior)?Math.round((l.valorAtual-l.valorAnterior)/l.valorAnterior*100):null;
       const varTxt=varPct==null?'—':((varPct>=0?'▲ +':'▼ ')+varPct+'%');
@@ -2995,6 +3049,7 @@ function desenharFinFaturamento(FAT){
         +'<td><b>'+fmtReaisFin(l.valorAtual)+'</b></td>'
         +'<td style="'+varCor+'">'+varTxt+'</td>'
         +'<td>'+fmtReaisFin(l.recordeValor)+(l.recordeMes?' <span style="color:var(--tinta-suave);font-size:11px">('+mesLabelFin(l.recordeMes)+')</span>':'')+'</td>'
+        +'<td><b>'+fmtReaisFin(l.historicoTotal)+'</b></td>'
         +'<td>'+status+'</td>'
         +'</tr>';
     }).join('');
@@ -3010,14 +3065,14 @@ function desenharFinInadimplencia(INAD,mapaLookup){
   if(!INAD.length){
     $('finInadHeat').innerHTML='';
     $('finInadMesRef').textContent='Nenhum dado de inadimplência carregado ainda. Use "Atualizar inadimplência" pra subir o relatório do Conta Azul.';
+    $('finInadTotal').innerHTML='';
     $('finInadNaoVinc').innerHTML='';
-    return{totalVinculado:0,lojasCriticas:0,mesLabel:null};
+    return{totalVinculado:0,totalGeral:0,lojasCriticas:0,mesLabel:null,vinculadas:[],naoVinculadas:[]};
   }
   const mesRef=INAD[0].mes_referencia;
   const doMes=INAD.filter(i=>i.mes_referencia===mesRef);
   $('finInadMesRef').textContent='Snapshot de: '+mesLabelFin(mesRef)+' · '+doMes.length+' lançamentos';
 
-  // resolve fra: já vem da tabela, ou via vínculo manual salvo depois do upload original
   const porCliente={};
   doMes.forEach(i=>{
     const fra=i.fra||mapaLookup[i.cliente_norm]||null;
@@ -3030,6 +3085,10 @@ function desenharFinInadimplencia(INAD,mapaLookup){
   const todas=Object.values(porCliente).sort((a,b)=>b.valor_vencido-a.valor_vencido);
   const vinculadas=todas.filter(c=>c.fra);
   const naoVinculadas=todas.filter(c=>!c.fra&&c.valor_vencido>0);
+  const totalVinculado=vinculadas.reduce((s,c)=>s+c.valor_vencido,0);
+  const totalGeral=todas.reduce((s,c)=>s+c.valor_vencido,0);
+
+  $('finInadTotal').innerHTML='Total vencido vinculado a lojas: <b>'+fmtReaisFin(totalVinculado)+'</b> · Total geral (incl. não vinculado): <b>'+fmtReaisFin(totalGeral)+'</b>';
 
   const maxCol={ate_30:Math.max(1,...todas.map(c=>c.ate_30)),d31_60:Math.max(1,...todas.map(c=>c.d31_60)),d61_90:Math.max(1,...todas.map(c=>c.d61_90)),d91_180:Math.max(1,...todas.map(c=>c.d91_180)),acima_180:Math.max(1,...todas.map(c=>c.acima_180))};
 
@@ -3071,24 +3130,38 @@ function desenharFinInadimplencia(INAD,mapaLookup){
     $('finInadNaoVinc').innerHTML='';
   }
 
-  const totalVinculado=vinculadas.reduce((s,c)=>s+c.valor_vencido,0);
   const lojasCriticas=vinculadas.filter(c=>c.acima_180>0).length;
-  return{totalVinculado,lojasCriticas,mesLabel:mesLabelFin(mesRef)};
+  return{totalVinculado,totalGeral,lojasCriticas,mesLabel:mesLabelFin(mesRef),vinculadas,naoVinculadas};
 }
 function desenharFinReceita(RECEB){
   if(!RECEB.length){
     $('finRecebTab').innerHTML='';
-    return{totalMesAtual:0,mesLabel:null};
+    $('finRecebTotal').innerHTML='';
+    return{totalMesAtual:0,mesLabel:null,porLojaMesAtual:[]};
   }
   const porMes={};
   RECEB.forEach(r=>{porMes[r.mes_ano]=(porMes[r.mes_ano]||0)+Number(r.valor||0);});
-  const meses=Object.keys(porMes).sort((a,b)=>b.localeCompare(a)).slice(0,13); // últimos 13 meses
+  const mesesTodos=Object.keys(porMes).sort((a,b)=>b.localeCompare(a));
+  const meses=mesesTodos.slice(0,13); // últimos 13 meses na tabela
+  const totalGeral=Object.values(porMes).reduce((s,v)=>s+v,0);
+  $('finRecebTotal').innerHTML='Total recebido em todo o histórico ('+mesesTodos.length+' meses): <b>'+fmtReaisFin(totalGeral)+'</b>';
+
   const maxV=Math.max(1,...meses.map(m=>porMes[m]));
   $('finRecebTab').innerHTML=
     '<tr><th>Mês</th><th>Receita recebida</th><th></th></tr>'
     +meses.map(m=>'<tr><td>'+mesLabelFin(m)+'</td><td><b>'+fmtReaisFin(porMes[m])+'</b></td>'
       +'<td style="width:40%"><div style="background:var(--verde);height:14px;border-radius:4px;width:'+Math.round(porMes[m]/maxV*100)+'%"></div></td></tr>').join('');
-  return{totalMesAtual:porMes[meses[0]]||0,mesLabel:mesLabelFin(meses[0])};
+
+  const mesAtual=mesesTodos[0];
+  const porLojaMesAtual=RECEB.filter(r=>r.mes_ano===mesAtual&&r.fra)
+    .reduce((acc,r)=>{
+      const ex=acc.find(a=>a.fra===r.fra);
+      if(ex)ex.valor+=Number(r.valor||0);
+      else acc.push({fra:r.fra,nome:frqPorId(r.fra)?frqPorId(r.fra).nome:('FRA '+r.fra),valor:Number(r.valor||0)});
+      return acc;
+    },[]).sort((a,b)=>b.valor-a.valor);
+
+  return{totalMesAtual:porMes[mesAtual]||0,mesLabel:mesLabelFin(mesAtual),porLojaMesAtual};
 }
 async function processarUploadFaturamento(file){
   if(!file)return;
@@ -3200,12 +3273,22 @@ async function processarUploadRecebidos(file){
   const cnpjPorFra={};(FRQ||[]).forEach(f=>{if(f.cnpj)cnpjPorFra[String(f.cnpj).replace(/\D/g,'')]=f.fra;});
 
   const agregado={}; // chave: cnpj|mes
-  let ignoradas=0;
+  let ignoradas=0,saneadas=0;
   for(const l of linhas){
     const idRaw=l['Identificador do fornecedor/cliente'];
-    const dataComp=l['Data de competência'];
+    let dataComp=l['Data de competência'];
+    const dataMov=l['Data movimento'];
     const valor=Number(l['Valor (R$)']);
     if(idRaw==null||!dataComp||!Number.isFinite(valor)){ignoradas++;continue;}
+    // saneamento: competência não pode ficar depois do movimento (impossível, indica erro de digitação no Conta Azul)
+    if(dataMov){
+      const[dc,mc,ac]=String(dataComp).split('/').map(Number);
+      const[dm,mm,am]=String(dataMov).split('/').map(Number);
+      if(dc&&dm){
+        const diffDias=(new Date(ac,mc-1,dc)-new Date(am,mm-1,dm))/86400000;
+        if(diffDias>30){dataComp=dataMov;saneadas++;}
+      }
+    }
     const cnpj=String(Math.round(Number(idRaw))).padStart(14,'0');
     const partes=String(dataComp).split('/'); // DD/MM/AAAA
     if(partes.length!==3){ignoradas++;continue;}
@@ -3220,7 +3303,7 @@ async function processarUploadRecebidos(file){
   const vinculados=registros.filter(r=>r.fra).length;
   const valorTotal=registros.reduce((s,r)=>s+r.valor,0);
   const valorVinc=registros.filter(r=>r.fra).reduce((s,r)=>s+r.valor,0);
-  if(!confirm('Vou gravar '+registros.length+' registros mensais de receita (de '+linhas.length+' lançamentos, '+ignoradas+' ignorados por dado incompleto).\n\n'+vinculados+' de '+registros.length+' grupos já batem com uma loja pelo CNPJ, cobrindo '+fmtReaisFin(valorVinc)+' de '+fmtReaisFin(valorTotal)+' em valor.\n\nConfirma?'))return;
+  if(!confirm('Vou gravar '+registros.length+' registros mensais de receita (de '+linhas.length+' lançamentos, '+ignoradas+' ignorados por dado incompleto'+(saneadas?', '+saneadas+' com data de competência corrigida por inconsistência':'')+').\n\n'+vinculados+' de '+registros.length+' grupos já batem com uma loja pelo CNPJ, cobrindo '+fmtReaisFin(valorVinc)+' de '+fmtReaisFin(valorTotal)+' em valor.\n\nConfirma?'))return;
   const{error}=await sb.from('financeiro_recebidos_mensal').upsert(registros,{onConflict:'cnpj,mes_ano'});
   if(error){alert('Erro ao salvar: '+error.message);return;}
   piscar();

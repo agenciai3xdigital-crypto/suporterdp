@@ -392,6 +392,7 @@ details.recolhe[open] summary{margin-bottom:8px}
 
 .bd-evento{border-left:4px solid var(--verde);border-radius:0 12px 12px 0}
 .bd-evento .ev-data{font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;color:var(--verde);background:var(--verde-suave);border-radius:8px;padding:3px 9px}
+.bd-evento .ev-fr{font-weight:700;font-size:12.5px;color:var(--laranja);background:var(--laranja-suave);border-radius:8px;padding:3px 9px;white-space:nowrap}
 
 .aviso{font-size:12px;color:var(--tinta-suave);margin-top:16px;text-align:center}
 .status-salvo{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none}
@@ -694,25 +695,24 @@ details.recolhe[open] summary{margin-bottom:8px}
 
     <div class="ag-topo">
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="finSubAbas">
-        <button class="fin-sub ativa" data-fin="faturamento">📈 Faturamento</button>
+        <button class="fin-sub ativa" data-fin="receita">💰 Receita</button>
         <button class="fin-sub" data-fin="inadimplencia">🚨 Inadimplência</button>
-        <button class="fin-sub" data-fin="receita">💰 Receita</button>
+        <button class="fin-sub" data-fin="faturamento">📈 Faturamento</button>
       </div>
     </div>
 
-    <div id="fin-faturamento" class="fin-painel-sub">
+    <div id="fin-receita" class="fin-painel-sub">
       <div class="ag-topo">
         <span class="esp"></span>
         <label class="btn claro" style="display:inline-flex;cursor:pointer">
-          ⬆️ Atualizar faturamento (.xlsx)
-          <input type="file" accept=".xlsx" id="finUploadFat" style="display:none">
+          ⬆️ Atualizar recebidos (.xls/.xlsx)
+          <input type="file" accept=".xls,.xlsx" id="finUploadReceb" style="display:none">
         </label>
       </div>
-      <div id="finRecordeBanner"></div>
-      <h2 class="sec">Faturamento por loja</h2>
-      <p class="aviso" id="finFatMesRef"></p>
+      <p class="fin-total-somado" id="finRecebTotal"></p>
+      <h2 class="sec">Receita recebida por mês</h2>
       <div class="painel">
-        <div style="overflow-x:auto"><table class="rot-tab" id="finFatTab"></table></div>
+        <div style="overflow-x:auto"><table class="rot-tab" id="finRecebTab"></table></div>
       </div>
     </div>
 
@@ -733,18 +733,19 @@ details.recolhe[open] summary{margin-bottom:8px}
       <div id="finInadNaoVinc"></div>
     </div>
 
-    <div id="fin-receita" class="fin-painel-sub" style="display:none">
+    <div id="fin-faturamento" class="fin-painel-sub" style="display:none">
       <div class="ag-topo">
         <span class="esp"></span>
         <label class="btn claro" style="display:inline-flex;cursor:pointer">
-          ⬆️ Atualizar recebidos (.xls/.xlsx)
-          <input type="file" accept=".xls,.xlsx" id="finUploadReceb" style="display:none">
+          ⬆️ Atualizar faturamento (.xlsx)
+          <input type="file" accept=".xlsx" id="finUploadFat" style="display:none">
         </label>
       </div>
-      <p class="fin-total-somado" id="finRecebTotal"></p>
-      <h2 class="sec">Receita recebida por mês</h2>
+      <div id="finRecordeBanner"></div>
+      <h2 class="sec">Faturamento por loja</h2>
+      <p class="aviso" id="finFatMesRef"></p>
       <div class="painel">
-        <div style="overflow-x:auto"><table class="rot-tab" id="finRecebTab"></table></div>
+        <div style="overflow-x:auto"><table class="rot-tab" id="finFatTab"></table></div>
       </div>
     </div>
 
@@ -2679,6 +2680,7 @@ function desenharBdAgendados(aba){
     div.style.cursor='pointer';div.title='Abrir este dia na Agenda';
     div.innerHTML='<div class="cab"><span class="ev-data">'+e.data.split('-').reverse().slice(0,2).join('/')+'</span>'
       +'<span class="t">🎪 '+e.titulo+'</span><span class="st aprovada">'+e.ini+'–'+e.fim+'</span></div>'
+      +((e.fra===0||e.fra)?'<div class="cab" style="margin-top:2px"><span class="ev-fr">🏪 '+(frqRotulo(e.fra)||'FRA '+e.fra)+'</span></div>':'')
       +(e.descricao?'<div class="desc">'+e.descricao+'</div>':'')
       +'<div class="meta">responsável: '+dono.split(' ')[0]
       +(outros.length?' · 👥 +'+outros.length+' participante'+(outros.length>1?'s':''):'')+'</div>';
@@ -3007,6 +3009,9 @@ function desenharFinFaturamento(FAT){
   const porFra={};
   FAT.forEach(f=>{(porFra[f.fra]=porFra[f.fra]||[]).push(f);});
 
+  const meses12=[...new Set(FAT.map(f=>f.mes_ano))].sort((a,b)=>b.localeCompare(a)).slice(0,12);
+  const set12=new Set(meses12);
+
   const linhas=Object.keys(porFra).map(fraStr=>{
     const fra=Number(fraStr);
     const hist=porFra[fra];
@@ -3015,6 +3020,7 @@ function desenharFinFaturamento(FAT){
     const recorde=hist.reduce((max,h)=>h.valor>(max?max.valor:-1)?h:max,null);
     const bateuRecorde=atual&&recorde&&recorde.mes_ano===mesAtualISO&&hist.length>1;
     const historicoTotal=hist.reduce((s,h)=>s+(h.valor||0),0);
+    const total12m=hist.filter(h=>set12.has(h.mes_ano)).reduce((s,h)=>s+(h.valor||0),0);
     const fr=frqPorId(fra);
     return{
       fra,nome:fr?fr.nome:('FRA '+fra+' (fora do cadastro atual)'),
@@ -3023,7 +3029,7 @@ function desenharFinFaturamento(FAT){
       valorAnterior:anterior?anterior.valor:null,
       recordeValor:recorde?recorde.valor:null,
       recordeMes:recorde?recorde.mes_ano:null,
-      bateuRecorde,historicoTotal
+      bateuRecorde,historicoTotal,total12m
     };
   }).filter(l=>l.ativa)
     .sort((a,b)=>(b.valorAtual||0)-(a.valorAtual||0));
@@ -3037,7 +3043,7 @@ function desenharFinFaturamento(FAT){
     :'';
 
   $('finFatTab').innerHTML=
-    '<tr><th>FRA</th><th>Loja</th><th>'+mesLabelFin(mesAtualISO)+'</th><th>vs. mês anterior</th><th>Recorde histórico</th><th>Total faturado (toda a história)</th><th>Status</th></tr>'
+    '<tr><th>FRA</th><th>Loja</th><th>'+mesLabelFin(mesAtualISO)+'</th><th>vs. mês anterior</th><th>Recorde histórico</th><th>Total (últimos 12 meses)</th><th>Status</th></tr>'
     +linhas.map(l=>{
       const varPct=(l.valorAtual!=null&&l.valorAnterior)?Math.round((l.valorAtual-l.valorAnterior)/l.valorAnterior*100):null;
       const varTxt=varPct==null?'—':((varPct>=0?'▲ +':'▼ ')+varPct+'%');
@@ -3049,7 +3055,7 @@ function desenharFinFaturamento(FAT){
         +'<td><b>'+fmtReaisFin(l.valorAtual)+'</b></td>'
         +'<td style="'+varCor+'">'+varTxt+'</td>'
         +'<td>'+fmtReaisFin(l.recordeValor)+(l.recordeMes?' <span style="color:var(--tinta-suave);font-size:11px">('+mesLabelFin(l.recordeMes)+')</span>':'')+'</td>'
-        +'<td><b>'+fmtReaisFin(l.historicoTotal)+'</b></td>'
+        +'<td><b>'+fmtReaisFin(l.total12m)+'</b></td>'
         +'<td>'+status+'</td>'
         +'</tr>';
     }).join('');

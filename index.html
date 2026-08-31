@@ -1234,6 +1234,7 @@ async function iniciarSessao(user){
   if(!perfil){$('loginErro').textContent='Perfil não encontrado — avise o gestor.';await sb.auth.signOut();return;}
   usuarioAtual=perfil;
   sb.from('acessos').insert({user_id:user.id}).then(()=>{});
+  await carregarLidos();
   await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas()]);
   ligarRealtime();
   registrarSW();estadoPushInicial();
@@ -1886,15 +1887,26 @@ function iniciarDevolucao(e,irParaAgenda){
   alert('Descreva a continuidade e o prazo. Ao salvar, a tarefa original será concluída e '+(((uPorId(e.por)||{}).nome||'quem pediu').split(' ')[0])+' receberá o aviso.');
 }
 /* ===== Central de avisos (sino) ===== */
+let cnLidos=new Set();
+async function carregarLidos(){
+  try{const{data}=await sb.from('avisos_lidos').select('chave');cnLidos=new Set((data||[]).map(r=>r.chave));}catch(e){console.warn('lidos',e);}
+}
+function chaveLido(e){return 'p|'+e.id+'|'+(e.prazo||'')+'|'+(e.prazoHora||'');}
+function marcarLido(chave){
+  if(cnLidos.has(chave))return;
+  cnLidos.add(chave);
+  sb.from('avisos_lidos').upsert({user_id:usuarioAtual.id,chave},{onConflict:'user_id,chave'}).then(({error})=>{if(error)console.warn('marcarLido',error);});
+  atualizarSino();
+}
 function itensAvisos(){
   const hoje=chaveDia(agora());const d2=new Date(agora());d2.setDate(d2.getDate()+2);const ate2=chaveDia(d2);
   const out=[];
   todosEventosUnicos().forEach(e=>{
     (e.avisos||[]).forEach(a=>{if(a.para===usuarioAtual.id&&!a.ciente)out.push({k:'av',e,a,q:a.quando||''});});
-    if(e.tipo==='tarefa'&&!e.concluida&&e.dono===usuarioAtual.id&&e.prazo){
-      if(e.prazo<hoje)out.push({k:'venc',e,q:e.prazo});
-      else if(e.prazo===hoje)out.push({k:'hoje',e,q:e.prazo});
-      else if(e.prazo<=ate2)out.push({k:'prox',e,q:e.prazo});
+    if(e.tipo==='tarefa'&&!e.concluida&&e.dono===usuarioAtual.id&&e.prazo&&!cnLidos.has(chaveLido(e))){
+      if(e.prazo<hoje)out.push({k:'venc',e,q:e.prazo,ch:chaveLido(e)});
+      else if(e.prazo===hoje)out.push({k:'hoje',e,q:e.prazo,ch:chaveLido(e)});
+      else if(e.prazo<=ate2)out.push({k:'prox',e,q:e.prazo,ch:chaveLido(e)});
     }
   });
   const ord={av:0,venc:1,hoje:2,prox:3};
@@ -1910,7 +1922,17 @@ function atualizarSino(){
 function desenharCentral(itens){
   itens=itens||itensAvisos();
   const box=$('cnLista');box.innerHTML='';
-  if(!itens.length){box.innerHTML='<div class="cn-vazio">Nada pendente. Você está em dia.</div>';return;}
+  if(!itens.length){box.innerHTML='<div class="cn-vazio">Nada novo por aqui. Você está em dia.</div>';return;}
+  const topo=document.createElement('div');topo.style.cssText='display:flex;justify-content:flex-end;margin-bottom:8px';
+  const bt=document.createElement('button');bt.type='button';bt.className='btn claro';bt.style.fontSize='12px';bt.textContent='Marcar todos como lidos';
+  bt.onclick=async()=>{
+    for(const i of itens){
+      if(i.k==='av'){const novo=(i.e.avisos||[]).map(x=>x.id===i.a.id?{...x,ciente:true}:x);await sb.from('agenda_eventos').update({avisos:novo}).eq('id',i.e.id);}
+      else marcarLido(i.ch);
+    }
+    await carregarAgenda();redesenharVistaAtiva();atualizarSino();desenharCentral();
+  };
+  topo.appendChild(bt);box.appendChild(topo);
   const hoje=chaveDia(agora());
   itens.forEach(i=>{
     const d=document.createElement('div');d.className='cn-item '+i.k;
@@ -1925,7 +1947,7 @@ function desenharCentral(itens){
       const st=i.k==='venc'?'<b class="v">vencida há '+dias+' dia'+(dias>1?'s':'')+'</b>':i.k==='hoje'?'<b style="color:#a34608">vence hoje'+(i.e.prazoHora?' às '+i.e.prazoHora:'')+'</b>':'vence '+i.e.prazo.split('-').reverse().slice(0,2).join('/');
       d.innerHTML='<div class="t">'+escHtml(i.e.titulo)+'</div><div class="m">'+st+(fr?' · '+fr:'')+'</div>';
     }
-    d.onclick=()=>{$('cnBg').classList.remove('on');abrirDetalheEv(i.e.id);};
+    d.onclick=()=>{if(i.ch)marcarLido(i.ch);$('cnBg').classList.remove('on');abrirDetalheEv(i.e.id);};
     box.appendChild(d);
   });
 }

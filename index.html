@@ -1107,7 +1107,7 @@ async function carregarAbas(){
 /* ================================================================
    WEB PUSH — aviso de prazo de tarefa (10 min antes), com painel fechado
 ================================================================ */
-const VAPID_PUBLIC_KEY='BPzpTX4cJzY6su57a2m1ovAcrEba0YzP6aUh4x6_IX7x1HH3hVcPVxRe4LGgLK-GKMt2HSekNHnn-c6NpcvMCfM';
+const VAPID_PUBLIC_KEY='BKOrWl2t8jSfEMxzeqEWxarhHeU8Nz-5AvmMaiewHy2mTJXE2Ky8brFwv8ZXV0NWGLiuZrbfR3Nf4rdwp8QXAwU';
 function b64ParaUint8(b64){const p='='.repeat((4-b64.length%4)%4);const s=(b64+p).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(s);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));}
 async function registrarSW(){
   if(!('serviceWorker' in navigator))return null;

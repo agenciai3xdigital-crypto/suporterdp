@@ -1,25 +1,37 @@
-/* Plantão do Suporte — service worker de avisos push (prazo de tarefas) */
-self.addEventListener('install', e => self.skipWaiting());
+/* Plantão do Suporte — service worker (v6.2)
+   Só push e clique em notificação. NÃO faz cache: o painel sempre carrega do servidor. */
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', e => {
-  let dados = { title: '⏰ Aviso do Plantão', body: 'Você tem um prazo chegando.' };
-  try { dados = e.data.json(); } catch (err) {}
-  e.waitUntil(self.registration.showNotification(dados.title, {
-    body: dados.body,
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { body: e.data ? e.data.text() : '' }; }
+  const titulo = d.title || 'Plantão do Suporte';
+  const opts = {
+    body: d.body || '',
     icon: 'icone-192.png',
     badge: 'icone-192.png',
-    tag: dados.tag || 'plantao-prazo',
+    tag: d.tag || ('pop-' + Date.now()),
     renotify: true,
-    data: { url: self.registration.scope + '?aba=agenda' }
-  }));
+    requireInteraction: !!d.urgente,
+    data: { url: d.url || './?aba=agenda', id: d.id || null },
+    actions: d.id ? [{ action: 'abrir', title: 'Abrir tarefa' }] : []
+  };
+  e.waitUntil(self.registration.showNotification(titulo, opts));
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || self.registration.scope;
-  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(lista => {
-    for (const c of lista) { if (c.url.indexOf(self.registration.scope) === 0 && 'focus' in c) return c.focus(); }
-    return clients.openWindow(url);
-  }));
+  const url = new URL((e.notification.data && e.notification.data.url) || './?aba=agenda', self.location.href).href;
+  const id = e.notification.data && e.notification.data.id;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const aberta = wins.find(w => w.url.startsWith(self.registration.scope));
+    if (aberta) {
+      await aberta.focus();
+      if (id) aberta.postMessage({ tipo: 'abrir-ev', id });
+      return;
+    }
+    await self.clients.openWindow(url);
+  })());
 });

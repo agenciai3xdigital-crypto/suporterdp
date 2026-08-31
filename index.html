@@ -1134,7 +1134,13 @@ async function estadoPushInicial(){
   try{
     const reg=await navigator.serviceWorker.getRegistration('sw.js');
     const sub=reg&&await reg.pushManager.getSubscription();
-    if(sub&&Notification.permission==='granted'){btn.textContent='🔔 Avisos ativos neste aparelho';btn.disabled=true;}
+    if(sub&&Notification.permission==='granted'){
+      // Autocura: garante que a inscrição deste aparelho existe no banco (recria se foi apagada lá)
+      const{error}=await sb.from('push_subscriptions').upsert({user_id:usuarioAtual.id,subscription:sub.toJSON()},{onConflict:'user_id,endpoint'});
+      if(error)console.warn('resync push',error);
+      btn.textContent='🔔 Avisos ativos neste aparelho';btn.disabled=true;
+      const cp=$('cnPush');if(cp)cp.textContent='Avisos ativos neste aparelho',cp.disabled=true;
+    }
   }catch(e){}
 }
 /* Verificador local (painel aberto): bip + notificação 10 min antes do prazo */

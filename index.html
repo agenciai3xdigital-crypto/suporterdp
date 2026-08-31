@@ -182,7 +182,20 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .evento.ev-evento{border-left:5px solid #7c5cd6;background:#f4f1fc}
 .evento.fechado .ev-extra,.evento.fechado .acoes{display:none}
 .ev-arrow{font-size:11px;color:var(--tinta-suave);margin-left:6px;user-select:none}
-.pv-chip.pv-tarefa{background:#e09b1a !important;cursor:pointer}
+.pv-chip.pv-tarefa{cursor:pointer;border-left:3px solid rgba(255,255,255,.75)}
+.pv-chip.pv-venc{box-shadow:0 0 0 2px var(--verm)}
+.pv-chip.pv-feita{opacity:.5;text-decoration:line-through}
+.pv-pessoas{display:grid;gap:6px;min-width:640px}
+.pv-pessoas .pv-pnome{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 4px}
+.pv-pessoas .pv-pnome .avatar{width:22px;height:22px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.pv-pessoas .pv-dia{min-height:56px}
+.pv-pessoas .pv-rot{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--tinta-suave);text-align:center;padding:2px 0}
+.pv-res{display:flex;align-items:center;gap:5px;font-size:11px;padding:2px 3px;border-radius:6px;margin-top:2px}
+.pv-res:hover{background:var(--porcelana)}
+.pv-res i{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pv-res b{font-weight:700}
+.pv-res small{color:var(--tinta-suave)}
+.pv-res small.v{color:var(--verm);font-weight:700}
 .ag-form{display:flex;flex-wrap:wrap;gap:8px;background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:12px;margin-bottom:14px}
 .ag-form #evTitulo{flex:2;min-width:180px}
 .ag-form input[type=date]{flex:1;min-width:130px}
@@ -587,6 +600,10 @@ details.recolhe[open] summary{margin-bottom:8px}
       <div id="evParts" style="flex-basis:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
     </div>
     <div class="ag-topo">
+      <label id="agPessoaLbl" style="font-size:13px;font-weight:600;display:none">Pessoa
+        <select id="agPessoa"><option value="">Todas</option></select>
+      </label>
+      <label id="agPorPessoaLbl" style="font-size:13px;font-weight:600;display:none"><input type="checkbox" id="agPorPessoa" checked style="vertical-align:-2px"> Agrupar por pessoa</label>
       <label style="display:none">Visão:
         <select id="agModo">
           <option value="dia" selected>Dia</option>
@@ -623,6 +640,11 @@ details.recolhe[open] summary{margin-bottom:8px}
       <button class="btn claro" id="btnExportAval">Exportar avaliações</button>
     </div>
     <div class="rodizio" id="insTPKpis"></div>
+    <div class="painel">
+      <h3>Acompanhamento da equipe</h3>
+      <div class="faixa">Tarefas por pessoa no período · clique no nome para abrir a semana dela na Agenda</div>
+      <div style="overflow-x:auto"><table class="rot-tab" id="insEquipeTab"></table></div>
+    </div>
     <div class="rodizio" id="insAlertas"></div>
     <div class="grade">
       <div class="painel">
@@ -1192,6 +1214,10 @@ async function iniciarSessao(user){
     $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="semana">Semana</option><option value="mes">Mês</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
   }
   desenharAgPills();montarNavMobile();
+  if(usuarioAtual.admin){
+    const sp=$('agPessoa');sp.innerHTML='<option value="">Todas</option>'+CFG.usuarios.map(u=>'<option value="'+u.id+'">'+escHtml(u.nome.split(' ')[0])+'</option>').join('');
+    sp.onchange=desenharAgenda;$('agPorPessoa').onchange=desenharAgenda;
+  }
   $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
   renderAbasCustom();
@@ -1643,7 +1669,7 @@ function desenharPrevia(dia){
       const evs=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo!=='tarefa');
       const tars=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo==='tarefa');
       for(const t of tars){
-        const c=document.createElement('div');c.className='pv-chip pv-tarefa';
+        const c=document.createElement('div');c.className='pv-chip pv-tarefa'+(t.concluida?' pv-feita':'')+(!t.concluida&&t.prazo&&t.prazo<chaveDia(agora())?' pv-venc':'');c.style.background=corDe(u.id);
         c.textContent='📌 '+t.titulo;c.title=t.titulo+' · tarefa · clique p/ detalhes';
         c.onclick=ev=>{ev.stopPropagation();abrirDetalheEv(t.id);};
         corpo.appendChild(c);
@@ -1679,7 +1705,7 @@ function desenharPrevia(dia){
       cel.innerHTML='<div class="pv-rot">'+ROT[i]+'</div><div class="pv-num">'+d.getDate()+'</div>';
       const evs=(agenda[uid]||[]).filter(e=>noDia(e,iso)).sort((a,b)=>a.ini.localeCompare(b.ini));
       evs.slice(0,3).forEach(e=>{
-        const c=document.createElement('div');c.className='pv-chip'+(e.tipo==='tarefa'?' pv-tarefa':'');if(e.tipo!=='tarefa')c.style.background=corDe(uid);
+        const c=document.createElement('div');c.className='pv-chip'+(e.tipo==='tarefa'?' pv-tarefa':'')+(e.concluida?' pv-feita':'');c.style.background=corDe(uid);
         c.title=e.titulo+(e.dataFim?' · ocupado':(e.tipo==='tarefa'?' · tarefa':' · '+e.ini+'–'+e.fim))+' · clique p/ detalhes';c.textContent=(e.dataFim?'🔒 ':(e.tipo==='tarefa'?'📌 ':e.ini+' '))+e.titulo;
         c.onclick=ev=>{ev.stopPropagation();abrirDetalheEv(e.id);};
         cel.appendChild(c);
@@ -1856,6 +1882,8 @@ function desenharAgenda(){
   desenharEvParts();
   const modo=$('agModo').value||'dia';
   $('agLbl2').style.display=modo==='intervalo'?'inline-block':'none';
+  $('agPessoaLbl').style.display=(usuarioAtual.admin&&['dia','semana','mes','intervalo'].includes(modo))?'inline-block':'none';
+  $('agPorPessoaLbl').style.display=(usuarioAtual.admin&&(modo==='semana'||modo==='mes'))?'inline-block':'none';
   $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':((modo==='conferencia'||modo==='historico_betta')?'Ref.:':'De:'))));
   if(modo==='franquias'){
     $('agPrevia').innerHTML='';
@@ -1876,6 +1904,10 @@ function desenharAgenda(){
   if(!usuarioAtual.admin&&modo==='mes'){
     $('agPrevia').innerHTML='';
     return desenharAgendaMes(dia,lista,usuarioAtual.id);
+  }
+  if(!usuarioAtual.admin&&modo==='semana'){
+    $('agPrevia').innerHTML='';
+    return desenharAgendaSemana(dia,lista,usuarioAtual.id);
   }
   if(usuarioAtual.admin&&modo!=='dia'){
     $('agPrevia').innerHTML='';
@@ -2401,9 +2433,12 @@ function desenharHistoricoBetta(lista){
   });
 }
 /* ===== Agenda consolidada (admin): semana, mês e intervalo ===== */
+function pessoaFiltro(){const s=$('agPessoa');return (usuarioAtual&&usuarioAtual.admin&&s&&s.value)?s.value:null;}
 function evsDoDia(iso){
   const vistos=new Set(),out=[];
+  const pf=pessoaFiltro();
   for(const u of CFG.usuarios){
+    if(pf&&u.id!==pf)continue;
     for(const e of (agenda[u.id]||[])){
       if(!noDia(e,iso)||vistos.has(e.id))continue;
       vistos.add(e.id);out.push(e);
@@ -2412,8 +2447,8 @@ function evsDoDia(iso){
   return out.sort((a,b)=>a.ini.localeCompare(b.ini));
 }
 function chipEv(e){
-  const c=document.createElement('div');c.className='pv-chip'+(e.tipo==='tarefa'?' pv-tarefa':'');
-  if(e.tipo!=='tarefa')c.style.background=corDe(e.dono);
+  const c=document.createElement('div');c.className='pv-chip'+(e.tipo==='tarefa'?' pv-tarefa':'')+(e.concluida?' pv-feita':'')+(e.tipo==='tarefa'&&!e.concluida&&e.prazo&&e.prazo<chaveDia(agora())?' pv-venc':'');
+  c.style.background=corDe(e.dono);
   const nome=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
   const per=e.dataFim?e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/'):null;
   c.title=e.titulo+(per?' · ocupado '+per:' · '+e.ini+'–'+e.fim)+' · '+nome+((e.participantes||[]).length?' +'+e.participantes.filter(p=>p!==e.dono).length:'')+' · clique p/ detalhes';
@@ -2422,29 +2457,59 @@ function chipEv(e){
   c.onclick=ev=>{ev.stopPropagation();abrirDetalheEv(e.id);};
   return c;
 }
-function desenharAgendaSemana(dia,lista){
+function pessoasVisiveis(){
+  const pf=pessoaFiltro();
+  return CFG.usuarios.filter(u=>!pf||u.id===pf);
+}
+function desenharAgendaSemana(dia,lista,apenasUid){
   const base=new Date(dia+'T12:00:00');
   const seg=new Date(base);seg.setDate(seg.getDate()-((seg.getDay()+6)%7));
   const fim=new Date(seg);fim.setDate(seg.getDate()+6);
   const box=$('agPrevia');
-  box.innerHTML='<h4>Semana da equipe — '+chaveDia(seg).split('-').reverse().join('/')+' a '+chaveDia(fim).split('-').reverse().join('/')+' (clique num dia para abrir)</h4>';
-  const grid=document.createElement('div');grid.className='pv-week';
   const ROT=['SEG','TER','QUA','QUI','SEX','SÁB','DOM'];
   const hojeISO=chaveDia(agora());
+  const periodo=chaveDia(seg).split('-').reverse().slice(0,2).join('/')+' a '+chaveDia(fim).split('-').reverse().slice(0,2).join('/');
+  const porPessoa=!apenasUid&&usuarioAtual.admin&&$('agPorPessoa').checked;
+  if(porPessoa){
+    box.innerHTML='<h4>Semana por pessoa — '+periodo+'</h4>';
+    const grid=document.createElement('div');grid.className='pv-pessoas';grid.style.gridTemplateColumns='120px repeat(7,minmax(0,1fr))';
+    grid.appendChild(document.createElement('div'));
+    for(let i=0;i<7;i++){const d=new Date(seg);d.setDate(seg.getDate()+i);const h=document.createElement('div');h.className='pv-rot'+(chaveDia(d)===hojeISO?' hoje':'');h.innerHTML=ROT[i]+' <b style="color:var(--tinta)">'+d.getDate()+'</b>';grid.appendChild(h);}
+    const pessoas=pessoasVisiveis().filter(u=>!u.admin||(agenda[u.id]||[]).some(e=>{for(let i=0;i<7;i++){const d=new Date(seg);d.setDate(seg.getDate()+i);if(noDia(e,chaveDia(d)))return true;}return false;}));
+    for(const u of pessoas){
+      const nm=document.createElement('div');nm.className='pv-pnome';
+      const todos=(agenda[u.id]||[]);
+      let abertas=0,venc=0;for(let i=0;i<7;i++){const d=new Date(seg);d.setDate(seg.getDate()+i);const iso=chaveDia(d);todos.forEach(e=>{if(e.tipo==='tarefa'&&e.dono===u.id&&!e.concluida&&noDia(e,iso)){abertas++;if(e.prazo&&e.prazo<hojeISO)venc++;}});}
+      nm.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span><span>'+escHtml(u.nome.split(' ')[0])+(venc?'<br><small style="color:var(--verm);font-weight:700">'+venc+' vencida'+(venc>1?'s':'')+'</small>':'')+'</span>';
+      grid.appendChild(nm);
+      for(let i=0;i<7;i++){
+        const d=new Date(seg);d.setDate(seg.getDate()+i);const iso=chaveDia(d);
+        const cel=document.createElement('div');cel.className='pv-dia'+(iso===hojeISO?' hoje':'');
+        const evs=todos.filter(e=>noDia(e,iso)).sort((a,b)=>(a.tipo==='tarefa'?'0':'1'+a.ini).localeCompare(b.tipo==='tarefa'?'0':'1'+b.ini));
+        evs.slice(0,4).forEach(e=>{const c=chipEv(e);c.textContent=c.textContent.replace(escHtml(u.nome.split(' ')[0])+' · ','').replace(u.nome.split(' ')[0]+' · ','');cel.appendChild(c);});
+        if(evs.length>4){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-4);cel.appendChild(mm);}
+        cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();desenharAgPills();};
+        grid.appendChild(cel);
+      }
+    }
+    box.appendChild(grid);legendaEquipe(box);return;
+  }
+  box.innerHTML='<h4>'+(apenasUid?'Sua semana':'Semana da equipe')+' — '+periodo+' (clique num dia para abrir)</h4>';
+  const grid=document.createElement('div');grid.className='pv-week';
   for(let i=0;i<7;i++){
     const d=new Date(seg);d.setDate(seg.getDate()+i);
     const iso=chaveDia(d);
     const cel=document.createElement('div');
     cel.className='pv-dia'+(iso===hojeISO?' hoje':'');
     cel.innerHTML='<div class="pv-rot">'+ROT[i]+'</div><div class="pv-num">'+d.getDate()+'</div>';
-    const evs=evsDoDia(iso);
+    const evs=apenasUid?(agenda[apenasUid]||[]).filter(e=>noDia(e,iso)).sort((a,b)=>a.ini.localeCompare(b.ini)):evsDoDia(iso);
     evs.slice(0,4).forEach(e=>cel.appendChild(chipEv(e)));
     if(evs.length>4){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-4)+' mais';cel.appendChild(mm);}
-    cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();};
+    cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();desenharAgPills();};
     grid.appendChild(cel);
   }
   box.appendChild(grid);
-  legendaEquipe(box);
+  if(!apenasUid)legendaEquipe(box);
 }
 function desenharAgendaMes(dia,lista,apenasUid){
   const base=new Date(dia+'T12:00:00');
@@ -2465,9 +2530,24 @@ function desenharAgendaMes(dia,lista,apenasUid){
     cel.className='pv-dia pv-dia-mes'+(iso===hojeISO?' hoje':'')+(d.getMonth()!==base.getMonth()?' fora':'');
     cel.innerHTML='<div class="pv-num">'+d.getDate()+'</div>';
     const evs=apenasUid?(agenda[apenasUid]||[]).filter(e=>noDia(e,iso)).sort((a,b)=>a.ini.localeCompare(b.ini)):evsDoDia(iso);
-    evs.slice(0,3).forEach(e=>cel.appendChild(chipEv(e)));
-    if(evs.length>3){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-3);cel.appendChild(mm);}
-    cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();};
+    const porPessoa=!apenasUid&&usuarioAtual.admin&&$('agPorPessoa').checked;
+    if(porPessoa){
+      for(const u of pessoasVisiveis()){
+        const mine=(agenda[u.id]||[]).filter(e=>noDia(e,iso)&&(e.dono===u.id||(e.participantes||[]).includes(u.id)));
+        if(!mine.length)continue;
+        const tar=mine.filter(e=>e.tipo==='tarefa'),comp=mine.length-tar.length;
+        const venc=tar.filter(e=>!e.concluida&&e.prazo&&e.prazo<hojeISO).length;
+        const feitas=tar.filter(e=>e.concluida).length;
+        const r=document.createElement('div');r.className='pv-res';
+        r.innerHTML='<i style="background:'+corDe(u.id)+'"></i><b>'+escHtml(u.nome.split(' ')[0])+'</b><small>'+(tar.length?tar.length+' tar'+(feitas?' ('+feitas+'✓)':''):'')+(comp?(tar.length?' · ':'')+comp+' comp':'')+'</small>'+(venc?'<small class="v">'+venc+' venc.</small>':'');
+        r.title=mine.map(e=>(e.tipo==='tarefa'?'📌 ':e.ini+' ')+e.titulo).join('\n');
+        cel.appendChild(r);
+      }
+    }else{
+      evs.slice(0,3).forEach(e=>cel.appendChild(chipEv(e)));
+      if(evs.length>3){const mm=document.createElement('div');mm.className='pv-mais';mm.textContent='+'+(evs.length-3);cel.appendChild(mm);}
+    }
+    cel.onclick=()=>{$('agData').value=iso;$('agModo').value='dia';desenharAgenda();desenharAgPills();};
     grid.appendChild(cel);
   }
   box.appendChild(grid);
@@ -2495,7 +2575,7 @@ function desenharAgendaIntervalo(de,ate,lista){
 }
 function legendaEquipe(box){
   const lg=document.createElement('div');lg.style.cssText='display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--tinta-suave);margin-top:8px';
-  lg.innerHTML=CFG.usuarios.map(u=>'<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+corDe(u.id)+';vertical-align:-1px"></span> '+u.nome.split(' ')[0]+'</span>').join('');
+  lg.innerHTML=pessoasVisiveis().map(u=>'<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+corDe(u.id)+';vertical-align:-1px"></span> '+u.nome.split(' ')[0]+'</span>').join('');
   box.appendChild(lg);
 }
 
@@ -2907,6 +2987,7 @@ async function desenharInsightsTP(dias,desdeISO){
   ts.forEach(e=>{if(e.fra===0||e.fra){porFra[e.fra]=(porFra[e.fra]||0)+1;}});
   const top=Object.entries(porFra).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const max=top.length?top[0][1]:1;
+  desenharAcompanhamentoEquipe(desdeISO);
   const tend=await tendenciaFaturamento(top.map(([fra])=>Number(fra)));
   $('insTPFrq').innerHTML=top.length?'<table class="rot-tab"><tr><th>Franquia</th><th style="width:34%">Tarefas</th><th style="text-align:right">Faturamento</th></tr>'+top.map(([fra,n])=>{
     const f=frqPorId(Number(fra));const t=tend[Number(fra)];
@@ -2915,6 +2996,36 @@ async function desenharInsightsTP(dias,desdeISO){
       +'<td><div style="display:flex;gap:8px;align-items:center"><div class="rel-barra" style="flex:1"><i style="width:'+Math.round(n/max*100)+'%;background:var(--laranja)"></i></div><b>'+n+'</b></div></td>'
       +'<td style="text-align:right">'+tTxt+'</td></tr>';
   }).join('')+'</table>':'<p class="vazio">Sem tarefas vinculadas a FR no período.</p>';
+}
+function desenharAcompanhamentoEquipe(desdeISO){
+  const tab=$('insEquipeTab');if(!tab)return;
+  const hoje=chaveDia(agora());const d7=new Date(agora());d7.setDate(d7.getDate()+7);const ate7=chaveDia(d7);
+  const linhas=[];
+  for(const u of CFG.usuarios){
+    const ts=(agenda[u.id]||[]).filter(e=>e.tipo==='tarefa'&&e.dono===u.id);
+    const abertas=ts.filter(e=>!e.concluida);
+    const venc=abertas.filter(e=>e.prazo&&e.prazo<hoje);
+    const prox=abertas.filter(e=>e.prazo&&e.prazo>=hoje&&e.prazo<=ate7);
+    const concl=ts.filter(e=>e.concluida&&e.concluidaEm&&e.concluidaEm.slice(0,10)>=desdeISO);
+    const noPrazo=concl.filter(e=>!e.prazo||e.concluidaEm.slice(0,10)<=e.prazo).length;
+    const reag=abertas.filter(e=>(e.reagendamentos||[]).length).length;
+    const ultima=concl.map(e=>e.concluidaEm).sort().pop();
+    const maisAntiga=venc.map(e=>e.prazo).sort()[0];
+    if(!ts.length&&u.admin)continue;
+    linhas.push({u,abertas:abertas.length,venc:venc.length,prox:prox.length,concl:concl.length,pct:concl.length?Math.round(noPrazo/concl.length*100):null,reag,ultima,maisAntiga});
+  }
+  linhas.sort((a,b)=>b.venc-a.venc||b.abertas-a.abertas);
+  const fd=v=>v?v.split('-').reverse().slice(0,2).join('/'):'—';
+  tab.innerHTML='<tr><th>Pessoa</th><th style="text-align:right">Abertas</th><th style="text-align:right">Vencidas</th><th style="text-align:right">Vencem em 7d</th><th style="text-align:right">Concluídas</th><th style="text-align:right">No prazo</th><th style="text-align:right">Reagendadas</th><th>Última conclusão</th></tr>'
+    +linhas.map(l=>'<tr><td><a href="#" data-uid="'+l.u.id+'" class="ins-pessoa" style="color:var(--petroleo);font-weight:600;text-decoration:none"><span class="avatar" style="background:'+corDe(l.u.id)+'">'+l.u.nome[0].toUpperCase()+'</span>'+escHtml(l.u.nome.split(' ')[0])+'</a></td>'
+      +'<td style="text-align:right">'+l.abertas+'</td>'
+      +'<td style="text-align:right">'+(l.venc?'<b style="color:var(--verm)">'+l.venc+'</b><br><small style="color:var(--tinta-suave)">desde '+fd(l.maisAntiga)+'</small>':'<span style="color:var(--verde)">0</span>')+'</td>'
+      +'<td style="text-align:right">'+(l.prox?'<b style="color:#a34608">'+l.prox+'</b>':'0')+'</td>'
+      +'<td style="text-align:right">'+l.concl+'</td>'
+      +'<td style="text-align:right">'+(l.pct==null?'—':'<b style="color:'+(l.pct>=80?'var(--verde)':l.pct>=50?'#a34608':'var(--verm)')+'">'+l.pct+'%</b>')+'</td>'
+      +'<td style="text-align:right">'+l.reag+'</td>'
+      +'<td>'+(l.ultima?fmtDtHr(l.ultima):'—')+'</td></tr>').join('');
+  tab.querySelectorAll('.ins-pessoa').forEach(a=>a.onclick=ev=>{ev.preventDefault();const uid=a.dataset.uid;const aba=document.querySelector('.aba[data-v=agenda]');if(aba)aba.click();const sp=$('agPessoa');if(sp){sp.value=uid;}$('agModo').value='semana';$('agData').value=chaveDia(agora());desenharAgenda();desenharAgPills();});
 }
 /* Tendência de faturamento por FRA: compara os 2 últimos meses fechados com o anterior (dados do módulo Financeiro) */
 async function tendenciaFaturamento(fras){

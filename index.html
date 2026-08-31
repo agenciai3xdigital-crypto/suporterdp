@@ -49,9 +49,46 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .topo .quem{font-size:13px;color:var(--tinta-suave)}
 .topo .relogio{margin-left:auto;font-family:'Archivo',sans-serif;font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
 .topo .sair{border:1.5px solid var(--linha);background:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600}
-.abas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
-.aba{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:8px 18px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave)}
-.aba.ativa{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.abas{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--linha);overflow-x:auto;scrollbar-width:none}
+.abas::-webkit-scrollbar{display:none}
+.aba{border:none;border-bottom:2px solid transparent;background:none;border-radius:0;padding:10px 12px;margin-bottom:-1px;font-weight:600;font-size:14px;color:var(--tinta-suave);white-space:nowrap}
+.aba.ativa{color:var(--tinta);border-bottom-color:var(--laranja)}
+.aba-badge{display:inline-block;min-width:18px;line-height:18px;padding:0 5px;border-radius:9px;background:var(--verm);color:#fff;font-size:11px;font-weight:700;text-align:center;margin-left:2px;vertical-align:1px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pills .pill,.pill.visao{font-size:13px;font-weight:600;text-transform:none;padding:5px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta-suave);border-radius:99px;cursor:pointer}
+.pills .pill.on{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.resumo .kpi{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}
+.resumo .kpi .n{font-family:'Archivo',sans-serif;font-weight:800;font-size:26px;line-height:1.1}
+.resumo .kpi .l{font-size:12px;color:var(--tinta-suave);margin-top:2px}
+.resumo .kpi.alerta .n{color:var(--verm)} .resumo .kpi.ok .n{color:var(--verde)} .resumo .kpi.atencao .n{color:#a34608}
+.resumo .kpi.clicavel{cursor:pointer} .resumo .kpi.clicavel:hover{border-color:var(--tinta-suave)}
+.rel-pessoas{margin-bottom:12px}
+.rel-pessoas summary{font-size:13px;font-weight:600;color:var(--tinta-suave);cursor:pointer}
+.ag-barra{margin-bottom:12px}
+.ag-form.aberto{border:1.5px solid var(--laranja);background:var(--laranja-suave)}
+.nav-mobile{display:none}
+.fab{display:none}
+.al-bg{display:none;position:fixed;inset:0;background:rgba(22,51,61,.45);z-index:200;align-items:center;justify-content:center;padding:20px}
+.al-bg.on{display:flex}
+.al-box{background:#fff;border-radius:14px;padding:20px;max-width:420px;width:100%;font-size:14px;white-space:pre-wrap;line-height:1.5}
+.al-box .btn{margin-top:14px;width:100%}
+@media(max-width:760px){
+  .wrap{padding:12px 12px 84px}
+  .abas{display:none}
+  .topo .relogio{font-size:18px}
+  .resumo{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grade{grid-template-columns:1fr}
+  .rodizio{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .nav-mobile{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--linha);padding:6px 4px calc(8px + env(safe-area-inset-bottom));z-index:150}
+  .nav-mobile button{flex:1;background:none;border:0;font-size:11px;font-weight:600;color:var(--tinta-suave);padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:inherit}
+  .nav-mobile button.ativa{color:var(--laranja)}
+  .nav-mobile svg{width:22px;height:22px}
+  .fab{display:block;position:fixed;right:16px;bottom:74px;width:52px;height:52px;border-radius:50%;background:var(--laranja);color:#fff;border:0;font-size:28px;line-height:1;z-index:140;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  #btnNovoEv{display:none}
+  .evento{padding:10px 12px;gap:8px}
+  .evento .hora{min-width:54px}
+}
 .fin-sub{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:8px 18px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave);cursor:pointer}
 .fin-sub.ativa{background:var(--tinta);border-color:var(--tinta);color:#fff}
 .vista{display:none}
@@ -451,12 +488,12 @@ details.recolhe[open] summary{margin-bottom:8px}
   </div>
 
   <div class="abas" id="barraAbas">
-    <button class="aba ativa" data-v="dia">Meu dia</button>
+    <button class="aba ativa" data-v="dia">Hoje <span class="aba-badge" id="abaDiaBadge" style="display:none"></span></button>
     <button class="aba" data-v="agenda">Agenda</button>
     <span id="abasCustom" style="display:contents"></span>
-    <button class="aba" data-v="insights" id="abaInsights" style="display:none">Insights</button>
+    <button class="aba" data-v="insights" id="abaInsights" style="display:none">Equipe</button>
     <button class="aba" data-v="financeiro" id="abaFinanceiro" style="display:none">Financeiro</button>
-    <button class="aba" data-v="rotina" id="abaRotina" style="display:none">Rotina</button>
+    <button class="aba" data-v="rotina" id="abaRotina" style="display:none!important">Rotina</button>
     <button class="aba" data-v="admin" id="abaAdmin" style="display:none">Admin</button>
     <button class="aba" id="btnNovaAba" style="display:none" title="Criar nova aba">＋ Aba</button>
   </div>
@@ -482,12 +519,12 @@ details.recolhe[open] summary{margin-bottom:8px}
 
   <!-- ===== MEU DIA ===== -->
   <div class="vista ativa" id="v-dia">
-    <div class="rz-faixa" id="rzFaixa" style="display:none">👥 —</div>
     <div id="relTarefas"></div>
     <div id="pendTarefas"></div>
     <div class="painel">
-      <h3 id="tituloCheck">Seu dia — siga a linha</h3>
+      <h3 id="tituloCheck">Seu dia</h3>
       <div class="faixa" id="faixaDia">—</div>
+      <div class="rz-faixa" id="rzFaixa" style="display:none">—</div>
       <div id="linhaDia"></div>
     </div>
     <div class="painel ch-card">
@@ -517,7 +554,13 @@ details.recolhe[open] summary{margin-bottom:8px}
 
   <!-- ===== AGENDA ===== -->
   <div class="vista" id="v-agenda">
-    <div class="ag-form">
+    <div class="ag-topo ag-barra">
+      <div class="pills" id="agPills"></div>
+      <span class="esp"></span>
+      <button class="btn claro" id="btnAtivarPush" title="Receba avisos de prazo de tarefa neste aparelho, mesmo com o painel fechado">Avisos</button>
+      <button class="btn laranja" id="btnNovoEv">+ Novo</button>
+    </div>
+    <div class="ag-form" id="agForm" style="display:none">
       <label id="evQuemLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave);border:1.5px solid var(--laranja);border-radius:10px;padding:4px 8px;background:var(--laranja-suave);align-items:center;gap:4px">👤 Responsável <select id="evQuem" style="border:none;background:transparent;font-weight:700"></select></label>
       <select id="evTipo"><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="evento">Evento</option></select>
       <input id="evTitulo" placeholder="Título">
@@ -527,8 +570,8 @@ details.recolhe[open] summary{margin-bottom:8px}
       <label class="ev-lbl" id="evFimDataLbl" style="display:none">Data fim <input id="evDataFim" type="date" title="Data final (opcional)"></label>
       <label class="ev-lbl" id="evFimLbl">Hora fim <input id="evFim" type="time" value="10:00"></label>
       <label id="evPrazoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Prazo final <input id="evPrazo" type="date"> <input id="evPrazoHora" type="time" title="Hora limite de entrega"></label>
-      <button class="btn laranja" id="btnAddEvento">Adicionar</button>
-      <button class="btn claro" id="btnCancelEdit" style="display:none">Cancelar edição</button>
+      <button class="btn laranja" id="btnAddEvento">Salvar</button>
+      <button class="btn claro" id="btnCancelEdit">Cancelar</button>
       <button class="btn claro" id="btnModeloBetta" type="button" style="display:none" title="Preenche as 11 normas como subtarefas e libera o campo de custo">🐟 Modelo: Evento Betta</button>
       <label id="evCustoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave)">Custo do evento (R$)
   <input id="evCusto" type="number" step="0.01" min="0" style="width:110px">
@@ -544,7 +587,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <div id="evParts" style="flex-basis:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
     </div>
     <div class="ag-topo">
-      <label style="font-size:13px;font-weight:700">Visão:
+      <label style="display:none">Visão:
         <select id="agModo">
           <option value="dia" selected>Dia</option>
           <option value="semana">Semana</option>
@@ -559,17 +602,72 @@ details.recolhe[open] summary{margin-bottom:8px}
       <label style="font-size:13px;font-weight:700"><span id="agRotData">Dia:</span> <input type="date" id="agData"></label>
       <label style="font-size:13px;font-weight:700;display:none" id="agLbl2">até <input type="date" id="agData2"></label>
       <span class="esp"></span>
-      <button class="btn verde" id="btnRotinaGoogle" title="Baixa um arquivo .ics com os blocos de hoje para importar no seu Google Agenda">Rotina de hoje → Google Agenda</button>
-      <button class="btn claro" id="btnAtivarPush" title="Receba avisos de prazo de tarefa neste aparelho, mesmo com o painel fechado">🔔 Ativar avisos</button>
+      <button class="btn claro" id="btnRotinaGoogle" title="Baixa um arquivo .ics com os blocos de hoje para importar no seu Google Agenda">Rotina → Google Agenda</button>
     </div>
     <div id="agAvisos"></div>
     <div class="previa" id="agPrevia"></div>
     <div id="listaEventos"></div>
-    <p class="aviso">"Google Agenda" abre o Google Calendar <strong>da conta de quem clicar</strong>, com o evento pré-preenchido. O .ics pode ser importado em qualquer agenda.</p>
   </div>
 
-  <!-- ===== ROTINA (admin) ===== -->
-  <div class="vista" id="v-rotina">
+  <!-- ===== INSIGHTS ===== -->
+  <div class="vista" id="v-insights">
+    <div class="ag-topo">
+      <label style="font-size:13px;font-weight:600">Período
+        <select id="insPeriodo">
+          <option value="7">Últimos 7 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+        </select>
+      </label>
+      <span class="esp"></span>
+      <button class="btn claro" id="btnExportAval">Exportar avaliações</button>
+    </div>
+    <div class="rodizio" id="insTPKpis"></div>
+    <div class="rodizio" id="insAlertas"></div>
+    <div class="grade">
+      <div class="painel">
+        <h3>Carga em aberto por pessoa</h3>
+        <div class="faixa">Pendentes · vencidas · vencendo em ≤3 dias</div>
+        <div id="insTPCarga"></div>
+      </div>
+      <div class="painel">
+        <h3>Rotina de hoje</h3>
+        <div class="faixa">Progresso por macro-tarefa</div>
+        <div id="rotMonitor"></div>
+      </div>
+    </div>
+    <div class="painel">
+      <h3>Franquias que mais demandam</h3>
+      <div class="faixa">Tarefas no período × tendência de faturamento (2 últimos meses fechados)</div>
+      <div id="insTPFrq"></div>
+    </div>
+    <details class="recolhe">
+      <summary>Fila de chamados agora e recomendações</summary>
+      <div class="grade" style="margin-top:10px">
+        <div class="painel"><h3>Recomendações do período</h3><div class="faixa">Geradas automaticamente a partir dos dados</div><div id="insRecs"></div></div>
+        <div class="painel"><h3>Fila agora (chamados em aberto)</h3><div class="faixa">Independente do período — foto do momento</div><div id="insFila"></div></div>
+      </div>
+    </details>
+    <details class="recolhe">
+      <summary>Chamados: assuntos, responsáveis, tendência e automação</summary>
+      <div class="grade" style="margin-top:10px">
+        <div class="painel"><h3>Ranking de automação por assunto</h3><div class="faixa">Frequência × padronização · ciclo consumido no período</div><div id="insAutoCham"></div></div>
+        <div class="painel"><h3>Tendência semanal de volume</h3><div class="faixa">Chamados abertos por semana</div><div id="insTendencia"></div></div>
+        <div class="painel"><h3>Top assuntos</h3><div class="faixa">Volume e mediana de resolução</div><div id="insAssuntos"></div></div>
+        <div class="painel"><h3>Por responsável</h3><div class="faixa">Volume · resolução mediana · % no prazo · satisfação</div><div id="insResp"></div></div>
+      </div>
+    </details>
+    <details class="recolhe">
+      <summary>Avaliações das tarefas do painel</summary>
+      <div class="rodizio" id="insKpisTarefas" style="margin-top:10px"></div>
+      <div class="grade">
+        <div class="painel"><h3>Matriz das tarefas internas</h3><div class="faixa">Preenche conforme a equipe avalia as conclusões</div><div id="insMatriz"></div></div>
+        <div class="painel"><h3>Conclusões por pessoa</h3><div class="faixa">Volume e perfil de dificuldade no período</div><div id="insPessoas"></div></div>
+      </div>
+    </details>
+    <details class="recolhe">
+      <summary>Rotinas, réguas e pendências acumuladas</summary>
+  <div id="v-rotina">
     <div class="ag-topo">
       <h2 class="sec" style="margin:0">Rotina da equipe</h2>
       <span class="esp"></span>
@@ -577,8 +675,6 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
     <div class="rot-grid" id="rotGrid"></div>
 
-    <h2 class="sec">Monitor de hoje <span style="font-weight:400;font-size:12px;color:var(--tinta-suave)">progresso por macro-tarefa — somente leitura</span></h2>
-    <div class="painel" id="rotMonitor"></div>
 
     <h2 class="sec">Pendências acumuladas <span style="font-weight:400;font-size:12px;color:var(--tinta-suave)">somente leitura · atraso conta a partir da vigência da rotina</span></h2>
     <div class="ag-topo">
@@ -599,99 +695,15 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
   </div>
 
-  <!-- ===== INSIGHTS ===== -->
-  <div class="vista" id="v-insights">
-    <div class="ag-topo">
-      <label style="font-size:13px;font-weight:700">Período:
-        <select id="insPeriodo">
-          <option value="7">Últimos 7 dias</option>
-          <option value="30" selected>Últimos 30 dias</option>
-          <option value="90">Últimos 90 dias</option>
-        </select>
-      </label>
-      <span class="esp"></span>
-      <button class="btn claro" id="btnExportAval">⬇️ Exportar avaliações (Excel)</button>
-    </div>
-
-    <h2 class="sec">Decisões rápidas — metas e alertas (chamados)</h2>
-    <div class="rodizio" id="insAlertas"></div>
-    <div class="grade">
-      <div class="painel">
-        <h3>Recomendações do período</h3>
-        <div class="faixa">Geradas automaticamente a partir dos dados</div>
-        <div id="insRecs"></div>
-      </div>
-      <div class="painel">
-        <h3>Fila agora (chamados em aberto)</h3>
-        <div class="faixa">Independente do período — foto do momento</div>
-        <div id="insFila"></div>
-      </div>
-    </div>
-
-    <h2 class="sec">Onde automatizar — baseado nos chamados reais</h2>
-    <div class="grade">
-      <div class="painel">
-        <h3>Ranking de automação por assunto</h3>
-        <div class="faixa">Frequência × padronização · ciclo consumido no período</div>
-        <div id="insAutoCham"></div>
-      </div>
-      <div class="painel">
-        <h3>Tendência semanal de volume</h3>
-        <div class="faixa">Chamados abertos por semana</div>
-        <div id="insTendencia"></div>
-      </div>
-    </div>
-
-    <h2 class="sec">Operação (chamados no período)</h2>
-    <div class="grade">
-      <div class="painel">
-        <h3>Top assuntos</h3>
-        <div class="faixa">Volume e mediana de resolução</div>
-        <div id="insAssuntos"></div>
-      </div>
-      <div class="painel">
-        <h3>Por responsável</h3>
-        <div class="faixa">Volume · resolução mediana · % no prazo · satisfação</div>
-        <div id="insResp"></div>
-      </div>
-    </div>
-
-    <h2 class="sec">Tarefas & Processos (tarefas da agenda)</h2>
-    <div class="rodizio" id="insTPKpis"></div>
-    <div class="grade">
-      <div class="painel">
-        <h3>Carga em aberto por pessoa</h3>
-        <div class="faixa">Pendentes · vencidas · vencendo em ≤3 dias</div>
-        <div id="insTPCarga"></div>
-      </div>
-      <div class="painel">
-        <h3>Top 10 franquias por tarefas</h3>
-        <div class="faixa">Onde a equipe mais gasta energia — candidatas a automação/treinamento</div>
-        <div id="insTPFrq"></div>
-      </div>
-    </div>
-
-    <h2 class="sec">Tarefas do painel (avaliações da equipe)</h2>
-    <div class="rodizio" id="insKpisTarefas"></div>
-    <div class="grade">
-      <div class="painel">
-        <h3>Matriz das tarefas internas</h3>
-        <div class="faixa">Preenche conforme a equipe avalia as conclusões — dê ~30 dias</div>
-        <div id="insMatriz"></div>
-      </div>
-      <div class="painel">
-        <h3>Conclusões por pessoa</h3>
-        <div class="faixa">Volume e perfil de dificuldade no período</div>
-        <div id="insPessoas"></div>
-      </div>
-    </div>
+    </details>
     <p class="aviso" id="insAvisoSync"></p>
   </div>
 
   <!-- ===== FINANCEIRO (admin) ===== -->
   <div class="vista" id="v-financeiro">
-    <h2 class="sec">Painel da Diretoria</h2>
+    <div class="ag-topo"><h2 class="sec" style="margin:0">Painel da diretoria</h2><span class="esp"></span><button class="btn claro" id="btnFinMais">Ver mais indicadores</button></div>
     <div class="rodizio" id="finKpis"></div>
+    <div class="rodizio" id="finKpisMais" style="display:none"></div>
 
     <div class="ag-topo">
       <div style="display:flex;gap:6px;flex-wrap:wrap" id="finSubAbas">
@@ -759,28 +771,34 @@ details.recolhe[open] summary{margin-bottom:8px}
 
   <!-- ===== ADMIN ===== -->
   <div class="vista" id="v-admin">
-    <h2 class="sec">Equipe</h2>
-    <table class="adm-tab" id="tabUsuarios"></table>
-    <p style="font-size:12px;color:var(--tinta-suave);margin-top:6px">Criar e remover usuários (e redefinir senhas): painel do Supabase → Authentication → Users. O perfil aparece aqui automaticamente.</p>
-
-    <h2 class="sec">Franquias <button class="btn claro" id="btnFrqNova" style="margin-left:8px">＋ Nova franquia</button></h2>
-    <input id="frqBusca" placeholder="Buscar franquia por nome, nº, cidade ou consultor" style="width:100%;max-width:420px;margin-bottom:8px">
-    <div class="painel" id="painelFrq" style="max-height:340px;overflow:auto"></div>
-
-    <h2 class="sec">SKUs do Evento Betta <button class="btn claro" id="btnSkuNovo" style="margin-left:8px">＋ Novo SKU</button></h2>
-    <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Produtos do PDV que contam como "venda direta do evento" ao processar o relatório de vendas (peixe, beteira, anticloro, ração betta etc.).</p>
-    <table class="adm-tab" id="tabSkusBetta"></table>
-
-    <h2 class="sec">Regras do Evento Betta <button class="btn claro" id="btnRegraNova" style="margin-left:8px">＋ Nova regra</button></h2>
-    <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Cada linha vira uma tarefa gerada automaticamente ao criar um Evento Betta. "Dias antes/depois" contam a partir da data do evento; "dia do evento" e "dia da criação" ignoram o campo dias.</p>
-    <table class="adm-tab" id="tabRegrasBetta"></table>
-
-    <h2 class="sec">Registro de acessos</h2>
-    <div class="painel" id="painelLog" style="max-height:280px;overflow:auto"></div>
+    <div class="pills" id="admPills" style="margin-bottom:14px">
+      <button class="pill on" data-adm="equipe">Equipe</button><button class="pill" data-adm="franquias">Franquias</button><button class="pill" data-adm="betta">Evento Betta</button><button class="pill" data-adm="acessos">Acessos</button>
+    </div>
+    <div class="adm-sec" id="adm-equipe">
+      <table class="adm-tab" id="tabUsuarios"></table>
+      <p style="font-size:12px;color:var(--tinta-suave);margin-top:6px">Criar e remover usuários (e redefinir senhas): painel do Supabase → Authentication → Users. O perfil aparece aqui automaticamente.</p>
+    </div>
+    <div class="adm-sec" id="adm-franquias" style="display:none">
+      <div class="ag-topo"><input id="frqBusca" placeholder="Buscar por nome, nº, cidade ou consultor" style="flex:1;max-width:420px"><span class="esp"></span><button class="btn claro" id="btnFrqNova">+ Nova franquia</button></div>
+      <div class="painel" id="painelFrq" style="max-height:60vh;overflow:auto"></div>
+    </div>
+    <div class="adm-sec" id="adm-betta" style="display:none">
+      <h2 class="sec">SKUs do Evento Betta <button class="btn claro" id="btnSkuNovo" style="margin-left:8px">+ Novo SKU</button></h2>
+      <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Produtos do PDV que contam como "venda direta do evento" ao processar o relatório de vendas (peixe, beteira, anticloro, ração betta etc.).</p>
+      <table class="adm-tab" id="tabSkusBetta"></table>
+      <h2 class="sec">Regras do Evento Betta <button class="btn claro" id="btnRegraNova" style="margin-left:8px">+ Nova regra</button></h2>
+      <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Cada linha vira uma tarefa gerada automaticamente ao criar um Evento Betta. "Dias antes/depois" contam a partir da data do evento; "dia do evento" e "dia da criação" ignoram o campo dias.</p>
+      <table class="adm-tab" id="tabRegrasBetta"></table>
+    </div>
+    <div class="adm-sec" id="adm-acessos" style="display:none">
+      <div class="painel" id="painelLog" style="max-height:60vh;overflow:auto"></div>
+    </div>
   </div>
 
-  <p class="aviso">Dados no Supabase (Postgres) com atualização em tempo real. Réguas, tarefas, rodízio e agendas são editáveis pelo admin.</p>
 </div></div>
+<nav class="nav-mobile" id="navMobile"></nav>
+<button class="fab" id="fabNovo" title="Novo item" style="display:none">+</button>
+<div class="al-bg" id="alBg"><div class="al-box"><div id="alMsg"></div><button class="btn laranja" id="alOk">OK</button></div></div>
 
 <div class="status-salvo" id="statusSalvo">Salvo ✓</div>
 
@@ -793,6 +811,7 @@ const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
 
 /* ================================================================ */
+window.alert=function(msg){const b=$('alBg');if(!b)return;$('alMsg').textContent=String(msg);b.classList.add('on');$('alOk').focus();};
 const TZ='America/Araguaina';
 const m=(h,mi=0)=>h*60+mi;
 const fmt=mi=>String(Math.floor(mi/60)).padStart(2,'0')+':'+String(mi%60).padStart(2,'0');
@@ -940,7 +959,7 @@ async function salvarEventoBetta(){
     const {error:e2}=await sb.from('agenda_eventos').insert({user_id:uid,titulo:r.titulo,data:dataCriacao,tipo:'tarefa',franquia_fra:evFraSel,prazo,evento_pai:pai.id,criado_por:usuarioAtual.id,subtarefas:[]});
     if(e2)erroDB(e2);
   }
-  $('evTitulo').value='';$('evDesc').value='';$('evCusto').value='';evPartsSel.clear();sairEdicao();desenharEvParts();
+  fecharFormAgenda();$('evTitulo').value='';$('evDesc').value='';$('evCusto').value='';evPartsSel.clear();sairEdicao();desenharEvParts();
   emModoBetta=false;evDadosEventoOrig=null;pdfBettaExtra={};$('evCustoLbl').style.display='none';$('btnPdfBettaNome').textContent='';
   await carregarAgenda();desenharAgenda();piscar();
   alert('Evento Betta criado ✓\n\n'+ativos.length+' tarefa(s) gerada(s) automaticamente com prazo calculado.');
@@ -1022,7 +1041,7 @@ async function processarVendasBetta(e,file){
   alert('Vendas processadas ✓\n\nFaturamento direto: '+fmtReaisBetta(novoDados.faturamento_direto)+'\nFaturamento do carrinho completo: '+fmtReaisBetta(novoDados.faturamento_carrinho));
 }
 async function carregarAgenda(){
-  const {data}=await sb.from('agenda_eventos').select('*').order('ini');
+  const data=await fetchAllSB(()=>sb.from('agenda_eventos').select('*').order('ini').order('id'));
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
     const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
@@ -1097,7 +1116,7 @@ function ligarRealtime(){
   sb.channel('plantao')
     .on('postgres_changes',{event:'*',schema:'public',table:'checks_diarios'},async()=>{await carregarChecks();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'atividades_livres'},async()=>{await carregarAtividades();redesenharVistaAtiva();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'agenda_eventos'},async()=>{await carregarAgenda();redesenharVistaAtiva();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'agenda_eventos'},()=>{clearTimeout(window._agRT);window._agRT=setTimeout(async()=>{await carregarAgenda();redesenharVistaAtiva();},400);})
     .on('postgres_changes',{event:'*',schema:'public',table:'franquias'},async()=>{await carregarFranquias();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'config_rodizio'},async()=>{await carregarBase();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'reguas'},async()=>{await carregarBase();redesenharVistaAtiva();})
@@ -1112,10 +1131,9 @@ function redesenharVistaAtiva(){
   const v=vistaAtiva();
   if(v==='dia')desenharDia();
   if(v==='agenda')desenharAgenda();
-  if(v==='insights')desenharInsights();
+  if(v==='insights'){desenharInsights();desenharRotina();}
   if(v==='financeiro')desenharFinanceiro();
   if(v==='admin')desenharAdmin();
-  if(v==='rotina')desenharRotina();
   if(v==='board')desenharBoard();
   desenharTimeProg();
 }
@@ -1169,16 +1187,18 @@ async function iniciarSessao(user){
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaFinanceiro').style.display=usuarioAtual.admin?'inline-block':'none';
-  $('abaRotina').style.display=usuarioAtual.admin?'inline-block':'none';
+  $('abaRotina').style.display='none';
   if(!usuarioAtual.admin){
-    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="mes">Mês</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
+    $('agModo').innerHTML='<option value="dia" selected>Dia</option><option value="semana">Semana</option><option value="mes">Mês</option><option value="meus">Criados por mim</option><option value="franquias">Franquias (histórico)</option>';
   }
+  desenharAgPills();montarNavMobile();
   $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
   renderAbasCustom();
   $('agData').value=chaveDia(agora());$('evData').value=chaveDia(agora());
   tick();desenharDia();if(usuarioAtual.admin)desenharAdmin();
-  const abaIni=new URLSearchParams(location.search).get('aba');
+  let abaIni=new URLSearchParams(location.search).get('aba');
+  if(abaIni==='rotina')abaIni='insights';
   if(abaIni){
     const alvo=document.querySelector('.aba[data-v='+abaIni+']');
     if(alvo)alvo.click();
@@ -1211,9 +1231,38 @@ function barraRel(pct){
   const cor=pct===null?'var(--linha)':(pct>=70?'#639922':(pct>=40?'#BA7517':'#A32D2D'));
   return'<div class="rel-barra"><i style="width:'+(pct||0)+'%;background:'+cor+'"></i></div>';
 }
+function kpisDia(uid){
+  const hoje=chaveDia(agora());
+  const abertas=(agenda[uid]||[]).filter(e=>e.tipo==='tarefa'&&e.dono===uid&&!e.concluida);
+  const venc=abertas.filter(e=>e.prazo&&e.prazo<hoje).length;
+  const paraHoje=abertas.filter(e=>(e.prazo===hoje)||(e.data<=hoje&&(e.dataFim||e.data)>=hoje)).length;
+  return{abertas:abertas.length,venc,paraHoje};
+}
+function kpiDiaEl(n,l,cls,onclick){const d=document.createElement('div');d.className='kpi '+(cls||'')+(onclick?' clicavel':'');d.innerHTML='<div class="n">'+n+'</div><div class="l">'+l+'</div>';if(onclick)d.onclick=onclick;return d;}
 function desenharRelTarefas(){
   const box=$('relTarefas');if(!box)return;box.innerHTML='';
   const hoje=diaSemanaExt(chaveDia(agora()));
+  const irAgenda=()=>{const a=document.querySelector('.aba[data-v=agenda]');if(a)a.click();};
+  const grid=document.createElement('div');grid.className='resumo';
+  if(usuarioAtual.admin){
+    let venc=0,paraHoje=0,abertas=0,tot=0,concl=0;
+    for(const u of CFG.usuarios){const k=kpisDia(u.id);venc+=k.venc;paraHoje+=k.paraHoje;abertas+=k.abertas;const r=relatorioTarefas(u.id);tot+=r.total;concl+=r.concl;}
+    const pct=tot?Math.round(concl/tot*100):null;
+    grid.appendChild(kpiDiaEl(venc,'vencidas na equipe',venc?'alerta':'ok'));
+    grid.appendChild(kpiDiaEl(paraHoje,'para hoje (equipe)',''));
+    grid.appendChild(kpiDiaEl(pct==null?'—':pct+'%','concluídas · 30 dias',pct==null?'':(pct>=70?'ok':pct>=40?'atencao':'alerta')));
+    grid.appendChild(kpiDiaEl(abertas,'tarefas em aberto','',irAgenda));
+    box.appendChild(grid);
+    const badge=$('abaDiaBadge');if(badge){badge.textContent=venc;badge.style.display=venc?'inline-block':'none';}
+  }else{
+    const k=kpisDia(usuarioAtual.id),r=relatorioTarefas(usuarioAtual.id);
+    grid.appendChild(kpiDiaEl(k.venc,'tarefas vencidas',k.venc?'alerta':'ok'));
+    grid.appendChild(kpiDiaEl(k.paraHoje,'para hoje',''));
+    grid.appendChild(kpiDiaEl(r.pct==null?'—':r.pct+'%','concluídas · 30 dias',r.pct==null?'':(r.pct>=70?'ok':r.pct>=40?'atencao':'alerta')));
+    grid.appendChild(kpiDiaEl(k.abertas,'tarefas em aberto','',irAgenda));
+    box.appendChild(grid);
+    const badge=$('abaDiaBadge');if(badge){badge.textContent=k.venc;badge.style.display=k.venc?'inline-block':'none';}
+  }
   if(usuarioAtual.admin){
     let linhas='';
     for(const u of CFG.usuarios){
@@ -1223,16 +1272,10 @@ function desenharRelTarefas(){
         +'<span style="font-weight:800;color:'+(r.pct>=70?'#3B6D11':'#a34608')+'">'+r.pct+'%</span>'
         +'<span style="font-size:11.5px;color:var(--tinta-suave)">'+r.concl+'/'+r.total+(r.venc?' · <b style="color:#B3241A">'+r.venc+' vencida'+(r.venc>1?'s':'')+'</b>':' · em dia')+'</span>';
     }
-    box.innerHTML='<div class="rel-card"><div style="font-weight:800;margin-bottom:8px">📊 Relatório de tarefas da equipe — '+hoje+' <span style="font-weight:400;font-size:11.5px;color:var(--tinta-suave)">(janela de '+REL_JANELA+' dias)</span></div>'
-      +(linhas?'<div class="rel-grid">'+linhas+'</div>':'<p class="vazio" style="margin:0">Nenhuma tarefa na janela de '+REL_JANELA+' dias.</p>')+'</div>';
-  }else{
-    const r=relatorioTarefas(usuarioAtual.id);
-    if(!r.total)return;
-    box.innerHTML='<div class="rel-card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'
-      +'<span style="font-weight:800">📊 Suas tarefas — '+hoje+'</span>'
-      +'<span style="font-family:\'Archivo\',sans-serif;font-weight:800;font-size:22px;color:'+(r.pct>=70?'#3B6D11':'#a34608')+'">'+r.pct+'%</span></div>'
-      +barraRel(r.pct)
-      +'<div style="font-size:12.5px;color:var(--tinta-suave);margin-top:6px">'+r.concl+' de '+r.total+' tarefas concluídas'+(r.venc?' · <b style="color:#B3241A">'+r.venc+' vencida'+(r.venc>1?'s':'')+'</b>':' · em dia')+' <span style="font-size:11px">(últimos '+REL_JANELA+' dias)</span></div></div>';
+    const det=document.createElement('details');det.className='rel-pessoas';
+    det.innerHTML='<summary>Tarefas por pessoa — '+hoje+' (janela de '+REL_JANELA+' dias)</summary>'
+      +(linhas?'<div class="rel-card" style="margin-top:8px"><div class="rel-grid">'+linhas+'</div></div>':'<p class="vazio" style="margin:6px 0 0">Nenhuma tarefa na janela de '+REL_JANELA+' dias.</p>');
+    box.appendChild(det);return;
   }
 }
 function desenharPendTarefas(){
@@ -1250,7 +1293,8 @@ function desenharDia(){
   desenharRelTarefas();
   desenharPendTarefas();
   const d=agora();
-  $('rzFaixa').innerHTML='👥 Hoje: '+CFG.usuarios.filter(u=>!u.admin).map(u=>{
+  $('rzFaixa').style.display=usuarioAtual.admin?'block':'none';
+  $('rzFaixa').innerHTML='Equipe hoje: '+CFG.usuarios.filter(u=>!u.admin).map(u=>{
     if(emFerias(u.id,d))return u.nome.split(' ')[0]+' <span style="color:var(--tinta-suave)">· férias até '+u.feriasAte.split('-').reverse().slice(0,2).join('/')+'</span>';
     const b=reguaDe(u.id,d);
     return'<strong>'+u.nome.split(' ')[0]+'</strong> '+(b.length?fmt(b[0].ini)+'–'+fmt(b[b.length-1].fim):'sem expediente');
@@ -1395,12 +1439,12 @@ function linhaEventoDia(uid,e){
     +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'';
   const pendDesde=ehT&&!e.concluida&&e.data<chaveDia(agora())?Math.round((new Date(chaveDia(agora())+'T12:00:00')-new Date(e.data+'T12:00:00'))/86400000):0;
   row.innerHTML=(ehT?'<label style="display:inline"><input type="checkbox" class="ck-md" '+((e.concluida||pend)?'checked':'')+'></label>':'<span class="ld-ev-ico">🕐</span>')
-    +'<div class="txt">'+(ehT?'📌':(e.dataFim?'🔒 Ocupado '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/')+' ·':e.ini+' ·'))+' '+e.titulo+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'+tagCategoria(e.categoria)
+    +'<div class="txt">'+(ehT?'📌':(e.dataFim?'🔒 Ocupado '+e.data.split('-').reverse().slice(0,2).join('/')+'–'+e.dataFim.split('-').reverse().slice(0,2).join('/')+' ·':e.ini+' ·'))+' '+escHtml(e.titulo)+' <span class="pill ag-ev">'+(ehT?'tarefa · agenda':e.tipo)+'</span>'+tagCategoria(e.categoria)
     +(urg?' <span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
     +(ehT&&!e.concluida&&(e.reaberturas||[]).length?' <span class="prazo-tag u2">↩ reaberta p/ correção</span>':'')
     +(ehT&&!e.concluida&&(e.reagendamentos||[]).length?' <span class="prazo-tag u1">📅 reagendada '+e.reagendamentos.length+'x</span>':'')
     +(ehT?'<small>'+(e.por&&e.por!==e.dono?'marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0])+' · ':'')+'agendada '+e.data.split('-').reverse().slice(0,2).join('/')+(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')+((e.fra===0||e.fra)?' · 🏪 '+(frqRotulo(e.fra)||''):'')+(pendDesde?' · <b style="color:#B3241A">pendente há '+pendDesde+' dia'+(pendDesde>1?'s':'')+'</b>':'')+'</small>':'')
-    +(e.descricao?'<small>'+e.descricao+'</small>':'')
+    +(e.descricao?'<small>'+escHtml(e.descricao)+'</small>':'')
     +subsHtml
     +(ehT&&!e.concluida&&(e.reaberturas||[]).length?'<small style="color:#B3241A">↩ Obs da reabertura: "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</small>':'')
     +htmlUploadBetta(e)
@@ -1612,7 +1656,7 @@ function desenharPrevia(dia){
         const ev=document.createElement('div');ev.className='pv-ev';
         ev.style.cssText='top:'+top+'px;height:'+alt+'px;background:'+corDe(u.id);
         ev.title=e.titulo+' · '+e.ini+'–'+e.fim+' · clique p/ detalhes';
-        ev.innerHTML=e.titulo+'<small>'+e.ini+'–'+e.fim+'</small>';
+        ev.innerHTML=escHtml(e.titulo)+'<small>'+e.ini+'–'+e.fim+'</small>';
         ev.style.cursor='pointer';ev.onclick=()=>abrirDetalheEv(e.id);
         corpo.appendChild(ev);
       }
@@ -1665,7 +1709,7 @@ function eventoEl(uid,e){
   div.innerHTML='<div class="hora">'+(ehTarefa?(perEv?'📌 '+perEv:'📌 tarefa'):(perEv?'🔒 '+perEv:e.ini+'–'+e.fim))+'</div><div class="det">'
     +'<div class="t" style="'+(e.concluida?'text-decoration:line-through;color:var(--tinta-suave)':'')+'">'
     +(ehTarefa&&podeConcluir?'<input type="checkbox" class="ck-tarefa" '+((e.concluida||pend)?'checked':'')+' style="accent-color:var(--verde);margin-right:6px;vertical-align:-2px"> ':'')
-    +(ICO[e.tipo]||'')+e.titulo+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'+tagCategoria(e.categoria)
+    +(ICO[e.tipo]||'')+escHtml(e.titulo)+' <span class="st '+(STC[e.tipo]||'ideia')+'">'+e.tipo+'</span>'+tagCategoria(e.categoria)
     +(urg?'<span class="prazo-tag u'+urg.n+'">'+urg.txt+'</span>':'')
     +(ehTarefa&&!e.concluida&&(e.reaberturas||[]).length?'<span class="prazo-tag u2">↩ reaberta p/ correção</span>':'')
     +(ehTarefa&&e.prazo&&(e.concluida)?'<span class="prazo-tag u0">prazo '+e.prazo.split('-').reverse().slice(0,2).join('/')+'</span>':'')
@@ -1685,14 +1729,14 @@ function eventoEl(uid,e){
     +(ehTarefa&&!e.concluida&&podeConcluir&&e.por&&e.por!==e.dono?'<div style="margin:6px 0"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
     +(podeReagendar(e)?'<div style="margin:6px 0"><button type="button" class="btn-reagendar" style="border:1.5px solid var(--laranja);color:var(--laranja);background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">📅 Reagendar</button></div>':'')
     +((e.fra===0||e.fra)?'<div class="n">🏪 '+(frqRotulo(e.fra)||'FRA '+e.fra)+'</div>':'')
-    +(e.descricao?'<div class="n" style="white-space:pre-wrap">'+e.descricao+'</div>':'')
+    +(e.descricao?'<div class="n" style="white-space:pre-wrap">'+escHtml(e.descricao)+'</div>':'')
     +(outros.length?'<div class="n">👥 '+((uPorId(e.dono)||{}).nome||'—').split(' ')[0]+' + '+nomesPart+'</div>':'')
     +(!ehTarefa&&e.por&&e.por!==uid?'<div class="n">Marcado por '+((uPorId(e.por)||{}).nome||'—')+'</div>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>'
     +'</div>'
-    +'<div class="acoes"><a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a>'
-    +'<button class="ics">.ics</button>'
+    +'<div class="acoes">'+(ehTarefa?'':'<a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a>'
+    +'<button class="ics">.ics</button>')
     +(((e.por||e.dono)===usuarioAtual.id)?'<button class="ed">✎ Editar</button>':'')
     +(podeRemover?'<button class="x">Remover</button>':'')+'</div>';
   if(!(evAbertos.has(e.id)||pend))div.classList.add('fechado');
@@ -1703,7 +1747,7 @@ function eventoEl(uid,e){
   };
   const bed=div.querySelector('.ed');
   if(bed)bed.onclick=()=>entrarEdicao(e);
-  div.querySelector('.ics').onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
+  const bIcs=div.querySelector('.ics');if(bIcs)bIcs.onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
   const bx=div.querySelector('.x');
   if(bx)bx.onclick=async()=>{
     const{error}=await sb.from('agenda_eventos').delete().eq('id',e.id);
@@ -1773,7 +1817,7 @@ function iniciarDevolucao(e,irParaAgenda){
   evSubsArr=[];desenharEvSubs();
   atualizarCamposTipo();desenharEvParts();
   $('btnAddEvento').textContent='↩ Devolver (criar tarefa)';
-  $('btnCancelEdit').style.display='inline-block';
+  abrirFormAgenda();
   $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
   alert('Descreva a continuidade e o prazo. Ao salvar, a tarefa original será concluída e '+(((uPorId(e.por)||{}).nome||'quem pediu').split(' ')[0])+' receberá o aviso.');
 }
@@ -1954,9 +1998,37 @@ function retroativo(data,ini){
 }
 function sairEdicao(){
   editEvId=null;editEvOrig=null;evFraSel=null;
-  $('evFra').value='';$('btnAddEvento').textContent='Adicionar';
-  $('btnCancelEdit').style.display='none';
+  $('evFra').value='';$('btnAddEvento').textContent='Salvar';
 }
+function desenharAgPills(){
+  const box=$('agPills');if(!box)return;
+  const sel=$('agModo');const ROT={dia:'Dia',semana:'Semana',mes:'Mês',intervalo:'Intervalo',meus:'Minhas',conferencia:'Conferência',historico_betta:'Betta',franquias:'Franquias'};
+  box.innerHTML='';
+  [...sel.options].forEach(o=>{const b=document.createElement('button');b.type='button';b.className='pill'+(sel.value===o.value?' on':'');b.textContent=ROT[o.value]||o.textContent;b.onclick=()=>{sel.value=o.value;sel.onchange&&sel.onchange();desenharAgPills();};box.appendChild(b);});
+}
+function montarNavMobile(){
+  const nav=$('navMobile');if(!nav)return;nav.innerHTML='';
+  const IC={dia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+    agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    insights:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 19c0-2 2-3.5 4-3.5s3 1 3 3"/></svg>',
+    financeiro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>',
+    admin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>'};
+  document.querySelectorAll('#barraAbas .aba[data-v]').forEach(a=>{
+    if(a.style.display==='none'||a.dataset.v==='rotina')return;
+    const b=document.createElement('button');b.type='button';b.dataset.v=a.dataset.v;
+    b.innerHTML=(IC[a.dataset.v]||IC.agenda)+(a.dataset.v==='board'?a.textContent.trim():a.firstChild.textContent.trim());
+    b.onclick=()=>a.click();nav.appendChild(b);
+  });
+  $('fabNovo').style.display='';
+  sincronizarNavMobile();
+}
+function sincronizarNavMobile(){const a=document.querySelector('.aba.ativa');const v=a?a.dataset.v:'';document.querySelectorAll('#navMobile button').forEach(b=>b.classList.toggle('ativa',b.dataset.v===v));}
+function abrirFormAgenda(){
+  const f=$('agForm');if(!f)return;f.style.display='flex';f.classList.add('aberto');
+  if(!$('evData').value)$('evData').value=$('agData').value||chaveDia(agora());
+  setTimeout(()=>{$('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});$('evTitulo').focus();},50);
+}
+function fecharFormAgenda(){const f=$('agForm');if(f){f.style.display='none';f.classList.remove('aberto');}}
 async function addEvento(){
   const uid=agAlvo();
   const tipo=$('evTipo').value,descricao=$('evDesc').value.trim();
@@ -2018,7 +2090,7 @@ async function addEvento(){
     }
     devolverDe=null;
   }
-  $('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';
+  fecharFormAgenda();$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';
   await carregarAgenda();desenharAgenda();piscar();
 }
 function entrarEdicao(e){
@@ -2036,7 +2108,7 @@ function entrarEdicao(e){
   evFraSel=(e.fra===0||e.fra)?e.fra:null;
   $('evFra').value=evFraSel!==null?(frqRotulo(evFraSel)||''):'';
   $('btnAddEvento').textContent='Salvar alterações';
-  $('btnCancelEdit').style.display='inline-block';
+  abrirFormAgenda();
   desenharEvParts();
   $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -2191,7 +2263,7 @@ function desenharAgendaFranquias(lista){
     if(frqHistAberta.has(chave)){
       const h=document.createElement('div');h.className='frq-hist';
       itens.sort((a,b)=>b.data.localeCompare(a.data)||a.ini.localeCompare(b.ini));
-      h.innerHTML=itens.map(e=>'<p><span style="color:var(--tinta-suave)">'+e.data.split('-').reverse().join('/')+' '+e.ini+'</span> · '+(ICO[e.tipo]||'')+' '+e.titulo
+      h.innerHTML=itens.map(e=>'<p><span style="color:var(--tinta-suave)">'+e.data.split('-').reverse().join('/')+' '+e.ini+'</span> · '+(ICO[e.tipo]||'')+' '+escHtml(e.titulo)
         +' <span class="st '+({tarefa:'projeto',compromisso:'ideia',evento:'aprovada'}[e.tipo]||'ideia')+'">'+e.tipo+(e.tipo==='tarefa'?(e.concluida?' · concluída':' · pendente'):'')+'</span>'
         +' <span style="color:var(--tinta-suave)">— '+(((uPorId(e.dono)||{}).nome||'—').split(' ')[0])+'</span></p>').join('');
       lista.appendChild(h);
@@ -2625,7 +2697,7 @@ async function desenharRotinaDados(){
 /* ================================================================
    BOARDS (abas customizadas: ideias → aprovação → projeto → agenda)
 ================================================================ */
-function renderAbasCustom(){
+function renderAbasCustom(){setTimeout(montarNavMobile,0);
   const box=$('abasCustom');box.innerHTML='';
   for(const a of ABAS){
     const b=document.createElement('button');
@@ -2679,9 +2751,9 @@ function desenharBdAgendados(aba){
     const div=document.createElement('div');div.className='bd-card bd-evento';
     div.style.cursor='pointer';div.title='Abrir este dia na Agenda';
     div.innerHTML='<div class="cab"><span class="ev-data">'+e.data.split('-').reverse().slice(0,2).join('/')+'</span>'
-      +'<span class="t">🎪 '+e.titulo+'</span><span class="st aprovada">'+e.ini+'–'+e.fim+'</span></div>'
+      +'<span class="t">🎪 '+escHtml(e.titulo)+'</span><span class="st aprovada">'+e.ini+'–'+e.fim+'</span></div>'
       +((e.fra===0||e.fra)?'<div class="cab" style="margin-top:2px"><span class="ev-fr">🏪 '+(frqRotulo(e.fra)||'FRA '+e.fra)+'</span></div>':'')
-      +(e.descricao?'<div class="desc">'+e.descricao+'</div>':'')
+      +(e.descricao?'<div class="desc">'+escHtml(e.descricao)+'</div>':'')
       +'<div class="meta">responsável: '+dono.split(' ')[0]
       +(outros.length?' · 👥 +'+outros.length+' participante'+(outros.length>1?'s':''):'')+'</div>';
     div.onclick=()=>{
@@ -2738,6 +2810,7 @@ function cardItem(i){
         $('evTipo').value='evento';
         desenharAgenda();
         desenharEvParts();
+        atualizarCamposTipo();abrirFormAgenda();
         $('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});
         return;
       }
@@ -2834,13 +2907,32 @@ async function desenharInsightsTP(dias,desdeISO){
   ts.forEach(e=>{if(e.fra===0||e.fra){porFra[e.fra]=(porFra[e.fra]||0)+1;}});
   const top=Object.entries(porFra).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const max=top.length?top[0][1]:1;
-  $('insTPFrq').innerHTML=top.length?top.map(([fra,n])=>{
-    const f=frqPorId(Number(fra));
-    return'<div style="display:grid;grid-template-columns:minmax(120px,1fr) 3fr 30px;gap:8px;align-items:center;font-size:12.5px;padding:3px 0">'
-      +'<span>'+(f?(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome):'FRA '+fra)+'</span>'
-      +'<div class="rel-barra"><i style="width:'+Math.round(n/max*100)+'%;background:var(--laranja)"></i></div>'
-      +'<b>'+n+'</b></div>';
-  }).join(''):'<p class="vazio">Sem tarefas vinculadas a FR no período.</p>';
+  const tend=await tendenciaFaturamento(top.map(([fra])=>Number(fra)));
+  $('insTPFrq').innerHTML=top.length?'<table class="rot-tab"><tr><th>Franquia</th><th style="width:34%">Tarefas</th><th style="text-align:right">Faturamento</th></tr>'+top.map(([fra,n])=>{
+    const f=frqPorId(Number(fra));const t=tend[Number(fra)];
+    const tTxt=!t?'<span style="color:var(--tinta-suave)">sem dado</span>':(t.dir==='baixa'?'<b style="color:#B3241A">▼ '+t.pct+'% · 2 meses caindo</b>':t.dir==='alta'?'<span style="color:var(--verde)">▲ +'+t.pct+'%</span>':'<span style="color:var(--tinta-suave)">'+(t.pct>=0?'+':'')+t.pct+'%</span>');
+    return'<tr><td>'+(f?(f.fra===0?f.nome:'FRA '+f.fra+' · '+escHtml(f.nome)):'FRA '+fra)+'</td>'
+      +'<td><div style="display:flex;gap:8px;align-items:center"><div class="rel-barra" style="flex:1"><i style="width:'+Math.round(n/max*100)+'%;background:var(--laranja)"></i></div><b>'+n+'</b></div></td>'
+      +'<td style="text-align:right">'+tTxt+'</td></tr>';
+  }).join('')+'</table>':'<p class="vazio">Sem tarefas vinculadas a FR no período.</p>';
+}
+/* Tendência de faturamento por FRA: compara os 2 últimos meses fechados com o anterior (dados do módulo Financeiro) */
+async function tendenciaFaturamento(fras){
+  const out={};const lista=fras.filter(f=>f>0);if(!lista.length)return out;
+  try{
+    const d=new Date(agora());d.setMonth(d.getMonth()-4);const desde=d.toISOString().slice(0,7)+'-01';
+    const rows=await fetchAllSB(()=>sb.from('financeiro_faturamento_mensal').select('fra,mes_ano,valor').in('fra',lista).gte('mes_ano',desde).order('mes_ano').order('fra'));
+    const porFra={};rows.forEach(r=>{(porFra[r.fra]=porFra[r.fra]||[]).push(r);});
+    for(const fra of lista){
+      const h=(porFra[fra]||[]).sort((a,b)=>a.mes_ano.localeCompare(b.mes_ano));
+      if(h.length<3)continue;
+      const [a,b,c]=h.slice(-3).map(x=>Number(x.valor||0));
+      if(!a)continue;
+      const pct=Math.round((c-a)/a*100);
+      out[fra]={pct,dir:(c<b&&b<a)?'baixa':(c>b&&b>a)?'alta':'estavel'};
+    }
+  }catch(e){console.warn('tendenciaFaturamento',e);}
+  return out;
 }
 async function fetchAllSB(builderFn,step){
   step=step||1000;
@@ -2935,11 +3027,11 @@ function tabelaSimplesFin(linhas,cols){
 }
 async function desenharFinanceiro(){
   ligarSubAbasFinanceiro();
-  const[{data:fatData},{data:inadData},{data:recebData},{data:mapaData}]=await Promise.all([
-    sb.from('financeiro_faturamento_mensal').select('fra,mes_ano,valor').order('mes_ano',{ascending:false}),
-    sb.from('financeiro_inadimplencia').select('*').order('mes_referencia',{ascending:false}),
-    sb.from('financeiro_recebidos_mensal').select('fra,cnpj,mes_ano,valor').order('mes_ano',{ascending:false}),
-    sb.from('financeiro_mapa_clientes').select('cliente_norm,fra')
+  const[fatData,inadData,recebData,mapaData]=await Promise.all([
+    fetchAllSB(()=>sb.from('financeiro_faturamento_mensal').select('fra,mes_ano,valor').order('mes_ano',{ascending:false}).order('fra')),
+    fetchAllSB(()=>sb.from('financeiro_inadimplencia').select('*').order('mes_referencia',{ascending:false}).order('id')),
+    fetchAllSB(()=>sb.from('financeiro_recebidos_mensal').select('fra,cnpj,mes_ano,valor').order('mes_ano',{ascending:false}).order('cnpj')),
+    fetchAllSB(()=>sb.from('financeiro_mapa_clientes').select('cliente_norm,fra').order('cliente_norm'))
   ]);
   const FAT=fatData||[],INAD=inadData||[],RECEB=recebData||[],MAPA=mapaData||[];
   const mapaLookup={};MAPA.forEach(m=>mapaLookup[m.cliente_norm]=m.fra);
@@ -2991,8 +3083,13 @@ function desenharFinKpis(infoFat,infoInad,infoReceb){
     {rot:'Faturamento histórico da rede',val:fmtReaisFin(historicoTotalRede),sub:'desde o início dos dados',nivel:'ok',
       detalhe:()=>abrirModalFin('Faturamento histórico total por loja',tabelaSimplesFin([...linhas].sort((a,b)=>(b.historicoTotal||0)-(a.historicoTotal||0)),colHist))}
   ];
-  $('finKpis').innerHTML=kpis.map((k,i)=>'<div onclick="window.__finKpiClick('+i+')">'+kpiSemaforo(k.rot,k.val,k.sub,k.nivel)+'</div>').join('')
-    .replace(/<div class="card /g,'<div class="card kpi-clicavel ');
+  kpis[0].sub=(infoFat.mesLabel||'—')+(varTotalPct==null?'':' · '+(varTotalPct>=0?'▲ +':'▼ ')+varTotalPct+'% vs. mês anterior')+(recordistas.length?' · '+recordistas.length+' em recorde':'');
+  kpis[3].rot='Inadimplência vinculada a lojas';
+  kpis[3].sub='<b style="color:var(--verm)">'+fmtReaisFin(inadTotalGeral)+' no total</b>'+(inadTotalGeral?' · '+Math.round((1-inadVinculado/inadTotalGeral)*100)+'% sem vínculo':'');
+  const principais=[0,3,5],secund=[1,2,4,6,7];
+  const render=i=>'<div onclick="window.__finKpiClick('+i+')">'+kpiSemaforo(kpis[i].rot,kpis[i].val,kpis[i].sub,kpis[i].nivel)+'</div>';
+  $('finKpis').innerHTML=principais.map(render).join('').replace(/<div class="card /g,'<div class="card kpi-clicavel ');
+  $('finKpisMais').innerHTML=secund.map(render).join('').replace(/<div class="card /g,'<div class="card kpi-clicavel ');
   window.__finKpiClick=(i)=>kpis[i].detalhe();
 }
 function desenharFinFaturamento(FAT){
@@ -3806,9 +3903,9 @@ function ligarAbas(){
       document.querySelectorAll('.aba').forEach(x=>x.classList.remove('ativa'));
       document.querySelectorAll('.vista').forEach(x=>x.classList.remove('ativa'));
       a.classList.add('ativa');
-      if(a.dataset.v==='board'){abaAtualId=a.dataset.board;$('v-board').classList.add('ativa');desenharBoard();return;}
+      if(a.dataset.v==='board'){abaAtualId=a.dataset.board;$('v-board').classList.add('ativa');desenharBoard();sincronizarNavMobile();return;}
       $('v-'+a.dataset.v).classList.add('ativa');
-      redesenharVistaAtiva();
+      redesenharVistaAtiva();sincronizarNavMobile();
     };
   });
 }
@@ -3825,7 +3922,12 @@ ligarAbas();
   $('loginSenha').addEventListener('keydown',e=>{if(e.key==='Enter')entrar();});
   $('btnSair').onclick=sair;
   $('btnAddEvento').onclick=()=>{if(emModoBetta&&!editEvId)salvarEventoBetta();else addEvento();};
-  $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';};
+  $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';fecharFormAgenda();};
+  $('btnNovoEv').onclick=()=>{if(editEvId||devolverDe)return abrirFormAgenda();$('evData').value=$('agData').value||chaveDia(agora());abrirFormAgenda();};
+  $('fabNovo').onclick=()=>{const a=document.querySelector('.aba[data-v=agenda]');if(a&&!a.classList.contains('ativa'))a.click();$('btnNovoEv').click();};
+  $('alOk').onclick=()=>$('alBg').classList.remove('on');
+  const admPills=$('admPills');if(admPills)admPills.querySelectorAll('.pill').forEach(b=>b.onclick=()=>{admPills.querySelectorAll('.pill').forEach(x=>x.classList.toggle('on',x===b));document.querySelectorAll('.adm-sec').forEach(d=>d.style.display=d.id==='adm-'+b.dataset.adm?'block':'none');});
+  const bFinMais=$('btnFinMais');if(bFinMais)bFinMais.onclick=()=>{const m=$('finKpisMais');const on=m.style.display!=='none';m.style.display=on?'none':'grid';bFinMais.textContent=on?'Ver mais indicadores':'Menos indicadores';};
   $('btnEvSubAdd').onclick=()=>{const t=$('evSubNovo').value.trim();if(!t)return;evSubsArr.push({id:novoId('s'),txt:t,feita:false});$('evSubNovo').value='';desenharEvSubs();};
   $('evSubNovo').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('btnEvSubAdd').click();}});
   $('evFra').oninput=desenharFraList;

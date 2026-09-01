@@ -32,7 +32,6 @@ h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--laranja);background:var(--laranja);color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;box-shadow:0 2px 8px rgba(255,107,21,.22)}
 .btn:hover{background:#e85f0f;border-color:#e85f0f}
-.btn:hover{background:#0D161E}
 .btn-ghost{background:#fff;color:var(--verde-escuro);border-color:var(--verde-claro);box-shadow:none}
 .btn-ghost:hover{background:var(--pine-soft);border-color:var(--pine)}
 .btn-sm{padding:5px 10px;font-size:12.5px}
@@ -166,7 +165,8 @@ body.leitura #btnNovo,body.leitura #btnImportar,body.leitura #btnNovaLoja,body.l
 
 /* lojas para repasse */
 .lojas{max-width:1120px}
-.loja-card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--pine);border-radius:var(--r);padding:14px 16px;margin-bottom:9px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.loja-card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--pine);border-radius:var(--r);padding:14px 16px;margin-bottom:9px;display:grid;grid-template-columns:minmax(200px,1.6fr) repeat(4,minmax(110px,1fr));grid-template-areas:'id n1 n2 n3 n4' 'acts acts acts acts acts';gap:6px 18px;align-items:center}
+.loja-card .id{grid-area:id}.loja-card .n:nth-of-type(1){grid-area:n1}.loja-card .n:nth-of-type(2){grid-area:n2}.loja-card .n:nth-of-type(3){grid-area:n3}.loja-card .n:nth-of-type(4){grid-area:n4}
 .loja-card.falta{border-left-color:var(--amarelo)}
 .loja-card.repassada{border-left-color:var(--pine);opacity:.7}
 .loja-card .id{min-width:210px}
@@ -175,7 +175,9 @@ body.leitura #btnNovo,body.leitura #btnImportar,body.leitura #btnNovaLoja,body.l
 .loja-card .n{min-width:120px}
 .loja-card .n b{display:block;font-family:Archivo;font-size:15px;font-variant-numeric:tabular-nums}
 .loja-card .n span{color:var(--muted);font-size:11.5px}
-.loja-card .acts{margin-left:auto;display:flex;gap:6px}
+.loja-card .acts{grid-area:acts;display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;border-top:1px dashed var(--line);padding-top:8px;margin-top:4px}
+.loja-card .id{min-width:0}.loja-card .n{min-width:0}
+@media(max-width:820px){.loja-card{grid-template-columns:1fr 1fr;grid-template-areas:'id id' 'n1 n2' 'n3 n4' 'acts acts'}.loja-card .acts{justify-content:flex-start}}
 .alerta{background:var(--amber-soft);border:1px solid #EAD59A;border-radius:var(--r);padding:10px 12px;font-size:12.5px;margin:0 0 12px}
 .alerta b{display:block;margin-bottom:2px}
 .ok-box{background:var(--pine-soft);border:1px solid #BFD8CE;border-radius:2px;padding:10px 12px;font-size:12.5px;margin:0 0 12px}
@@ -265,6 +267,20 @@ textarea{min-height:64px;resize:vertical}
 .foot-note{margin:0 24px 34px;color:var(--muted);font-size:12px;max-width:80ch}
 @media (max-width:820px){.funnel{overflow-x:auto}.bars,.bar-labels,.conv{min-width:640px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:700px){
+  .top{padding:12px 14px 0}.top-row{gap:10px}.top p{display:none}
+  .actions{gap:6px}.actions .btn{padding:7px 10px;font-size:12.5px}.actions .quem{display:none}
+  .tabs{margin:12px 14px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
+  .tab{margin-right:16px;white-space:nowrap;padding:9px 0}
+  .filtros{margin:10px 14px 0}.funnel{margin:12px 14px 0;padding:12px}.scroller{padding:12px 14px 30px}
+  :root{--col:236px}
+  .drawer{width:100%;border-left:none}
+  .fu{padding:12px 14px 30px}
+  .ficha-cab{padding:14px}.ficha-cab h3{font-size:17px}.ficha-cab .acts{width:100%}.ficha-cab .acts .btn{flex:1;text-align:center}
+  .kpis{grid-template-columns:1fr 1fr}.kpi b{font-size:17px}
+  .ed{padding:14px}.grid3,.grid4{grid-template-columns:1fr}
+  .linkbox input{min-width:0;width:100%}
+}
 </style>
 </head>
 <body>
@@ -289,6 +305,7 @@ textarea{min-height:64px;resize:vertical}
       <p>Da captação ao terceiro mês de operação, com cadência de contato por etapa e emissão da COF puxando os dados do cadastro. Dados compartilhados pela equipe via Supabase.</p>
     </div>
     <div class="actions">
+      <a class="btn btn-ghost" href="../" id="btnCentral" style="text-decoration:none">← Central POP</a>
       <button class="btn" id="btnNovo">Cadastrar candidato</button>
       <button class="btn btn-ghost" id="btnCsv">Baixar CSV</button>
       <button class="btn btn-ghost" id="btnPerdas">Motivos de perda</button>
@@ -397,7 +414,7 @@ const COF_HTML = "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
 const FICHA_PAGINA='ficha-formacao-preco-loja.html';   // página pública do cedente, no mesmo repositório
-const VERSAO='v3.3';  // deploy: suporterdp/expansao/index.html
+const VERSAO='v3.5';  // deploy: suporterdp/expansao/index.html
 let somenteLeitura=false;
 const PRAZO_COF=10;
 const TIPOS={nova:'Loja nova',conversao:'Conversão',repasse:'Repasse'};
@@ -1272,6 +1289,40 @@ function blocosFicha(s,c,interno){
   </div>`;
 }
 
+function blocosCandidato(s,c){
+  const x=(n,d=1)=>n==null||!isFinite(n)?'—':Number(n).toLocaleString('pt-BR',{maximumFractionDigits:d});
+  const equipe=(s.folha||[]).filter(i=>i.t).map(i=>esc(i.t));
+  const despesas=(s.desp||[]).filter(i=>i.t&&i.v);
+  const resultadoPos=c.ebitda!==null&&c.ebitda>0;
+  return `
+  ${s.pontosFortes?`<div class="ed" style="border-left:5px solid var(--laranja)"><h3>Por que esta loja</h3><div class="texto">${esc(s.pontosFortes)}</div></div>`:''}
+  <div class="kpis">
+    <div class="kpi destaque"><b>${brl(c.fat)}</b><span>faturamento médio mensal · últimos 12 meses</span></div>
+    <div class="kpi"><b>${c.mg?x(c.mg)+'%':'—'}</b><span>margem de contribuição</span></div>
+    ${resultadoPos?`<div class="kpi pos"><b>${brl(c.ebitda)}</b><span>resultado operacional mensal</span></div>`:''}
+    <div class="kpi"><b>${brl(c.estLiq)}</b><span>estoque incluído (a custo, líquido)</span></div>
+    <div class="kpi"><b>${brl(s.ticket)}</b><span>ticket médio</span></div>
+    <div class="kpi destaque"><b>${brl(s.valorPedido)}</b><span>valor de repasse</span></div>
+  </div>
+  <div class="grid-ficha">
+    <div class="ed"><h3>A loja</h3>${kvPares([
+      ['Unidade',s.fr?'FR'+esc(s.fr):'—'],['Cidade',esc([s.cidade,s.uf].filter(Boolean).join('/')||'—')],['Área',s.m2?x(s.m2,0)+' m²':'—'],
+      ['Contrato de locação até',fmtD(s.locacaoAte)],['Equipe atual',equipe.length?equipe.length+' pessoa(s): '+equipe.join(', '):'—'],
+      ['Motivo do repasse',esc(s.motivo||'—')]])}</div>
+    <div class="ed"><h3>Operação mensal</h3>${kvPares([
+      ...despesas.map(i=>[esc(i.t),brl(i.v)]),['Folha com encargos',brl(c.folha+c.enc)],['Custo operacional total',brl(c.ajustado)],
+      ['Faturamento de equilíbrio',c.be?brl(c.be):'—'],
+      ...(resultadoPos&&c.meses?[['Retorno do investimento (pedido ÷ resultado)',x(c.meses,0)+' meses']]:[])])}</div>
+    <div class="ed"><h3>O que está incluído no repasse</h3>${kvPares([
+      ['Ponto comercial, fachada e mobiliário padrão da rede','✓'],['Estoque inventariado a custo',brl(c.estLiq)],['Carteira de clientes e histórico de vendas','✓'],
+      ['Treinamento e suporte da franqueadora na transição','✓'],['Contas a pagar da loja',c.contas?brl(c.contas)+' — '+(ASSUME[s.assume]||'a negociar'):'nenhuma']])}</div>
+    <div class="ed"><h3>Próximos passos</h3><div class="texto">1. Conversa com a equipe de expansão e visita à loja.
+2. Acesso à Circular de Oferta de Franquia (COF) e prazo legal de 10 dias.
+3. Diligência do candidato sobre os números apresentados.
+4. Contrato de franquia e termo de repasse; transição acompanhada pela franqueadora.</div></div>
+  </div>`;
+}
+
 function fichaLoja(v){
   const s=estado.lojas.find(x=>x.id===lojaAberta);
   if(!s){lojaAberta=null;return desenharLojas();}
@@ -1308,8 +1359,8 @@ function exportarPdfLoja(s,interno){
   .rodape{margin-top:18px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
   @media print{.pdf{padding:0}@page{margin:14mm}}
   </style></head><body><div class="pdf">
-  <div class="pdf-topo"><img src="${logo}" alt="Rede POP Pet Center"><div class="t"><b>Ficha de formação de preço de loja${interno?' · uso interno':''}</b>${esc(s.nome||'')}${s.fr?' · FR'+esc(s.fr):''} · ${esc([s.cidade,s.uf].filter(Boolean).join('/'))}<br>emitida em ${new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}${perfil?' por '+esc(perfil.nome):''}</div></div>
-  ${blocosFicha(s,c,interno)}
+  <div class="pdf-topo"><img src="${logo}" alt="Rede POP Pet Center"><div class="t"><b>${interno?'Ficha de formação de preço de loja · uso interno':'Oportunidade de repasse de loja'}</b>${esc(s.nome||'')}${s.fr?' · FR'+esc(s.fr):''} · ${esc([s.cidade,s.uf].filter(Boolean).join('/'))}<br>emitida em ${new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}${perfil?' por '+esc(perfil.nome):''}</div></div>
+  ${interno?blocosFicha(s,c,true):blocosCandidato(s,c)}
   <div class="rodape">${interno?'Documento interno da franqueadora. Contém avaliação, múltiplo, teto e observações que não devem ser compartilhados com cedente ou candidato.':'Valores informados pelo franqueado cedente e conferidos pela franqueadora. Este documento não constitui oferta nem garantia de resultado; a decisão de investimento é do candidato, após a própria diligência.'} — POP Franchising e Participações Ltda · CNPJ 14.860.843/0001-72</div>
   </div><script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script></body></html>`;
   const w=window.open('','_blank');
@@ -1422,7 +1473,10 @@ function editorLoja(v){
      </div>
    </div>
 
-   <div class="ed"><h3>Observações</h3>
+   <div class="ed"><h3>Pontos fortes para o candidato <em>— vai no PDF para candidato</em></h3>
+     <textarea data-s="pontosFortes" placeholder="Ex.: ponto de esquina em avenida de bairro consolidado; carteira de banho e tosa com 180 clientes recorrentes; equipe treinada fica; contrato de locação até 2029 com reajuste IPCA.">${esc(s.pontosFortes||'')}</textarea>
+   </div>
+   <div class="ed"><h3>Observações internas <em>— nunca sai da esteira</em></h3>
      <textarea data-s="obs">${esc(s.obs||'')}</textarea>
      ${leads.length?`<div style="margin-top:12px;font-size:12.5px"><b>Candidatos ligados a esta loja:</b> ${leads.map(l=>esc(l.nome)).join(', ')}</div>`:''}
    </div>`;

@@ -10,9 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#16202B; --muted:#5F6C77; --line:#D3D9D6; --board:#E4E8E6; --card:#FFFFFF;
-  --pine:#14594A; --pine-soft:#E3EEEA; --rust:#B3350F; --rust-soft:#F7E6E0;
-  --amber:#8F6400; --amber-soft:#F6EEDC; --steel:#3C5A73; --col:268px;
+  --ink:#14332A; --muted:#5A7268; --line:#D3DFD8; --board:#EEF3F0; --card:#FFFFFF;
+  --pine:#009150; --pine-soft:#E2F2EA; --rust:#B84A0A; --rust-soft:#FFEDE1;
+  --amber:#9A6A00; --amber-soft:#FBF1DC; --steel:#00573F; --col:268px;
+  --laranja:#FF6B15; --verde-escuro:#00573F; --verde-claro:#A8D3C4; --amarelo:#FDAE25; --r:10px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -22,22 +23,25 @@ h1,h2,h3,.num{font-family:Archivo,Inter,system-ui,sans-serif}
 button{font:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 
-.top{padding:22px 24px 0}
+.top{padding:18px 24px 0;border-top:6px solid var(--pine)}
+.marca{display:flex;align-items:center;gap:14px}.marca img{height:44px;width:auto}
+@media(max-width:600px){.marca img{height:34px}}
 .top-row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
 h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0}
 .top p{margin:4px 0 0;color:var(--muted);max-width:64ch}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:2px;padding:8px 14px;font-weight:500}
+.btn{border:1px solid var(--laranja);background:var(--laranja);color:#fff;border-radius:8px;padding:8px 14px;font-weight:600;box-shadow:0 2px 8px rgba(255,107,21,.22)}
+.btn:hover{background:#e85f0f;border-color:#e85f0f}
 .btn:hover{background:#0D161E}
-.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-.btn-ghost:hover{background:#DBE0DD;border-color:#B9C2BD}
+.btn-ghost{background:#fff;color:var(--verde-escuro);border-color:var(--verde-claro);box-shadow:none}
+.btn-ghost:hover{background:var(--pine-soft);border-color:var(--pine)}
 .btn-sm{padding:5px 10px;font-size:12.5px}
 .btn[disabled]{opacity:.4;cursor:not-allowed}
 
 .tabs{display:flex;gap:0;margin:18px 24px 0;border-bottom:1px solid var(--line)}
 .tab{background:none;border:none;border-bottom:2px solid transparent;padding:9px 2px;margin-right:24px;color:var(--muted);font-weight:500}
-.tab.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
-.tab .badge{display:inline-block;background:var(--rust);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:6px;font-variant-numeric:tabular-nums}
+.tab.on{color:var(--verde-escuro);border-bottom-color:var(--laranja);font-weight:600}
+.tab .badge{display:inline-block;background:var(--laranja);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:6px;font-variant-numeric:tabular-nums}
 .filtros{display:flex;gap:6px;margin:14px 24px 0;flex-wrap:wrap;align-items:center}
 .chip{border:1px solid var(--line);background:transparent;border-radius:2px;padding:4px 10px;font-size:12.5px;color:var(--muted)}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
@@ -76,7 +80,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0}
 .cards{display:flex;flex-direction:column;gap:8px}
 .empty-col{border:1px dashed #C4CCC8;border-radius:2px;height:52px}
 
-.lead{position:relative;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--pine);border-radius:2px;padding:10px 11px 9px;text-align:left;width:100%}
+.lead{position:relative;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--pine);border-radius:8px;padding:10px 11px 9px;text-align:left;width:100%}
 .lead:hover{border-color:#AEB8B3}
 .lead.late{border-left-color:var(--rust)}
 .lead.warn{border-left-color:var(--amber)}
@@ -87,7 +91,7 @@ h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0}
 .days{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .days.late{color:var(--rust);font-weight:600}
 .days.warn{color:var(--amber);font-weight:600}
-.pill{font-size:10.5px;border:1px solid var(--line);border-radius:2px;padding:1px 5px;color:var(--muted)}
+.pill{font-size:10.5px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted);background:#fff}
 .pill.nova{border-color:#B9C6BF;color:var(--pine)}
 .pill.conversao{border-color:#E0CFA6;color:var(--amber)}
 .pill.repasse{border-color:#B5C4D2;color:var(--steel)}
@@ -139,10 +143,31 @@ h1{font-size:24px;font-weight:700;letter-spacing:-.02em;margin:0}
 .toast.on{opacity:1}
 body.leitura #btnNovo,body.leitura #btnImportar,body.leitura #btnNovaLoja,body.leitura #btnGerarLink,body.leitura #btnNovoLink,body.leitura #btnRevogar,body.leitura #btnExcluirLoja{display:none}
 
+/* ficha em modo leitura */
+.ficha-cab{background:linear-gradient(135deg,var(--verde-escuro),var(--pine));color:#fff;border-radius:var(--r);padding:18px 22px;margin-bottom:14px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center}
+.ficha-cab h3{margin:0;font-size:20px;color:#fff}.ficha-cab .sub{opacity:.9;font-size:13px;margin-top:2px}
+.ficha-cab .pill{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:#fff}
+.ficha-cab .acts{display:flex;gap:8px;flex-wrap:wrap}
+.ficha-cab .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.5)}
+.ficha-cab .btn-ghost:hover{background:rgba(255,255,255,.22)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.kpi b{display:block;font-family:Archivo;font-size:20px;font-variant-numeric:tabular-nums;color:var(--verde-escuro)}
+.kpi span{font-size:11.5px;color:var(--muted)}
+.kpi.destaque{background:var(--pine-soft);border-color:var(--verde-claro)}
+.kpi.neg b{color:var(--rust)}.kpi.pos b{color:var(--pine)}
+.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.grid-ficha{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 16px;font-size:13px}
+.kv span:nth-child(odd){color:var(--muted)}.kv span:nth-child(even){text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.kv .tot{grid-column:1/3;border-top:1.5px dashed var(--verde-claro);margin-top:4px;padding-top:6px;font-weight:700;color:var(--verde-escuro);display:flex;justify-content:space-between}
+.interno{font-size:10.5px;background:var(--amber-soft);color:var(--amber);border-radius:999px;padding:1px 7px;margin-left:6px;font-weight:600}
+.texto{white-space:pre-wrap;font-size:13.5px}
+
 /* lojas para repasse */
 .lojas{max-width:1120px}
-.loja-card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--steel);border-radius:2px;padding:14px 16px;margin-bottom:9px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-.loja-card.falta{border-left-color:var(--rust)}
+.loja-card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--pine);border-radius:var(--r);padding:14px 16px;margin-bottom:9px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.loja-card.falta{border-left-color:var(--amarelo)}
 .loja-card.repassada{border-left-color:var(--pine);opacity:.7}
 .loja-card .id{min-width:210px}
 .loja-card .id b{display:block;font-size:14.5px}
@@ -151,11 +176,12 @@ body.leitura #btnNovo,body.leitura #btnImportar,body.leitura #btnNovaLoja,body.l
 .loja-card .n b{display:block;font-family:Archivo;font-size:15px;font-variant-numeric:tabular-nums}
 .loja-card .n span{color:var(--muted);font-size:11.5px}
 .loja-card .acts{margin-left:auto;display:flex;gap:6px}
-.alerta{background:var(--rust-soft);border:1px solid #E7C6B8;border-radius:2px;padding:10px 12px;font-size:12.5px;margin:0 0 12px}
+.alerta{background:var(--amber-soft);border:1px solid #EAD59A;border-radius:var(--r);padding:10px 12px;font-size:12.5px;margin:0 0 12px}
 .alerta b{display:block;margin-bottom:2px}
 .ok-box{background:var(--pine-soft);border:1px solid #BFD8CE;border-radius:2px;padding:10px 12px;font-size:12.5px;margin:0 0 12px}
-.ed{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:20px 22px;margin-bottom:14px}
-.ed h3{font-size:14px;margin:0 0 12px;font-weight:600}
+.ed{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;margin-bottom:14px}
+.ed h3{font-size:14px;margin:0 0 12px;font-weight:700;color:var(--verde-escuro);display:flex;align-items:center;gap:8px}
+.ed h3::before{content:'';width:9px;height:9px;background:var(--laranja);clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%);flex:none}
 .ed h3 em{font-style:normal;color:var(--muted);font-weight:400;font-size:12.5px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
@@ -259,7 +285,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="top">
   <div class="top-row">
     <div>
-      <h1>Esteira de expansão</h1>
+      <div class="marca"><img src="../logo-pop.png" alt="Rede POP Pet Center" onerror="this.style.display='none'"><h1>Esteira de expansão</h1></div>
       <p>Da captação ao terceiro mês de operação, com cadência de contato por etapa e emissão da COF puxando os dados do cadastro. Dados compartilhados pela equipe via Supabase.</p>
     </div>
     <div class="actions">
@@ -502,7 +528,7 @@ const MOTIVOS=['Capital insuficiente','Sem ponto viável na praça','Perfil repr
  'Passivo da loja inviabilizou','Cedente e comprador não fecharam valor','Outro'];
 
 let estado={leads:[],seq:1,emissor:''};
-let aba='esteira', filtro='todos', lojaAberta=null;
+let aba='esteira', filtro='todos', lojaAberta=null, lojaModo='ver';
 
 const hoje=()=>new Date().toISOString().slice(0,10);
 const dias=(a,b)=>Math.round((new Date(b)-new Date(a))/864e5);
@@ -1012,7 +1038,7 @@ function abrir(id){
     if(s&&s.status==='disponivel')s.status='negociacao';
     salvar();abrir(l.id);desenhar();};
   const bf=document.getElementById('btnFicha');
-  if(bf)bf.onclick=()=>{lojaAberta=l.lojaId;aba='lojas';fechar();desenhar();};
+  if(bf)bf.onclick=()=>{lojaAberta=l.lojaId;lojaModo='ver';aba='lojas';fechar();desenhar();};
   bind('dTel','tel',false);bind('dCpf','cpf',false);bind('dEmail','email',false);
   document.getElementById('dNotas').onchange=ev=>{l.notas=ev.target.value;salvar();};
   if(av.ok)document.getElementById('btnAvancar').onclick=()=>avancar(l);
@@ -1167,7 +1193,7 @@ function calc(s){
 
 function desenharLojas(){
   const v=document.getElementById('viewLojas');
-  if(lojaAberta){editorLoja(v);return;}
+  if(lojaAberta){if(lojaModo==='editar')editorLoja(v);else fichaLoja(v);return;}
   const ls=estado.lojas||[];
   v.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap">
       <div><h3 style="margin:0;font-size:15px">Lojas cadastradas para repasse</h3>
@@ -1185,11 +1211,12 @@ function desenharLojas(){
         <div class="acts">
           ${fichaDe(s).status!=='interna'?`<span class="pill ficha-${fichaDe(s).status}">${ROTULO_FICHA[fichaDe(s).status]}</span>`:''}
           ${c.faltando.length?`<span class="pill" style="border-color:#E7C6B8;color:var(--rust)">faltam ${c.faltando.length} dados</span>`:''}
-          <button class="btn btn-ghost btn-sm" data-loja="${s.id}">Abrir ficha</button></div>
+          <button class="btn btn-ghost btn-sm" data-loja="${s.id}" data-modo="ver">Abrir ficha</button>
+          <button class="btn btn-ghost btn-sm" data-loja="${s.id}" data-modo="editar">Editar</button></div>
       </div>`}).join(''):'<div class="vazio">Nenhuma loja cadastrada. Cadastre a loja antes de colocar um candidato no funil de repasse.</div>'}`;
   document.getElementById('btnNovaLoja').onclick=()=>{
-    const s=novaLoja();estado.lojas.push(s);lojaAberta=s.id;salvar();desenhar();};
-  v.querySelectorAll('[data-loja]').forEach(b=>b.onclick=()=>{lojaAberta=b.dataset.loja;desenhar();});
+    const s=novaLoja();estado.lojas.push(s);lojaAberta=s.id;lojaModo='editar';salvar();desenhar();};
+  v.querySelectorAll('[data-loja]').forEach(b=>b.onclick=()=>{lojaAberta=b.dataset.loja;lojaModo=b.dataset.modo||'ver';desenhar();});
 }
 
 function linhas(s,campo,rotulo){
@@ -1202,6 +1229,94 @@ function linhas(s,campo,rotulo){
     <button class="btn btn-ghost btn-sm" data-add="${campo}" style="margin-top:9px">Adicionar linha</button>`;
 }
 
+const tabelaKv=(arr,rotulo)=>`<div class="kv">${(arr||[]).filter(i=>i.t||i.v).map(i=>`<span>${esc(i.t||'—')}</span><span>${brl(i.v)}</span>`).join('')||'<span style="grid-column:1/3;color:var(--muted)">nenhuma linha</span>'}<div class="tot"><span>${rotulo}</span><span>${brl(somaL(arr))}</span></div></div>`;
+const kvPares=pares=>`<div class="kv">${pares.map(([k,v])=>`<span>${k}</span><span>${v}</span>`).join('')}</div>`;
+
+function blocosFicha(s,c,interno){
+  const ced=s.cedente||{},f=fichaDe(s);
+  const leads=estado.leads.filter(l=>l.lojaId===s.id);
+  const x=(n,d=1)=>n==null||!isFinite(n)?'—':Number(n).toLocaleString('pt-BR',{maximumFractionDigits:d});
+  return `
+  ${c.faltando.length?`<div class="alerta"><b>Faltam ${c.faltando.length} dados para avaliar esta loja:</b> ${esc(c.faltando.join('; '))}.</div>`:''}
+  <div class="kpis">
+    <div class="kpi destaque"><b>${c.fat?brl(c.valorRef):'—'}</b><span>valor pela regra da rede</span></div>
+    <div class="kpi"><b>${brl(s.valorPedido)}</b><span>valor pedido pelo cedente</span></div>
+    <div class="kpi ${c.fat?(c.dif>0?'neg':'pos'):''}"><b>${c.fat?(c.dif>0?'+':'')+brl(c.dif):'—'}</b><span>pedido − regra</span></div>
+    <div class="kpi ${c.ebitda===null?'':(c.ebitda>0?'pos':'neg')}"><b>${c.ebitda===null?'—':brl(c.ebitda)}</b><span>resultado mensal</span></div>
+    <div class="kpi"><b>${brl(c.ajustado)}</b><span>custo mensal ajustado</span></div>
+    ${interno?`<div class="kpi"><b>${c.fat?brl(c.teto):'—'}</b><span>teto aceitável (${s.tetoMeses||24} meses)</span></div>`:''}
+  </div>
+  <div class="grid-ficha">
+    <div class="ed"><h3>Números da loja</h3>${kvPares([
+      ['Faturamento médio · 12 meses',brl(c.fat)],['Margem de contribuição',c.mg?x(c.mg)+'%':'—'],['Margem em R$/mês',c.fat&&c.mg?brl(c.fat*c.mg/100):'—'],
+      ['Ponto de equilíbrio (faturamento)',c.be?brl(c.be):'—'],['Ticket médio',brl(s.ticket)],['Metragem',s.m2?x(s.m2,0)+' m²':'—'],
+      ['Locação vence em',fmtD(s.locacaoAte)],['Situação',STATUS_LOJA[s.status]||'—']])}</div>
+    <div class="ed"><h3>Estoque e passivos</h3>${kvPares([
+      ['Estoque valorado a custo',brl(c.est)],['Sem giro / vencido',brl(c.morto)],['Estoque líquido',brl(c.estLiq)],
+      ['Contas a pagar',brl(c.contas)],...(interno?[['Débito com a franqueadora',brl(s.divFranq)]]:[]),['Outros passivos',brl(s.outrosPassivos)],
+      ['Passivo considerado',brl(c.passivo)],['Quem quita',ASSUME[s.assume]||'—']])}</div>
+    <div class="ed"><h3>Despesas mensais</h3>${tabelaKv(s.desp,'Total de despesas')}</div>
+    <div class="ed"><h3>Folha de pagamento</h3>${tabelaKv(s.folha,'Folha bruta')}
+      ${kvPares([['Encargos ('+x(s.enc||0)+'%)',brl(c.enc)],...(interno?[['Custos que não vieram do cedente',brl(c.outros)]]:[]),['Custo mensal ajustado',brl(c.ajustado)]])}</div>
+    <div class="ed"><h3>Contas a pagar</h3>${tabelaKv(s.contas,'Total do passivo')}</div>
+    ${interno?`<div class="ed"><h3>Custos omitidos pelo cedente <span class="interno">interno</span></h3>${tabelaKv(s.outros,'Total')}</div>`:''}
+    <div class="ed"><h3>Motivo do repasse</h3><div class="texto">${esc(s.motivo||'—')}</div></div>
+    <div class="ed"><h3>Cedente</h3>${kvPares([['Nome',esc(ced.nome||'—')],['Telefone',esc(ced.telefone||'—')],['E-mail',esc(ced.email||'—')],['Ficha',(ROTULO_FICHA[f.status]||f.status)+(f.enviadoEm?' · '+fmtDH(f.enviadoEm):'')]])}
+      ${s.obsCedente?`<div style="margin-top:8px"><span style="font-size:11.5px;color:var(--muted)">Observações do cedente</span><div class="texto">${esc(s.obsCedente)}</div></div>`:''}</div>
+    ${interno?`<div class="ed"><h3>Avaliação <span class="interno">interno</span></h3>${kvPares([
+      ['Múltiplo do faturamento',x(c.mult)+'×'],['Intangível (múltiplo × faturamento)',brl(c.intangivel)],['+ estoque líquido',brl(c.estLiq)],['− passivo deduzido',brl(c.deduz)],
+      ['= valor pela regra',brl(c.valorRef)],['Pedido em meses de resultado',c.meses?x(c.meses,0)+' meses':'—'],['Pedido em × faturamento',c.xFat?x(c.xFat)+'×':'—'],
+      ['Estoque como % do pedido',c.pctEstoque?x(c.pctEstoque,0)+'%':'—'],['Entrada estimada do comprador (pedido + 3 meses de custo)',brl(c.entrada)]])}</div>
+    <div class="ed"><h3>Observações internas <span class="interno">interno</span></h3><div class="texto">${esc(s.obs||'—')}</div></div>
+    <div class="ed"><h3>Candidatos vinculados</h3>${leads.length?kvPares(leads.map(l=>[esc(l.nome),(ETAPAS.find(e=>e.id===l.etapa)||{}).nome||l.etapa])):'<span style="color:var(--muted);font-size:13px">nenhum</span>'}</div>`:''}
+  </div>`;
+}
+
+function fichaLoja(v){
+  const s=estado.lojas.find(x=>x.id===lojaAberta);
+  if(!s){lojaAberta=null;return desenharLojas();}
+  const c=calc(s),f=fichaDe(s);
+  v.innerHTML=`
+   <div class="ficha-cab">
+     <div><h3>${esc(s.nome||'Nova loja')}</h3>
+       <div class="sub">${s.fr?'FR'+esc(s.fr)+' · ':''}${esc([s.cidade,s.uf].filter(Boolean).join('/')||'cidade não informada')}
+         &nbsp;<span class="pill">${STATUS_LOJA[s.status]||''}</span>${f.status!=='interna'?` <span class="pill">${ROTULO_FICHA[f.status]}</span>`:''}</div></div>
+     <div class="acts">
+       <button class="btn btn-sm" id="btnEditarLoja">Editar</button>
+       <button class="btn btn-ghost btn-sm" id="btnPdfInterno">PDF interno</button>
+       <button class="btn btn-ghost btn-sm" id="btnPdfCandidato">PDF para candidato</button>
+       <button class="btn btn-ghost btn-sm" id="btnVoltarLojas">Voltar à lista</button></div>
+   </div>
+   ${blocosFicha(s,c,true)}`;
+  document.getElementById('btnVoltarLojas').onclick=()=>{lojaAberta=null;desenhar();};
+  document.getElementById('btnEditarLoja').onclick=()=>{lojaModo='editar';desenhar();};
+  document.getElementById('btnPdfInterno').onclick=()=>exportarPdfLoja(s,true);
+  document.getElementById('btnPdfCandidato').onclick=()=>exportarPdfLoja(s,false);
+}
+
+function exportarPdfLoja(s,interno){
+  const c=calc(s);
+  const css=document.querySelector('style').textContent;
+  const logo=new URL('../logo-pop.png',location.href).href;
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(s.nome||'Loja')} — ficha de formação de preço</title>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>${css}
+  body{background:#fff;padding:0}.pdf{max-width:900px;margin:0 auto;padding:20px 24px}
+  .pdf-topo{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:3px solid var(--laranja);padding-bottom:12px;margin-bottom:14px}
+  .pdf-topo img{height:48px}.pdf-topo .t{text-align:right;font-size:12px;color:var(--muted)}.pdf-topo .t b{display:block;font-size:15px;color:var(--verde-escuro)}
+  .ed{break-inside:avoid;box-shadow:none}.kpis{break-inside:avoid}
+  .rodape{margin-top:18px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+  @media print{.pdf{padding:0}@page{margin:14mm}}
+  </style></head><body><div class="pdf">
+  <div class="pdf-topo"><img src="${logo}" alt="Rede POP Pet Center"><div class="t"><b>Ficha de formação de preço de loja${interno?' · uso interno':''}</b>${esc(s.nome||'')}${s.fr?' · FR'+esc(s.fr):''} · ${esc([s.cidade,s.uf].filter(Boolean).join('/'))}<br>emitida em ${new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}${perfil?' por '+esc(perfil.nome):''}</div></div>
+  ${blocosFicha(s,c,interno)}
+  <div class="rodape">${interno?'Documento interno da franqueadora. Contém avaliação, múltiplo, teto e observações que não devem ser compartilhados com cedente ou candidato.':'Valores informados pelo franqueado cedente e conferidos pela franqueadora. Este documento não constitui oferta nem garantia de resultado; a decisão de investimento é do candidato, após a própria diligência.'} — POP Franchising e Participações Ltda · CNPJ 14.860.843/0001-72</div>
+  </div><script>window.onload=()=>setTimeout(()=>window.print(),400);<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){alert('O navegador bloqueou a janela do PDF. Libere pop-ups para este site e tente de novo.');return;}
+  w.document.open();w.document.write(html);w.document.close();
+}
+
 function editorLoja(v){
   const s=estado.lojas.find(x=>x.id===lojaAberta);
   if(!s){lojaAberta=null;return desenharLojas();}
@@ -1209,8 +1324,9 @@ function editorLoja(v){
   const leads=estado.leads.filter(l=>l.lojaId===s.id);
   v.innerHTML=`
    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
-     <h3 style="margin:0;font-size:16px">${esc(s.nome||'Nova loja')}</h3>
+     <h3 style="margin:0;font-size:16px">Editando: ${esc(s.nome||'Nova loja')}</h3>
      <div style="display:flex;gap:8px">
+       <button class="btn btn-sm" id="btnVerFicha">Concluir edição</button>
        <button class="btn btn-ghost btn-sm" id="btnVoltarLojas">Voltar à lista</button>
        <button class="btn btn-ghost btn-sm" id="btnExcluirLoja">Excluir</button></div></div>
 
@@ -1317,6 +1433,7 @@ function editorLoja(v){
     s.fr=f.fra;s.nome=f.nome;s.cidade=f.cidade||'';s.uf=f.estado||'';
     estado.leads.filter(l=>l.lojaId===s.id).forEach(l=>l.lojaRef=rotuloLoja(s));salvar();desenhar();};
   document.getElementById('btnVoltarLojas').onclick=()=>{lojaAberta=null;desenhar();};
+  document.getElementById('btnVerFicha').onclick=()=>{lojaModo='ver';desenhar();};
   document.getElementById('btnExcluirLoja').onclick=()=>{
     if(estado.leads.some(l=>l.lojaId===s.id&&l.status==='ativo')){
       alert('Há candidato ativo ligado a esta loja. Troque a loja do candidato antes de excluir.');return;}

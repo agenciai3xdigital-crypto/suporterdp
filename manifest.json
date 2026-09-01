@@ -1,25 +1,15 @@
 {
-  "name": "Plantão do Suporte — POP PET",
-  "short_name": "Agenda POP",
-  "description": "Agenda e rotina da equipe de suporte a franqueados",
-  "start_url": "/suporterdp/?aba=agenda",
-  "scope": "/suporterdp/",
+  "name": "Central POP — Rede POP Pet Center",
+  "short_name": "Central POP",
+  "description": "Agenda, plantão, prazos e financeiro da equipe da franqueadora.",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#FFFFFF",
-  "theme_color": "#F5691D",
+  "background_color": "#EEF3F0",
+  "theme_color": "#009150",
+  "lang": "pt-BR",
   "icons": [
-    {
-      "src": "icone-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icone-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

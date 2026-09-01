@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Plantão do Suporte — Sistema da Equipe</title>
+<title>Central POP — Rede POP Pet Center</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#F5691D">
+<meta name="theme-color" content="#009150">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Agenda POP">
+<meta name="apple-mobile-web-app-title" content="Central POP">
 <link rel="apple-touch-icon" href="icone-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icone-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -17,10 +17,10 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
 :root{
-  --porcelana:#EDF1F3; --papel:#FFFFFF; --tinta:#16333D; --tinta-suave:#5A7280; --linha:#D6DEE2;
-  --laranja:#F5691D; --laranja-suave:#FFEDE1; --petroleo:#0E5A64; --petroleo-suave:#E1EEF0;
+  --porcelana:#EEF3F0; --papel:#FFFFFF; --tinta:#14332A; --tinta-suave:#5A7268; --linha:#D3DFD8;
+  --laranja:#FF6B15; --laranja-suave:#FFEDE1; --petroleo:#00573F; --petroleo-suave:#E0EFE9;
   --ambar:#B97E10; --ambar-suave:#FBF1DC; --foco:#5B4A9E; --foco-suave:#ECE8F8;
-  --verde:#1E7F4F; --verde-suave:#E2F2E9; --verm:#C0392B;
+  --verde:#009150; --verde-suave:#E2F2EA; --verde-claro:#A8D3C4; --verm:#C0392B;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--porcelana);color:var(--tinta);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
@@ -32,7 +32,10 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 
 /* ===== LOGIN ===== */
 #telaLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.login-card{background:var(--papel);border:1px solid var(--linha);border-radius:18px;padding:28px;max-width:400px;width:100%}
+.login-card{background:var(--papel);border:1px solid var(--linha);border-top:5px solid var(--verde);border-radius:18px;padding:28px;max-width:400px;width:100%;box-shadow:0 8px 30px rgba(0,87,63,.08)}
+.login-card .marca{margin-bottom:14px}.logo-login{height:54px;width:auto;display:block}
+.topo .marca{display:flex;align-items:center;gap:12px}.logo-topo{height:42px;width:auto;display:block}
+@media(max-width:600px){.logo-topo{height:34px}}
 .login-card .titulo{font-family:'Archivo',sans-serif;font-weight:850;font-size:30px;letter-spacing:-.5px;line-height:1.05;margin-bottom:2px}
 .login-card .titulo em{font-style:normal;color:var(--laranja)}
 .login-card .sub{color:var(--tinta-suave);font-size:13px;margin-bottom:18px}
@@ -493,8 +496,9 @@ details.recolhe[open] summary{margin-bottom:8px}
 <!-- ============ LOGIN ============ -->
 <div id="telaLogin">
   <div class="login-card">
-    <div class="titulo">Plantão do <em>Suporte</em></div>
-    <div class="sub">Entre com seu e-mail e senha. Cada acesso fica registrado.</div>
+    <div class="marca"><img src="logo-pop.png" alt="Rede POP Pet Center" class="logo-login"></div>
+    <div class="titulo">Central <em>POP</em></div>
+    <div class="sub">Agenda, plantão, prazos e financeiro da equipe. Entre com seu e-mail e senha — cada acesso fica registrado.</div>
     <input id="loginEmail" type="email" placeholder="seu e-mail" autocomplete="username">
     <input id="loginSenha" type="password" placeholder="senha" autocomplete="current-password">
     <button class="btn-entrar" id="btnEntrar">Entrar</button>
@@ -506,15 +510,16 @@ details.recolhe[open] summary{margin-bottom:8px}
 <!-- ============ APP ============ -->
 <div id="app"><div class="wrap">
   <div class="topo">
-    <div>
-      <div class="titulo">Plantão do <em>Suporte</em></div>
+    <div class="marca"><img src="logo-pop.png" alt="Rede POP Pet Center" class="logo-topo"><div>
+      <div class="titulo">Central <em>POP</em></div>
       <div class="quem" id="quemSou">—</div>
-    </div>
+    </div></div>
     <div style="margin-left:auto;text-align:right">
       <div class="relogio" id="relogio">--:--</div>
       <div class="sync" id="syncStatus">● tempo real</div>
     </div>
     <button class="sino" id="btnSino" title="Avisos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></svg><span class="sino-badge" id="sinoBadge" style="display:none"></span></button>
+    <a class="sair" id="btnExpansao" href="expansao/" style="display:none;text-decoration:none;color:inherit" title="Esteira de expansão — mesmo login">Esteira de expansão →</a>
     <button class="sair" id="btnSair">Sair</button>
   </div>
   <div class="cn-bg" id="cnBg"><div class="cn-box"><div class="cn-cab"><strong>Avisos</strong><span class="esp"></span><button type="button" class="btn claro" id="cnPush" style="font-size:12px">Ativar no aparelho</button><button type="button" class="cn-x" id="cnX">×</button></div><div id="cnLista"></div></div></div>
@@ -964,7 +969,7 @@ function erroDB(e){console.error(e);alert('Erro ao salvar no banco: '+(e.message
 async function carregarBase(){
   const {data:perfis,error:e1}=await sb.from('perfis').select('*').order('criado_em');
   if(e1)throw e1;
-  CFG.usuarios=perfis.map(p=>({id:p.id,nome:p.nome,admin:p.is_admin,cor:p.cor,nomeSults:p.nome_sults||'',feriasAte:p.ferias_ate||null}));
+  CFG.usuarios=perfis.map(p=>({id:p.id,nome:p.nome,admin:p.is_admin,cor:p.cor,nomeSults:p.nome_sults||'',feriasAte:p.ferias_ate||null,papeis:p.papeis||[]}));
   const {data:cfg,error:e2}=await sb.from('config_rodizio').select('*').eq('id',1).single();
   if(e2)throw e2;
   CFG.rodizio={dupla:cfg.dupla||[],produtos:cfg.produtos,sabadoFixo:cfg.sabado_fixo,ancoraISO:cfg.ancora};
@@ -1260,6 +1265,7 @@ async function iniciarSessao(user){
   registrarSW();estadoPushInicial();
   $('telaLogin').style.display='none';$('app').style.display='block';
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
+  $('btnExpansao').style.display=(usuarioAtual.admin||(usuarioAtual.papeis||[]).includes('expansao'))?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaFinanceiro').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display='none';
@@ -1698,13 +1704,13 @@ function gcalUrl(titulo,dataISO,hIni,hFim,det){
   const d=dataISO.replaceAll('-','');
   return'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(titulo)
     +'&dates='+d+'T'+hIni.replace(':','')+'00/'+d+'T'+hFim.replace(':','')+'00&ctz='+TZ
-    +'&details='+encodeURIComponent(det||'Plantão do Suporte');
+    +'&details='+encodeURIComponent(det||'Central POP');
 }
 function baixarICS(nomeArq,eventos){
   let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//PlantaoSuporte//PT-BR\r\n';
   for(const e of eventos){
     const d=e.data.replaceAll('-','');
-    ics+='BEGIN:VEVENT\r\nUID:'+(e.id||Math.random().toString(36).slice(2))+'@plantao\r\nDTSTART:'+d+'T'+e.ini.replace(':','')+'00\r\nDTEND:'+d+'T'+e.fim.replace(':','')+'00\r\nSUMMARY:'+e.titulo.replace(/[,;\\]/g,' ')+'\r\nDESCRIPTION:'+String(e.descricao||'Plantão do Suporte').replace(/[,;\\]/g,' ').replace(/\r?\n/g,' ')+'\r\nEND:VEVENT\r\n';
+    ics+='BEGIN:VEVENT\r\nUID:'+(e.id||Math.random().toString(36).slice(2))+'@plantao\r\nDTSTART:'+d+'T'+e.ini.replace(':','')+'00\r\nDTEND:'+d+'T'+e.fim.replace(':','')+'00\r\nSUMMARY:'+e.titulo.replace(/[,;\\]/g,' ')+'\r\nDESCRIPTION:'+String(e.descricao||'Central POP').replace(/[,;\\]/g,' ').replace(/\r?\n/g,' ')+'\r\nEND:VEVENT\r\n';
   }
   ics+='END:VCALENDAR\r\n';
   const blob=new Blob([ics],{type:'text/calendar'});
@@ -1985,7 +1991,7 @@ async function notificarLocalNovos(){
     const novos=[...atuais].filter(id=>!_avisosVistos.has(id));
     if(novos.length&&'Notification' in window&&Notification.permission==='granted'){
       try{const reg=await navigator.serviceWorker.getRegistration('sw.js');const item=itensAvisos().find(i=>i.k==='av'&&i.a.id===novos[0]);
-        if(reg&&item)reg.showNotification('Plantão do Suporte',{body:item.a.titulo,tag:'av-'+item.a.id,data:{url:location.pathname+'?aba=agenda&ev='+item.e.id}});}catch(_){}
+        if(reg&&item)reg.showNotification('Central POP',{body:item.a.titulo,tag:'av-'+item.a.id,data:{url:location.pathname+'?aba=agenda&ev='+item.e.id}});}catch(_){}
     }
   }
   _avisosVistos=atuais;

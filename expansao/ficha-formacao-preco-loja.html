@@ -248,11 +248,11 @@ async function iniciar(){
     return;
   }
   ficha=data.loja||{};
-  $('carregando').style.display='none';$('tela').style.display='';
+  $('carregando').style.display='none';$('tela').style.display='block';
   $('prazo').textContent='Link válido até '+fmtD(data.expira_em)+'. O rascunho é salvo automaticamente enquanto você preenche.';
   preencher();
   if(data.ficha_status==='recebida'){travar(data.enviado_em);return;}
-  $('barra').style.display='';
+  $('barra').style.display='block';
   document.querySelectorAll('main input, main select, main textarea').forEach(e=>e.addEventListener('input',marcar));
   $('btnSalvar').onclick=()=>salvar(false);
   $('btnEnviar').onclick=()=>salvar(true);

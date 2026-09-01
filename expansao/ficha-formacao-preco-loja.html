@@ -48,6 +48,10 @@ button.p:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
 button.s{background:#fff;color:var(--verde-escuro);border:1.5px solid var(--verde);border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer}
 .resumo{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:14px;margin-top:10px}
 .resumo span{display:block;color:var(--muted);font-size:11.5px}
+.loja-fixa{background:#eef7f2;border:1.5px solid var(--verde-claro);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.loja-fixa span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.loja-fixa b{font-size:15px;color:var(--verde-escuro)}
+@media(max-width:520px){.loja-fixa{grid-template-columns:1fr 1fr}.loja-fixa>:first-child{grid-column:1/3}}
 #tela{display:none}
 .lock input,.lock select,.lock textarea{background:#f2f4f3;color:#556}
 .lock .add,.lock table.lin button,.lock .barra{display:none}
@@ -66,22 +70,17 @@ button.s{background:#fff;color:var(--verde-escuro);border:1.5px solid var(--verd
   <div id="tela">
     <div class="card" id="intro">
       <h2>Antes de começar</h2>
-      <p style="margin:6px 0 0;font-size:14px">Esta ficha vai direto para a equipe de expansão da franqueadora, que usa estes números para formar o preço da loja e apresentá-la a um candidato. <b>Salve quantas vezes quiser</b> — o rascunho fica guardado neste link. Quando estiver tudo certo, clique em <b>Enviar ficha</b>.</p>
+      <p style="margin:6px 0 0;font-size:14px">A franqueadora já identificou a loja. Você preenche só os números: eles vão direto para a equipe de expansão, que usa estes dados para formar o preço da loja e apresentá-la a um candidato. <b>Salve quantas vezes quiser</b> — o rascunho fica guardado neste link. Quando estiver tudo certo, clique em <b>Enviar ficha</b>.</p>
       <div class="aviso" style="margin-top:12px" id="prazo"></div>
     </div>
 
-    <div class="card"><h2>A loja</h2><p class="sub">Identificação da unidade e condições básicas.</p>
-      <div class="row3">
-        <div><label>Nome da loja</label><input id="nome" placeholder="Ex.: POP PET Itumbiara"></div>
-        <div><label>Unidade (FR)</label><input id="fr" placeholder="Ex.: 87"></div>
+    <div class="card"><h2>A loja</h2>
+      <div class="loja-fixa" id="lojaFixa"></div>
+      <div class="row3" style="margin-top:6px">
         <div><label>Metragem (m²)</label><input id="m2" type="number" inputmode="numeric"></div>
+        <div style="grid-column:span 2"><label>Contrato de locação vence em</label><input id="locacaoAte" type="date"></div>
       </div>
       <div class="row2">
-        <div><label>Cidade</label><input id="cidade"></div>
-        <div><label>UF</label><input id="uf" maxlength="2" style="text-transform:uppercase"></div>
-      </div>
-      <div class="row2">
-        <div><label>Contrato de locação vence em</label><input id="locacaoAte" type="date"></div>
         <div><label>Valor pedido pela loja (R$)</label><input id="valorPedido" type="number" inputmode="decimal" step="0.01"></div>
       </div>
       <label>Motivo do repasse</label><textarea id="motivo" placeholder="Conte com franqueza: mudança de cidade, outro negócio, resultado abaixo do esperado, saúde…"></textarea>
@@ -148,7 +147,7 @@ const $=id=>document.getElementById(id);
 const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
 const fmtD=iso=>iso?new Date(iso).toLocaleDateString('pt-BR'):'';
 const token=new URLSearchParams(location.search).get('t')||'';
-const CAMPOS=['nome','fr','cidade','uf','m2','locacaoAte','motivo','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos','obsCedente'];
+const CAMPOS=['m2','locacaoAte','motivo','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos','obsCedente'];
 const NUM=new Set(['m2','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos']);
 const LISTAS={desp:{padrao:['Aluguel','IPTU','Telefone e internet','Água','Energia'],rot:'Total de despesas',ph:'Descrição'},
               folha:{padrao:['Balconista'],rot:'Total da folha',ph:'Função'},
@@ -176,6 +175,7 @@ function desenharLista(k){
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function preencher(){
+  $('lojaFixa').innerHTML=`<div><span>Loja</span><b>${esc(ficha.nome||'—')}</b></div><div><span>Unidade</span><b>${ficha.fr?'FR'+esc(ficha.fr):'—'}</b></div><div><span>Cidade</span><b>${esc([ficha.cidade,ficha.uf].filter(Boolean).join('/')||'—')}</b></div>`;
   CAMPOS.forEach(k=>{const v=ficha[k];$(k).value=(v===undefined||v===null||v===0&&NUM.has(k))?'':v;});
   const c=ficha.cedente||{};$('cedNome').value=c.nome||'';$('cedTelefone').value=c.telefone||'';$('cedEmail').value=c.email||'';
   for(const k in LISTAS){if(!Array.isArray(ficha[k]))ficha[k]=[];
@@ -184,7 +184,7 @@ function preencher(){
 function coletar(){
   const o={};
   CAMPOS.forEach(k=>{const v=$(k).value.trim();o[k]=NUM.has(k)?(parseFloat(v)||0):v;});
-  o.uf=o.uf.toUpperCase();
+  o.nome=ficha.nome||'';o.fr=ficha.fr||'';o.cidade=ficha.cidade||'';o.uf=ficha.uf||'';
   o.cedente={nome:$('cedNome').value.trim(),telefone:$('cedTelefone').value.trim(),email:$('cedEmail').value.trim()};
   for(const k in LISTAS)o[k]=(ficha[k]||[]).filter(i=>i.t||i.v);
   return o;
@@ -195,7 +195,6 @@ async function salvar(enviar){
   if(travada||salvando)return;
   if(enviar){
     const o=coletar(),falta=[];
-    if(!o.nome)falta.push('nome da loja');
     if(!o.cedente.nome||!o.cedente.telefone)falta.push('seu nome e telefone');
     if(!o.fat)falta.push('faturamento médio');
     if(!o.estoque)falta.push('estoque valorado');

@@ -371,7 +371,7 @@ const COF_HTML = "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
 const FICHA_PAGINA='ficha-formacao-preco-loja.html';   // página pública do cedente, no mesmo repositório
-const VERSAO='v3.2';  // deploy: suporterdp/expansao/index.html
+const VERSAO='v3.3';  // deploy: suporterdp/expansao/index.html
 let somenteLeitura=false;
 const PRAZO_COF=10;
 const TIPOS={nova:'Loja nova',conversao:'Conversão',repasse:'Repasse'};
@@ -697,7 +697,7 @@ async function gerarLink(s,dias){
     if(error){alert('Não foi possível reabrir: '+error.message);return;}
   }
   const {data,error}=await supa.rpc('repasse_gerar_token',{p_loja_id:s.id,p_dias:dias||15});
-  if(error){alert('Não foi possível gerar o link: '+error.message);return;}
+  if(error){alert(/LOJA_SEM_IDENTIFICACAO/.test(error.message)?'Escolha a unidade da rede antes de gerar o link.':'Não foi possível gerar o link: '+error.message);return;}
   const t=Array.isArray(data)?data[0]:data;
   fichaDe(s).token={token:t.token,expira_em:t.expira_em,acessos:0};
   if(fichaDe(s).status==='interna'||fichaDe(s).status==='recebida')fichaDe(s).status='enviada';
@@ -713,8 +713,14 @@ async function revogarLink(s){
   if(fichaDe(s).status!=='recebida'){await supa.from('exp_lojas').update({ficha_status:'interna'}).eq('id',s.id);fichaDe(s).status='interna';}
   desenhar();
 }
+function lojaIdentificada(s){return !!(s.nome&&s.cidade);}
 function blocoCedente(s){
   const f=fichaDe(s),tk=f.token,c=s.cedente||{};
+  const ident=lojaIdentificada(s);
+  const selUnid=franquias.length?`<div class="field" style="max-width:560px;margin-bottom:10px"><label>Loja que vai preencher</label>
+       <select id="selFranquia"><option value="">— escolher a unidade na base de franquias —</option>
+       ${franquias.map(x=>`<option value="${x.fra}" ${String(s.fr)===String(x.fra)?'selected':''}>${esc((x.fra?'FR'+x.fra+' · ':'')+x.nome+' — '+(x.cidade||'')+'/'+(x.estado||''))}</option>`).join('')}</select>
+       <div style="font-size:12px;color:var(--muted);margin-top:4px">${ident?`Vai para o cedente como <b>${esc(s.nome)}</b>${s.fr?' · FR'+esc(s.fr):''} · ${esc([s.cidade,s.uf].filter(Boolean).join('/'))} — ele não consegue alterar.`:'Nome, FR e cidade saem preenchidos e travados na ficha do cedente. Escolha a unidade antes de gerar o link.'}</div></div>`:'';
   const msgZap=encodeURIComponent('Olá! Para avançarmos com o repasse da '+(s.nome||'loja')+', preencha a ficha de formação de preço da loja neste link (válido até '+(tk?fmtD(String(tk.expira_em).slice(0,10)):'')+'):\n'+(tk?urlFicha(tk.token):'')+'\nSão os números que a franqueadora precisa para avaliar: despesas, folha, contas a pagar, faturamento, estoque. Qualquer dúvida, é só chamar.');
   return `<div class="ed"><h3>Ficha de formação de preço de loja <em>— o cedente preenche pelo link e não vê a avaliação</em></h3>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -722,6 +728,7 @@ function blocoCedente(s){
       ${f.status==='recebida'?`<span style="font-size:12.5px">recebida em ${fmtDH(f.enviadoEm)}</span>`:''}
       ${tk&&f.status!=='recebida'?`<span style="font-size:12.5px;color:var(--muted)">válido até ${fmtD(String(tk.expira_em).slice(0,10))} · ${tk.acessos||0} acesso(s)${tk.ultimo_acesso?' · último '+fmtDH(tk.ultimo_acesso):''}</span>`:''}
     </div>
+    ${selUnid}
     ${tk&&f.status!=='recebida'?`<div class="linkbox">
         <input type="text" readonly value="${esc(urlFicha(tk.token))}" id="linkCed" onclick="this.select()">
         <button class="btn btn-sm" id="btnCopiarLink">Copiar</button>
@@ -730,11 +737,11 @@ function blocoCedente(s){
         <button class="btn btn-ghost btn-sm" id="btnRevogar">Revogar</button></div>`
      :`<div class="linkbox">
         <select id="selDias" style="width:auto"><option value="7">válido por 7 dias</option><option value="15" selected>válido por 15 dias</option><option value="30">válido por 30 dias</option></select>
-        <button class="btn btn-sm" id="btnGerarLink">${f.status==='recebida'?'Reabrir para o cedente':'Gerar link para o cedente'}</button></div>`}
+        <button class="btn btn-sm" id="btnGerarLink" ${ident?'':'disabled'}>${f.status==='recebida'?'Reabrir para o cedente':'Gerar link para o cedente'}</button></div>`}
     ${(c.nome||c.telefone||c.email)?`<div class="ced-contato">
         <div><span>Cedente</span>${esc(c.nome||'—')}</div><div><span>Telefone</span>${esc(c.telefone||'—')}</div><div><span>E-mail</span>${esc(c.email||'—')}</div></div>`:''}
     ${s.obsCedente?`<div style="margin-top:10px;font-size:13px"><span style="color:var(--muted);font-size:11.5px;display:block">Observações do cedente</span>${esc(s.obsCedente)}</div>`:''}
-    <div style="font-size:12px;color:var(--muted);margin-top:10px">O cedente informa identificação, despesas, folha, contas a pagar, faturamento, margem, estoque, ticket, outros passivos, valor pedido e motivo. Encargos, débito com a franqueadora, custos omitidos, múltiplo, teto, situação e as observações internas ficam só aqui.</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">O cedente informa metragem, locação, valor pedido, motivo, despesas, folha, contas a pagar, faturamento, margem, estoque, ticket, outros passivos e o contato dele. Encargos, débito com a franqueadora, custos omitidos, múltiplo, teto, situação e as observações internas ficam só aqui.</div>
   </div>`;
 }
 function ligarCedente(s){
@@ -1214,9 +1221,6 @@ function editorLoja(v){
    ${blocoCedente(s)}
 
    <div class="ed"><h3>Identificação</h3>
-     ${franquias.length?`<div class="field" style="max-width:520px"><label>Vincular unidade da rede</label>
-       <select id="selFranquia"><option value="">— escolher na base de franquias (preenche nome, FR, cidade e UF) —</option>
-       ${franquias.map(f=>`<option value="${f.fra}" ${String(s.fr)===String(f.fra)?'selected':''}>${esc((f.fra?'FR'+f.fra+' · ':'')+f.nome+' — '+(f.cidade||'')+'/'+(f.estado||''))}</option>`).join('')}</select></div>`:''}
      <div class="grid4">
        <div class="field"><label>Nome da loja</label><input type="text" data-s="nome" value="${esc(s.nome)}"></div>
        <div class="field"><label>Unidade (FR)</label><input type="text" data-s="fr" value="${esc(s.fr)}"></div>
@@ -1310,7 +1314,7 @@ function editorLoja(v){
   ligarCedente(s);
   const sf=document.getElementById('selFranquia');
   if(sf)sf.onchange=()=>{const f=franquias.find(x=>String(x.fra)===sf.value);if(!f)return;
-    s.fr=f.fra;s.nome=s.nome||f.nome;s.cidade=f.cidade||s.cidade;s.uf=f.estado||s.uf;
+    s.fr=f.fra;s.nome=f.nome;s.cidade=f.cidade||'';s.uf=f.estado||'';
     estado.leads.filter(l=>l.lojaId===s.id).forEach(l=>l.lojaRef=rotuloLoja(s));salvar();desenhar();};
   document.getElementById('btnVoltarLojas').onclick=()=>{lojaAberta=null;desenhar();};
   document.getElementById('btnExcluirLoja').onclick=()=>{

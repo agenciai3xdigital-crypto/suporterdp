@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Ficha de formação de preço de loja · Rede POP Pet Center</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--verde:#009150;--verde-escuro:#00573F;--laranja:#FF6B15;--amarelo:#FDAE25;--verde-claro:#A8D3C4;
+  --fundo:#f4f6f5;--texto:#1e2b26;--muted:#5f6c68;--linha:#cfdad4}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--fundo);color:var(--texto);font-family:'Goldplay',Inter,'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+header{background:var(--verde);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:14px}
+header .hex{width:30px;height:30px;flex:none;background:var(--laranja);clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%)}
+header h1{margin:0;font-size:17px;font-weight:800}
+header p{margin:2px 0 0;font-size:12.5px;opacity:.92}
+main{max-width:760px;margin:0 auto;padding:18px 16px 120px}
+.card{background:#fff;border:1px solid #e2e9e5;border-radius:12px;padding:18px 18px 20px;margin-bottom:14px}
+.card h2{margin:0 0 4px;font-size:15px;color:var(--verde-escuro);display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:10px;height:10px;background:var(--laranja);clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%);flex:none}
+.card p.sub{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+label{display:block;font-size:11.5px;font-weight:700;color:#4a5a53;margin:10px 0 3px;text-transform:uppercase;letter-spacing:.03em}
+input,select,textarea{width:100%;padding:10px 11px;border:1.5px solid var(--linha);border-radius:8px;font:inherit;font-size:15px;background:#fbfdfc;color:var(--texto)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde)}
+textarea{resize:vertical;min-height:90px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+@media(max-width:520px){.row3{grid-template-columns:1fr 1fr}.row3>:first-child{grid-column:1/3}}
+.hint{font-size:12px;color:var(--muted);margin-top:3px}
+table.lin{width:100%;border-collapse:collapse;margin-top:8px}
+table.lin td{padding:3px 3px 3px 0;vertical-align:middle}
+table.lin td.v{width:130px}
+table.lin td.x{width:34px;text-align:right}
+table.lin button{border:1px solid var(--linha);background:#fff;border-radius:6px;width:30px;height:30px;font-size:16px;color:var(--muted);cursor:pointer}
+.tot{display:flex;justify-content:space-between;font-weight:800;color:var(--verde-escuro);border-top:1.5px dashed var(--verde);padding-top:8px;margin-top:8px}
+.add{margin-top:8px;background:none;border:1.5px dashed var(--linha);border-radius:8px;padding:8px;width:100%;font:inherit;font-size:13px;color:var(--verde-escuro);cursor:pointer}
+.add:hover{border-color:var(--verde)}
+.aviso{background:#fff6ec;border:1.5px solid var(--amarelo);border-radius:8px;padding:10px 12px;font-size:13px;color:#6b4d12}
+.ok{background:#eef7f2;border:1.5px solid var(--verde);border-radius:8px;padding:12px 14px;color:var(--verde-escuro)}
+.erro{background:#fdeeee;border:1.5px solid #d9534f;border-radius:8px;padding:12px 14px;color:#8a1f1c}
+.barra{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e2e9e5;padding:10px 16px;box-shadow:0 -6px 18px rgba(0,0,0,.06)}
+.barra .in{max-width:760px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.barra .st{font-size:12.5px;color:var(--muted);flex:1;min-width:140px}
+button.p{background:var(--laranja);color:#fff;border:none;border-radius:10px;padding:12px 18px;font:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 10px rgba(255,107,21,.3)}
+button.p:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+button.s{background:#fff;color:var(--verde-escuro);border:1.5px solid var(--verde);border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer}
+.resumo{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:14px;margin-top:10px}
+.resumo span{display:block;color:var(--muted);font-size:11.5px}
+#tela{display:none}
+.lock input,.lock select,.lock textarea{background:#f2f4f3;color:#556}
+.lock .add,.lock table.lin button,.lock .barra{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="hex"></div>
+  <div><h1>Ficha de formação de preço de loja</h1><p>Rede POP Pet Center · Franqueadora</p></div>
+</header>
+
+<main>
+  <div id="carregando" class="card">Abrindo a ficha…</div>
+  <div id="falha" class="card" style="display:none"></div>
+
+  <div id="tela">
+    <div class="card" id="intro">
+      <h2>Antes de começar</h2>
+      <p style="margin:6px 0 0;font-size:14px">Esta ficha vai direto para a equipe de expansão da franqueadora, que usa estes números para formar o preço da loja e apresentá-la a um candidato. <b>Salve quantas vezes quiser</b> — o rascunho fica guardado neste link. Quando estiver tudo certo, clique em <b>Enviar ficha</b>.</p>
+      <div class="aviso" style="margin-top:12px" id="prazo"></div>
+    </div>
+
+    <div class="card"><h2>A loja</h2><p class="sub">Identificação da unidade e condições básicas.</p>
+      <div class="row3">
+        <div><label>Nome da loja</label><input id="nome" placeholder="Ex.: POP PET Itumbiara"></div>
+        <div><label>Unidade (FR)</label><input id="fr" placeholder="Ex.: 87"></div>
+        <div><label>Metragem (m²)</label><input id="m2" type="number" inputmode="numeric"></div>
+      </div>
+      <div class="row2">
+        <div><label>Cidade</label><input id="cidade"></div>
+        <div><label>UF</label><input id="uf" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
+      <div class="row2">
+        <div><label>Contrato de locação vence em</label><input id="locacaoAte" type="date"></div>
+        <div><label>Valor pedido pela loja (R$)</label><input id="valorPedido" type="number" inputmode="decimal" step="0.01"></div>
+      </div>
+      <label>Motivo do repasse</label><textarea id="motivo" placeholder="Conte com franqueza: mudança de cidade, outro negócio, resultado abaixo do esperado, saúde…"></textarea>
+    </div>
+
+    <div class="card"><h2>Seus dados</h2><p class="sub">Para a equipe falar com você sobre a ficha.</p>
+      <div class="row3">
+        <div><label>Nome</label><input id="cedNome"></div>
+        <div><label>Telefone / WhatsApp</label><input id="cedTelefone" inputmode="tel" placeholder="(62) 9…"></div>
+        <div><label>E-mail</label><input id="cedEmail" inputmode="email"></div>
+      </div>
+    </div>
+
+    <div class="card"><h2>Despesas mensais</h2><p class="sub">Custos fixos da loja num mês típico. Adicione linhas se precisar.</p>
+      <div id="desp"></div>
+    </div>
+
+    <div class="card"><h2>Folha de pagamento</h2><p class="sub">Uma linha por função, com o salário bruto. Não precisa somar encargos — a franqueadora calcula.</p>
+      <div id="folha"></div>
+    </div>
+
+    <div class="card"><h2>Contas a pagar</h2><p class="sub">O que a loja deve hoje: fornecedores, boletos vencidos, parcelas. Se não houver, deixe em branco.</p>
+      <div id="contas"></div>
+    </div>
+
+    <div class="card"><h2>Números da loja</h2><p class="sub">Sem faturamento e estoque não existe avaliação — existe só um pedido de preço.</p>
+      <div class="row2">
+        <div><label>Faturamento médio mensal · últimos 12 meses (R$)</label><input id="fat" type="number" inputmode="decimal" step="0.01"></div>
+        <div><label>Margem de contribuição (%)</label><input id="margem" type="number" inputmode="decimal" step="0.1">
+          <div class="hint">O que sobra de cada real vendido depois de mercadoria, impostos e taxa de cartão.</div></div>
+      </div>
+      <div class="row2">
+        <div><label>Estoque valorado a custo (R$)</label><input id="estoque" type="number" inputmode="decimal" step="0.01"></div>
+        <div><label>Desse estoque, sem giro ou vencido (R$)</label><input id="estoqueMorto" type="number" inputmode="decimal" step="0.01"></div>
+      </div>
+      <div class="row2">
+        <div><label>Ticket médio (R$)</label><input id="ticket" type="number" inputmode="decimal" step="0.01"></div>
+        <div><label>Outros passivos: banco, trabalhista (R$)</label><input id="outrosPassivos" type="number" inputmode="decimal" step="0.01"></div>
+      </div>
+    </div>
+
+    <div class="card"><h2>Observações</h2>
+      <textarea id="obsCedente" placeholder="Algo que a franqueadora deva saber sobre a loja, a equipe, o ponto ou a negociação."></textarea>
+    </div>
+
+    <div class="card" id="enviada" style="display:none"></div>
+  </div>
+</main>
+
+<div class="barra" id="barra" style="display:none">
+  <div class="in">
+    <span class="st" id="st">Nada alterado ainda.</span>
+    <button class="s" id="btnSalvar">Salvar rascunho</button>
+    <button class="p" id="btnEnviar">Enviar ficha</button>
+  </div>
+</div>
+
+<script>
+/* ==== Supabase (mesmo projeto do Plantão / da esteira). Copie a ANON_KEY byte a byte. */
+const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+
+const $=id=>document.getElementById(id);
+const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const fmtD=iso=>iso?new Date(iso).toLocaleDateString('pt-BR'):'';
+const token=new URLSearchParams(location.search).get('t')||'';
+const CAMPOS=['nome','fr','cidade','uf','m2','locacaoAte','motivo','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos','obsCedente'];
+const NUM=new Set(['m2','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos']);
+const LISTAS={desp:{padrao:['Aluguel','IPTU','Telefone e internet','Água','Energia'],rot:'Total de despesas',ph:'Descrição'},
+              folha:{padrao:['Balconista'],rot:'Total da folha',ph:'Função'},
+              contas:{padrao:[],rot:'Total a pagar',ph:'Descrição (ex.: fornecedor X, boleto vencido)'}};
+let supa=null, ficha={}, travada=false, sujo=false, tmAuto=null, salvando=false;
+
+function falhar(msg){$('carregando').style.display='none';const f=$('falha');f.style.display='';f.innerHTML='<div class="erro">'+msg+'</div>';}
+
+function desenharLista(k){
+  const cfg=LISTAS[k], arr=ficha[k]||[];
+  const el=$(k);
+  el.innerHTML=`<table class="lin">${arr.map((i,n)=>`<tr>
+      <td><input type="text" value="${esc(i.t)}" placeholder="${cfg.ph}" data-l="${k}|${n}|t"></td>
+      <td class="v"><input type="number" inputmode="decimal" step="0.01" value="${i.v||''}" placeholder="R$" data-l="${k}|${n}|v"></td>
+      <td class="x"><button type="button" data-del="${k}|${n}" aria-label="Remover">×</button></td></tr>`).join('')}</table>
+    <div class="tot"><span>${cfg.rot}</span><span>${brl(arr.reduce((s,i)=>s+(Number(i.v)||0),0))}</span></div>
+    <button type="button" class="add" data-add="${k}">+ adicionar linha</button>`;
+  el.querySelectorAll('[data-l]').forEach(inp=>inp.oninput=()=>{const [c,n,p]=inp.dataset.l.split('|');
+    ficha[c][n][p]=p==='v'?(parseFloat(inp.value)||0):inp.value;marcar();
+    if(p==='v')el.querySelector('.tot span:last-child').textContent=brl(ficha[c].reduce((s,i)=>s+(Number(i.v)||0),0));});
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const [c,n]=b.dataset.del.split('|');ficha[c].splice(n,1);marcar();desenharLista(c);});
+  el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ficha[k].push({t:'',v:0});marcar();desenharLista(k);
+    const ins=el.querySelectorAll('input[type=text]');ins[ins.length-1].focus();});
+}
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function preencher(){
+  CAMPOS.forEach(k=>{const v=ficha[k];$(k).value=(v===undefined||v===null||v===0&&NUM.has(k))?'':v;});
+  const c=ficha.cedente||{};$('cedNome').value=c.nome||'';$('cedTelefone').value=c.telefone||'';$('cedEmail').value=c.email||'';
+  for(const k in LISTAS){if(!Array.isArray(ficha[k]))ficha[k]=[];
+    if(!ficha[k].length&&LISTAS[k].padrao.length)ficha[k]=LISTAS[k].padrao.map(t=>({t,v:0}));desenharLista(k);}
+}
+function coletar(){
+  const o={};
+  CAMPOS.forEach(k=>{const v=$(k).value.trim();o[k]=NUM.has(k)?(parseFloat(v)||0):v;});
+  o.uf=o.uf.toUpperCase();
+  o.cedente={nome:$('cedNome').value.trim(),telefone:$('cedTelefone').value.trim(),email:$('cedEmail').value.trim()};
+  for(const k in LISTAS)o[k]=(ficha[k]||[]).filter(i=>i.t||i.v);
+  return o;
+}
+function marcar(){if(travada)return;sujo=true;$('st').textContent='Alterações não salvas…';clearTimeout(tmAuto);tmAuto=setTimeout(()=>salvar(false),2500);}
+
+async function salvar(enviar){
+  if(travada||salvando)return;
+  if(enviar){
+    const o=coletar(),falta=[];
+    if(!o.nome)falta.push('nome da loja');
+    if(!o.cedente.nome||!o.cedente.telefone)falta.push('seu nome e telefone');
+    if(!o.fat)falta.push('faturamento médio');
+    if(!o.estoque)falta.push('estoque valorado');
+    if(!o.motivo)falta.push('motivo do repasse');
+    if(falta.length){alert('Para enviar, falta preencher: '+falta.join(', ')+'.');return;}
+    if(!confirm('Enviar a ficha de formação de preço para a franqueadora? Depois de enviada, ela não pode mais ser editada por este link.'))return;
+  }
+  salvando=true;clearTimeout(tmAuto);
+  $('st').textContent=enviar?'Enviando…':'Salvando rascunho…';
+  const {data,error}=await supa.rpc('repasse_ficha_salvar',{p_token:token,p_dados:coletar(),p_enviar:!!enviar});
+  salvando=false;
+  if(error){
+    const m=error.message||'';
+    if(/LINK_EXPIRADO/.test(m))$('st').textContent='Este link expirou. Peça um novo à franqueadora.';
+    else if(/LINK_REVOGADO|LINK_INVALIDO/.test(m))$('st').textContent='Este link não é mais válido.';
+    else if(/FICHA_JA_ENVIADA/.test(m)){$('st').textContent='A ficha já foi enviada.';travar(new Date().toISOString());}
+    else $('st').textContent='Não foi possível salvar ('+m+'). Verifique a internet e tente de novo.';
+    return;
+  }
+  sujo=false;
+  if(enviar){travar(data&&data.em);}
+  else $('st').textContent='Rascunho salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.';
+}
+function travar(quando){
+  travada=true;document.body.classList.add('lock');
+  document.querySelectorAll('main input, main select, main textarea').forEach(e=>e.disabled=true);
+  $('barra').style.display='none';$('intro').style.display='none';
+  const o=coletar();
+  const e=$('enviada');e.style.display='';
+  e.innerHTML=`<div class="ok"><b>Ficha enviada${quando?' em '+new Date(quando).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}.</b> Obrigado, ${esc(o.cedente.nome||'')}. A equipe de expansão vai analisar e retornar pelo telefone informado. Se precisar corrigir algo, fale com a franqueadora — ela pode reabrir a ficha.</div>
+    <div class="resumo">
+      <div><span>Loja</span>${esc(o.nome)} — ${esc([o.cidade,o.uf].filter(Boolean).join('/'))}</div>
+      <div><span>Valor pedido</span>${brl(o.valorPedido)}</div>
+      <div><span>Faturamento médio</span>${brl(o.fat)}</div>
+      <div><span>Estoque</span>${brl(o.estoque)}</div>
+    </div>`;
+  e.scrollIntoView({behavior:'smooth'});
+}
+
+async function iniciar(){
+  if(!token){falhar('Este endereço não contém um código de acesso. Use o link que a franqueadora enviou.');return;}
+  if(!window.supabase||SUPABASE_ANON_KEY.startsWith('COLE_AQUI')){falhar('Página ainda não configurada. Avise a franqueadora.');return;}
+  supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  const {data,error}=await supa.rpc('repasse_ficha_ler',{p_token:token});
+  if(error){
+    const m=error.message||'';
+    if(/LINK_EXPIRADO/.test(m))falhar('<b>Este link expirou.</b> Peça um novo à equipe de expansão da franqueadora.');
+    else if(/LINK_REVOGADO/.test(m))falhar('<b>Este link foi substituído ou cancelado.</b> Use o link mais recente que a franqueadora enviou.');
+    else if(/LINK_INVALIDO/.test(m))falhar('<b>Link inválido.</b> Confira se copiou o endereço completo.');
+    else falhar('Não foi possível abrir a ficha: '+esc(m));
+    return;
+  }
+  ficha=data.loja||{};
+  $('carregando').style.display='none';$('tela').style.display='';
+  $('prazo').textContent='Link válido até '+fmtD(data.expira_em)+'. O rascunho é salvo automaticamente enquanto você preenche.';
+  preencher();
+  if(data.ficha_status==='recebida'){travar(data.enviado_em);return;}
+  $('barra').style.display='';
+  document.querySelectorAll('main input, main select, main textarea').forEach(e=>e.addEventListener('input',marcar));
+  $('btnSalvar').onclick=()=>salvar(false);
+  $('btnEnviar').onclick=()=>salvar(true);
+  window.addEventListener('beforeunload',ev=>{if(sujo){ev.preventDefault();ev.returnValue='';}});
+}
+iniciar();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Esteira de Expansão · Rede POP Pet Center</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -415,7 +416,7 @@ const COF_HTML = "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
 const FICHA_PAGINA='ficha-formacao-preco-loja.html';   // página pública do cedente, no mesmo repositório
-const VERSAO='v3.5.1';  // deploy: suporterdp/expansao/index.html
+const VERSAO='v3.5.2';  // deploy: suporterdp/expansao/index.html
 let somenteLeitura=false;
 const PRAZO_COF=10;
 const TIPOS={nova:'Loja nova',conversao:'Conversão',repasse:'Repasse'};
@@ -661,6 +662,8 @@ function aplicarRemoto(col,ev){
 
 /* ---------- login (mesmo Auth do Plantão) ---------- */
 async function iniciar(){
+  // se a Central (raiz) tiver um service worker com cache, garante que esta página venha da rede na próxima abertura
+  if('caches' in window){caches.keys().then(ks=>ks.forEach(k=>caches.open(k).then(c=>c.keys().then(rs=>rs.forEach(r=>{if(r.url.includes('/expansao/'))c.delete(r);})))));}
   if(!window.supabase){setSync('Biblioteca Supabase não carregou','err');return;}
   if(SUPABASE_ANON_KEY.startsWith('COLE_AQUI')){setSync('Falta a ANON_KEY no topo do script','err');document.getElementById('loginErro').textContent='Configure SUPABASE_ANON_KEY no index.html antes de usar.';return;}
   supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -683,7 +686,7 @@ async function entrou(session){
     setSync('Sem papel expansao','err');return;
   }
   somenteLeitura=!temPapel('expansao');
-  document.getElementById('quem').textContent=perfil.nome+(perfil.is_admin?' · admin':somenteLeitura?' · diretoria (leitura)':'');
+  document.getElementById('quem').textContent=perfil.nome+(perfil.is_admin?' · admin':somenteLeitura?' · diretoria (leitura)':'')+' · '+VERSAO;
   if(somenteLeitura)document.body.classList.add('leitura');
   document.getElementById('login').style.display='none';
   try{await carregar();assinar();carregarFranquias();}

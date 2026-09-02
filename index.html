@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- Central POP v7.0 · 02/09/2026 · frente Fluxos (demandas) -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#009150">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,6 +30,29 @@ button{font-family:inherit;cursor:pointer}
 input,select{font-family:inherit;font-size:14px;border:1.5px solid var(--linha);border-radius:8px;padding:7px 10px;background:#fff;color:var(--tinta)}
 input:focus,select:focus{outline:2px solid var(--laranja)}
 h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px}
+
+/* ===== FLUXOS (v7.0) ===== */
+.fx-area{font-size:10px;font-weight:800;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.fx-area.suporte{background:var(--petroleo-suave);color:var(--petroleo)}
+.fx-area.comercial{background:var(--laranja-suave);color:#a34608}
+.fx-area.marketing{background:var(--foco-suave);color:var(--foco)}
+.fx-area.financeiro{background:var(--ambar-suave);color:var(--ambar)}
+.fx-area.diretoria{background:var(--porcelana);color:var(--tinta)}
+.fx-tab{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--papel);border:1px solid var(--linha);border-radius:12px;overflow:hidden}
+.fx-tab th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave);text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha);font-weight:700}
+.fx-tab td{padding:9px 10px;border-bottom:1px solid var(--linha);vertical-align:top}
+.fx-tab tr[data-id]{cursor:pointer}.fx-tab tr[data-id]:hover td{background:var(--porcelana)}
+.fx-tab tr.parada td{background:#FFF6F5}
+.fx-tab .t{font-weight:600}.fx-tab .s{font-size:12px;color:var(--tinta-suave);margin-top:1px}
+.fx-tab .r{text-align:right;white-space:nowrap}.fx-tab .verm{color:var(--verm);font-weight:700}
+.fx-prox{margin:8px 0;padding:8px 12px;background:var(--ambar-suave);border-left:3px solid var(--ambar);border-radius:0 8px 8px 0;font-size:13.5px}
+.fx-tl{border-left:2px solid var(--linha);margin:6px 0 0 6px;padding-left:12px}
+.fx-tl-i{font-size:13px;margin-bottom:8px;line-height:1.4}.fx-tl-i .q{font-size:11px;color:var(--tinta-suave)}
+.fx-acao{margin-top:10px;padding:10px 12px;background:var(--porcelana);border-radius:10px;font-size:13px}
+.fx-acao-l{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.fx-acao input,.fx-acao select{font-size:13px;padding:6px 8px}
+.evm-acoes button.lar{border-color:var(--laranja);color:var(--laranja)}
+@media(max-width:760px){.fx-tab th:nth-child(3),.fx-tab td:nth-child(3){display:none}}
 
 /* ===== LOGIN ===== */
 #telaLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -527,6 +551,7 @@ details.recolhe[open] summary{margin-bottom:8px}
   <div class="abas" id="barraAbas">
     <button class="aba ativa" data-v="dia">Hoje <span class="aba-badge" id="abaDiaBadge" style="display:none"></span></button>
     <button class="aba" data-v="agenda">Agenda</button>
+    <button class="aba" data-v="fluxos" id="abaFluxos">Fluxos</button>
     <span id="abasCustom" style="display:contents"></span>
     <button class="aba" data-v="insights" id="abaInsights" style="display:none">Equipe</button>
     <button class="aba" data-v="financeiro" id="abaFinanceiro" style="display:none">Financeiro</button>
@@ -552,6 +577,23 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
     <div id="bdLista"></div>
     <p class="aviso">Fluxo: 💡 ideia → aprovação da diretoria/supervisores (admins) → 🚀 projeto → botão "Agendar" leva direto para a Agenda.</p>
+  </div>
+
+  <!-- ===== FLUXOS (v7.0) ===== -->
+  <div class="vista" id="v-fluxos">
+    <div class="ag-topo ag-barra">
+      <div class="pills" id="fxPills"></div>
+      <span class="esp"></span>
+      <button class="btn laranja" id="btnNovaDemanda" style="display:none">+ Nova demanda</button>
+    </div>
+    <div class="resumo" id="fxResumo"></div>
+    <div class="ag-topo" style="gap:8px">
+      <select id="fxStatus"><option value="abertas">Abertas</option><option value="paradas">Paradas</option><option value="concluidas">Concluídas</option><option value="todas">Todas</option></select>
+      <select id="fxPessoa"><option value="">Todas as pessoas</option></select>
+      <input id="fxBusca" placeholder="Buscar por título, loja, assunto…" style="flex:1;min-width:160px">
+    </div>
+    <div id="fxLista"></div>
+    <p class="aviso">Uma demanda é o fio: nasce de uma origem, passa de pessoa em pessoa com "Passar para" e guarda a linha do tempo. Tarefas de rotina não entram aqui.</p>
   </div>
 
   <!-- ===== MEU DIA ===== -->
@@ -602,6 +644,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <select id="evTipo"><option value="compromisso">Compromisso</option><option value="tarefa">Tarefa</option><option value="evento">Evento</option></select>
       <input id="evTitulo" placeholder="Título">
       <div class="fr-wrap"><input id="evFra" placeholder="Franquia (obrigatório) — nome ou nº" autocomplete="off"><div class="fr-list" id="evFraList" style="display:none"></div></div>
+      <label id="evDemLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave);align-items:center;gap:4px">🧵 Demanda <select id="evDemanda" style="max-width:260px"><option value="">Sem demanda</option></select></label>
       <label class="ev-lbl">Data início <input id="evData" type="date" title="Data de início"></label>
       <label class="ev-lbl" id="evIniLbl">Hora início <input id="evIni" type="time" value="09:00"></label>
       <label class="ev-lbl" id="evFimDataLbl" style="display:none">Data fim <input id="evDataFim" type="date" title="Data final (opcional)"></label>
@@ -1116,7 +1159,7 @@ async function carregarAgenda(){
   const data=await fetchAllSB(()=>sb.from('agenda_eventos').select('*').order('ini').order('id'));
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,demanda:e.demanda_id||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -1202,6 +1245,7 @@ function ligarRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'tarefas_fixas'},async()=>{await carregarBase();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'abas_custom'},async()=>{await carregarAbas();renderAbasCustom();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'itens_aba'},async()=>{await carregarAbas();redesenharVistaAtiva();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'demandas'},()=>{clearTimeout(window._dmRT);window._dmRT=setTimeout(async()=>{await carregarDemandas();if(vistaAtiva()==='fluxos')desenharFluxos();if(fxDemandaAberta&&$('evModalBg').classList.contains('aberto'))abrirDemanda(fxDemandaAberta);},400);})
     .subscribe(st=>{$('syncStatus').textContent=st==='SUBSCRIBED'?'● tempo real':'○ reconectando…';$('syncStatus').style.color=st==='SUBSCRIBED'?'var(--verde)':'var(--ambar)';});
 }
 function vistaAtiva(){return document.querySelector('.aba.ativa').dataset.v;}
@@ -1214,6 +1258,7 @@ function redesenharVistaAtiva(){
   if(v==='financeiro')desenharFinanceiro();
   if(v==='admin')desenharAdmin();
   if(v==='board')desenharBoard();
+  if(v==='fluxos')desenharFluxos();
   desenharTimeProg();
 }
 
@@ -1260,7 +1305,7 @@ async function iniciarSessao(user){
   usuarioAtual=perfil;
   sb.from('acessos').insert({user_id:user.id}).then(()=>{});
   await carregarLidos();
-  await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas()]);
+  await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas(),carregarDemandas()]);
   ligarRealtime();
   registrarSW();estadoPushInicial();
   $('telaLogin').style.display='none';$('app').style.display='block';
@@ -1283,7 +1328,7 @@ async function iniciarSessao(user){
     const sp=$('agPessoa');sp.innerHTML='<option value="">Todas</option>'+CFG.usuarios.map(u=>'<option value="'+u.id+'">'+escHtml(u.nome.split(' ')[0])+'</option>').join('');
     sp.onchange=desenharAgenda;$('agPorPessoa').onchange=desenharAgenda;
   }
-  $('btnNovaAba').style.display=usuarioAtual.admin?'inline-block':'none';
+  $('btnNovaAba').style.display=(usuarioAtual.admin&&MOSTRAR_ABAS_CUSTOM)?'inline-block':'none';
   $('insPeriodo').onchange=desenharInsights;
   renderAbasCustom();
   $('agData').value=chaveDia(agora());$('evData').value=chaveDia(agora());
@@ -1294,6 +1339,8 @@ async function iniciarSessao(user){
     const alvo=document.querySelector('.aba[data-v='+abaIni+']');
     if(alvo)alvo.click();
   }
+  const demIni=new URLSearchParams(location.search).get('dem');
+  if(demIni){setTimeout(()=>{if(demPorId(demIni))abrirDemanda(demIni);history.replaceState(null,'',location.pathname+'?aba=fluxos');},700);}
 }
 async function sair(){await sb.auth.signOut();location.reload();}
 
@@ -1580,6 +1627,7 @@ function linhaEventoDia(uid,e){
       const r1=await sb.from('agenda_eventos').update(updMD).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
       if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
+      if(!r1.error&&e.demanda)await demandaLog(e.demanda,'tarefa_concluida','Concluiu "'+e.titulo+'" · "'+obsC.trim()+'"',{tarefa_id:e.id});
       await carregarAgenda();redesenharTarefasDia();
     };
   });
@@ -1883,6 +1931,7 @@ function eventoEl(uid,e){
       const r1=await sb.from('agenda_eventos').update(upd).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:e.dono||uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
       if(r1.error||r2.error)erroDB(r1.error||r2.error);else piscar();
+      if(!r1.error&&e.demanda)await demandaLog(e.demanda,'tarefa_concluida','Concluiu "'+e.titulo+'" · "'+obsC.trim()+'"',{tarefa_id:e.id});
       await carregarAgenda();desenharAgenda();
     };
   });
@@ -2137,6 +2186,7 @@ function atualizarCamposTipo(){
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evRepLbl').style.display=(tarefa&&!editEvId)?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
+  $('evDemLbl').style.display=tarefa?'inline-flex':'none';if(tarefa)opcoesDemandaSelect($('evDemanda'),$('evDemanda').value||null);
   $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
   const ehEvento=$('evTipo').value==='evento';
   $('btnModeloBetta').style.display=ehEvento?'inline-block':'none';
@@ -2192,6 +2242,7 @@ function montarNavMobile(){
   const nav=$('navMobile');if(!nav)return;nav.innerHTML='';
   const IC={dia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
     agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    fluxos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 7l8 4M8 17l8-4"/></svg>',
     insights:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 19c0-2 2-3.5 4-3.5s3 1 3 3"/></svg>',
     financeiro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>',
     admin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>'};
@@ -2341,14 +2392,16 @@ async function addEvento(){
   const subtarefas=ehTarefa?evSubsArr.map(s=>({id:s.id||novoId('s'),txt:s.txt,feita:!!s.feita})):[];
   const dadosEventoSalvar=emModoBetta?{...(evDadosEventoOrig||{}),custo_total:Number($('evCusto').value)||0}:(evDadosEventoOrig||null);
   const categoria=tipo==='compromisso'?categorizarCompromisso(titulo):null;
+  const demandaId=(ehTarefa&&$('evDemanda').value)?$('evDemanda').value:null;
   let error;
   if(editEvId){
-    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar,categoria}).eq('id',editEvId));
+    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar,categoria,demanda_id:demandaId}).eq('id',editEvId));
   }else{
     const rec=ehTarefa?lerRecorrencia():null;
     if(rec&&(rec.tipo!=='mensal')&&!rec.dias.length){alert('Escolha pelo menos um dia da semana para a repetição.');return;}
     let ins;
-    ({data:ins,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria,recorrencia:rec}).select('id').single());
+    ({data:ins,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria,recorrencia:rec,demanda_id:demandaId}).select('id').single());
+    if(!error&&demandaId&&ins&&ins.id)await demandaLog(demandaId,'tarefa_criada','Tarefa "'+titulo+'" para '+fxNome(uid)+(prazo?' · prazo '+fxDBR(prazo):''),{para:uid,tarefa_id:ins.id});
     if(!error&&rec&&ins&&ins.id){
       await carregarAgenda();
       const n=await gerarOcorrencias(ins.id,rec,{user_id:uid,titulo,data,descricao,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,criado_por:usuarioAtual.id,categoria});
@@ -2364,7 +2417,7 @@ async function addEvento(){
     }
     devolverDe=null;
   }
-  fecharFormAgenda();$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('evRep').value='';$('evRepFim').value='';$('evRepDias').querySelectorAll('input').forEach(i=>i.checked=false);$('evRepDias').style.display='none';$('evRepMes').style.display='none';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';
+  fecharFormAgenda();$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';$('evPrazoHora').value='';$('evDataFim').value='';$('evRep').value='';$('evRepFim').value='';$('evRepDias').querySelectorAll('input').forEach(i=>i.checked=false);$('evRepDias').style.display='none';$('evRepMes').style.display='none';$('evDemanda').value='';$('agData').value=data;evPartsSel.clear();evSubsArr=[];desenharEvSubs();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';
   await carregarAgenda();desenharAgenda();piscar();
 }
 function entrarEdicao(e){
@@ -2377,6 +2430,7 @@ function entrarEdicao(e){
   if(e.dadosEvento){emModoBetta=true;evDadosEventoOrig={...e.dadosEvento};$('evCustoLbl').style.display='inline-flex';$('evCusto').value=e.dadosEvento.custo_total??'';}
   else{emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';}
   devolverDe=null;
+  opcoesDemandaSelect($('evDemanda'),e.demanda||null);
   atualizarCamposTipo();
   evPartsSel.clear();(e.participantes||[]).filter(p=>p!==e.dono).forEach(p=>evPartsSel.add(p));
   evFraSel=(e.fra===0||e.fra)?e.fra:null;
@@ -2473,6 +2527,7 @@ function abrirDetalheEv(id){
   if(ehT&&(e.subs||[]).length)h+='<div class="evm-l"><b>Subtarefas · '+e.subs.filter(x=>x.feita).length+' de '+e.subs.length+' feitas</b>'
     +e.subs.map(x=>'<div class="evm-sub'+(x.feita?' feita':'')+'">'+(x.feita?'✅':'⬜')+' '+escHtml(x.txt)+'</div>').join('')+'</div>';
   if(e.origem)h+='<div class="evm-l">🔗 Tarefa de continuidade (criada a partir de uma devolução)</div>';
+  if(e.demanda){const dm=demPorId(e.demanda);if(dm)h+='<div class="evm-l">🧵 Demanda: <a href="#" id="evmDem" data-id="'+dm.id+'" style="color:var(--petroleo);font-weight:700">'+escHtml(dm.titulo)+'</a> <span style="color:var(--tinta-suave)">· '+escHtml(FX_AREAS[dm.area]||dm.area)+(dm.etapa?' · etapa '+escHtml(dm.etapa):'')+'</span></div>';}
   if(e.dadosEvento){
     const dB=e.dadosEvento;
     h+='<div class="evm-l bet-box"><b>🐟 Evento Betta</b><br>Custo: '+fmtReaisBetta(dB.custo_total)
@@ -2507,6 +2562,7 @@ function abrirDetalheEv(id){
   const irAgenda=()=>{document.querySelectorAll('.aba').forEach(x=>x.classList.remove('ativa'));document.querySelectorAll('.vista').forEach(x=>x.classList.remove('ativa'));const ab=document.querySelector('.aba[data-v=agenda]');if(ab)ab.classList.add('ativa');$('v-agenda').classList.add('ativa');};
   $('evmX').onclick=fecharDetalheEv;
   $('evmFechar').onclick=fecharDetalheEv;
+  const bDm=$('evmDem');if(bDm)bDm.onclick=ev=>{ev.preventDefault();abrirDemanda(bDm.dataset.id);};
   const bi=$('evmIcs');if(bi)bi.onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
   $('evmDia').onclick=()=>{fecharDetalheEv();irAgenda();if($('agModo')){$('agModo').value='dia';$('agModo').dispatchEvent(new Event('change'));}$('agData').value=e.data;evAbertos.add(e.id);desenharAgenda();setTimeout(()=>{const el=document.querySelector('[data-evid="'+e.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);};
   const be=$('evmEd');if(be)be.onclick=()=>{fecharDetalheEv();irAgenda();entrarEdicao(e);};
@@ -3022,6 +3078,7 @@ async function desenharRotinaDados(){
    BOARDS (abas customizadas: ideias → aprovação → projeto → agenda)
 ================================================================ */
 function renderAbasCustom(){setTimeout(montarNavMobile,0);
+  if(!MOSTRAR_ABAS_CUSTOM){$('abasCustom').innerHTML='';return;}
   const box=$('abasCustom');box.innerHTML='';
   for(const a of ABAS){
     const b=document.createElement('button');
@@ -4244,6 +4301,220 @@ async function desenharLog(){
 }
 
 /* ================================================================
+   FLUXOS (demandas) — v7.0
+   O "fio": demanda que atravessa tarefas e pessoas, com histórico.
+================================================================ */
+const MOSTRAR_ABAS_CUSTOM=false; // v7.0: aba Fluxos substitui os boards custom (código preservado para rollback)
+const FX_AREAS={suporte:'Suporte',comercial:'Comercial',marketing:'Marketing',financeiro:'Financeiro',diretoria:'Diretoria'};
+const FX_CANAIS={whatsapp:'WhatsApp da franqueadora',sults:'Sults',diretoria:'Diretoria',interno:'Interno'};
+const FX_PARADA_DIAS=5;
+let DEMANDAS=[], fxArea='', fxDemandaAberta=null;
+async function carregarDemandas(){
+  const data=await fetchAllSB(()=>sb.from('demandas').select('*').order('ultimo_movimento',{ascending:false}));
+  DEMANDAS=(data||[]).map(d=>({...d,historico:Array.isArray(d.historico)?d.historico:[]}));
+}
+function demPorId(id){return DEMANDAS.find(d=>d.id===id);}
+function fxDiasParada(d){const t=new Date(d.ultimo_movimento||d.criada_em).getTime();return Math.max(0,Math.floor((Date.now()-t)/86400000));}
+function fxTarefas(id){return todosEventosUnicos().filter(x=>x.demanda===id);}
+function fxNome(uid){return ((uPorId(uid)||{}).nome||'—').split(' ')[0];}
+function fxPodeEditar(d){return usuarioAtual.admin||d.responsavel_id===usuarioAtual.id;}
+function fxAreaTag(a){return '<span class="fx-area '+escHtml(a)+'">'+escHtml(FX_AREAS[a]||a)+'</span>';}
+function fxDBR(d){return d?String(d).slice(0,10).split('-').reverse().join('/'):'';}
+async function demandaLog(id,tipo,texto,extra){
+  const d=demPorId(id);if(!d)return;
+  const ent={ts:new Date().toISOString(),por:usuarioAtual.id,tipo,texto:texto||'',...(extra||{})};
+  const hist=[...(d.historico||[]),ent];
+  const upd={historico:hist,...(extra&&extra._upd?extra._upd:{})};delete upd._upd;
+  const{error}=await sb.from('demandas').update(upd).eq('id',id);
+  if(error){erroDB(error);return false;}
+  d.historico=hist;Object.assign(d,upd);
+  return true;
+}
+function opcoesDemandaSelect(sel,atual){
+  if(!sel)return;
+  const abertas=DEMANDAS.filter(d=>d.status==='ativa'||d.status==='parada'||d.id===atual).sort((a,b)=>(a.titulo||'').localeCompare(b.titulo||''));
+  sel.innerHTML='<option value="">Sem demanda</option>'+abertas.map(d=>'<option value="'+d.id+'"'+(d.id===atual?' selected':'')+'>'+escHtml((FX_AREAS[d.area]||'')+' · '+d.titulo+(d.franquia_fra?' · FRA '+d.franquia_fra:''))+'</option>').join('');
+}
+/* ---------- tela Fluxos ---------- */
+function desenharFluxos(){
+  const v=$('v-fluxos');if(!v||!usuarioAtual)return;
+  $('btnNovaDemanda').style.display=usuarioAtual.admin?'inline-block':'none';
+  const pills=$('fxPills');
+  pills.innerHTML='<button class="pill'+(fxArea===''?' on':'')+'" data-a="">Todas</button>'+Object.keys(FX_AREAS).map(a=>'<button class="pill'+(fxArea===a?' on':'')+'" data-a="'+a+'">'+FX_AREAS[a]+'</button>').join('');
+  pills.querySelectorAll('.pill').forEach(b=>b.onclick=()=>{fxArea=b.dataset.a;desenharFluxos();});
+  const sp=$('fxPessoa');
+  if(sp.options.length<=1){sp.innerHTML='<option value="">Todas as pessoas</option>'+CFG.usuarios.map(u=>'<option value="'+u.id+'">'+escHtml(u.nome.split(' ')[0])+'</option>').join('');}
+  const st=$('fxStatus').value,pessoa=sp.value,busca=($('fxBusca').value||'').trim().toLowerCase();
+  const hoje=Date.now(),d30=hoje-30*86400000;
+  const abertas=DEMANDAS.filter(d=>d.status==='ativa'||d.status==='parada');
+  const univ=fxArea?abertas.filter(d=>d.area===fxArea):abertas;
+  const paradas=univ.filter(d=>fxDiasParada(d)>=FX_PARADA_DIAS).length;
+  const concl30=DEMANDAS.filter(d=>d.status==='concluida'&&d.concluida_em&&new Date(d.concluida_em).getTime()>=d30&&(!fxArea||d.area===fxArea));
+  const media=concl30.length?Math.round(concl30.reduce((s,d)=>s+(new Date(d.concluida_em)-new Date(d.aberta_em))/86400000,0)/concl30.length):null;
+  const canais={};DEMANDAS.filter(d=>new Date(d.aberta_em).getTime()>=d30&&(!fxArea||d.area===fxArea)).forEach(d=>canais[d.canal]=(canais[d.canal]||0)+1);
+  const canalTop=Object.entries(canais).sort((a,b)=>b[1]-a[1])[0];
+  $('fxResumo').innerHTML=
+    '<div class="kpi"><div class="n">'+univ.length+'</div><div class="l">Demandas abertas</div></div>'
+   +'<div class="kpi'+(paradas?' alerta':'')+'"><div class="n">'+paradas+'</div><div class="l">Paradas há '+FX_PARADA_DIAS+'+ dias</div></div>'
+   +'<div class="kpi"><div class="n">'+(media==null?'—':media+' d')+'</div><div class="l">Tempo médio (concluídas 30 d)</div></div>'
+   +'<div class="kpi"><div class="n" style="font-size:18px;line-height:1.5">'+(canalTop?escHtml((FX_CANAIS[canalTop[0]]||canalTop[0]).split(' ')[0])+' · '+canalTop[1]:'—')+'</div><div class="l">Origem mais frequente (30 d)</div></div>';
+  let lista=DEMANDAS.filter(d=>{
+    if(fxArea&&d.area!==fxArea)return false;
+    if(st==='abertas'&&!(d.status==='ativa'||d.status==='parada'))return false;
+    if(st==='paradas'&&!((d.status==='ativa'||d.status==='parada')&&fxDiasParada(d)>=FX_PARADA_DIAS))return false;
+    if(st==='concluidas'&&d.status!=='concluida')return false;
+    if(pessoa&&d.responsavel_id!==pessoa)return false;
+    if(busca&&!((d.titulo||'')+' '+(d.assunto||'')+' '+(frqRotulo(d.franquia_fra)||'')+' '+(d.solicitante||'')).toLowerCase().includes(busca))return false;
+    return true;
+  });
+  if(st!=='concluidas')lista.sort((a,b)=>fxDiasParada(b)-fxDiasParada(a));
+  const box=$('fxLista');
+  if(!lista.length){box.innerHTML='<p class="aviso">Nenhuma demanda '+(st==='concluidas'?'concluída':'aberta')+' com esses filtros.'+(usuarioAtual.admin?' Use "+ Nova demanda" para abrir o primeiro fio.':'')+'</p>';return;}
+  box.innerHTML='<table class="fx-tab"><thead><tr><th>Área</th><th>Demanda</th><th>Etapa</th><th>Com quem</th><th class="r">Parada</th></tr></thead><tbody>'
+    +lista.map(d=>{const dias=fxDiasParada(d),ab=(d.status==='ativa'||d.status==='parada');const tf=fxTarefas(d.id),tfAb=tf.filter(x=>!x.concluida).length;
+      return '<tr data-id="'+d.id+'"'+(ab&&dias>=FX_PARADA_DIAS?' class="parada"':'')+'><td>'+fxAreaTag(d.area)+'</td>'
+        +'<td><div class="t">'+escHtml(d.titulo)+'</div><div class="s">'+escHtml(d.franquia_fra?(frqRotulo(d.franquia_fra)||'FRA '+d.franquia_fra):'Rede / sede')+(tf.length?' · '+tf.length+' tarefa'+(tf.length>1?'s':'')+(tfAb?' ('+tfAb+' aberta'+(tfAb>1?'s':'')+')':''):'')+'</div></td>'
+        +'<td>'+(d.status==='concluida'?'<span class="st aprovada">concluída</span>':d.status==='cancelada'?'<span class="st reprovada">cancelada</span>':escHtml(d.etapa||'—'))+'</td>'
+        +'<td>'+escHtml(d.responsavel_id?fxNome(d.responsavel_id):'—')+'</td>'
+        +'<td class="r'+(ab&&dias>=FX_PARADA_DIAS?' verm':'')+'">'+(ab?dias+' d':fxDBR(d.concluida_em))+'</td></tr>';}).join('')
+    +'</tbody></table>';
+  box.querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>abrirDemanda(tr.dataset.id));
+}
+/* ---------- detalhe da demanda ---------- */
+function abrirDemanda(id){
+  const d=demPorId(id);const bg=$('evModalBg');if(!d||!bg)return;
+  fxDemandaAberta=id;
+  const ab=(d.status==='ativa'||d.status==='parada'),dias=fxDiasParada(d),pode=fxPodeEditar(d);
+  const tarefas=fxTarefas(id).sort((a,b)=>(a.prazo||a.data||'').localeCompare(b.prazo||b.data||''));
+  let h='<div class="evm-topo">'+fxAreaTag(d.area)
+    +(d.status==='concluida'?'<span class="st aprovada">✅ concluída</span>':d.status==='cancelada'?'<span class="st reprovada">cancelada</span>':(dias>=FX_PARADA_DIAS?'<span class="prazo-tag u3">parada há '+dias+' dias</span>':'<span class="st ideia">em andamento</span>'))
+    +'<button type="button" class="evm-x" id="dmX" title="Fechar">✕</button></div>'
+    +'<h3>'+escHtml(d.titulo)+'</h3>'
+    +'<div class="evm-l">'+(d.franquia_fra?'🏪 '+escHtml(frqRotulo(d.franquia_fra)||('FRA '+d.franquia_fra)):'🏢 Rede / sede')+(d.assunto?' &nbsp;·&nbsp; '+escHtml(d.assunto):'')+'</div>'
+    +'<div class="evm-l">📥 Origem: '+escHtml(FX_CANAIS[d.canal]||d.canal)+(d.solicitante?' ('+escHtml(d.solicitante)+')':'')+' &nbsp;·&nbsp; aberta em '+fxDBR(d.aberta_em)+(d.aberta_por?' por '+escHtml(fxNome(d.aberta_por)):'')+(d.prazo_pedido?' &nbsp;·&nbsp; ⏰ prazo pedido '+fxDBR(d.prazo_pedido):'')+'</div>'
+    +'<div class="evm-l">👤 Com: <b>'+escHtml(d.responsavel_id?fxNome(d.responsavel_id):'—')+'</b>'+(d.etapa?' &nbsp;·&nbsp; etapa: <b>'+escHtml(d.etapa)+'</b>':'')+'</div>';
+  if(ab)h+='<div class="fx-prox"><b>Próximo passo:</b> '+(d.proximo_passo?escHtml(d.proximo_passo):'<i>não definido</i>')+'</div>';
+  if(d.status==='concluida'&&d.concluida_em)h+='<div class="evm-l">✅ Concluída em <b>'+fmtDtHr(d.concluida_em)+'</b> · '+Math.round((new Date(d.concluida_em)-new Date(d.aberta_em))/86400000)+' dias do início ao fim</div>';
+  if(tarefas.length){
+    const feitas=tarefas.filter(x=>x.concluida).length,hj=chaveDia(agora());
+    h+='<div class="evm-l"><b>Tarefas · '+feitas+' de '+tarefas.length+' concluídas</b>'
+      +tarefas.map(x=>'<div class="evm-sub'+(x.concluida?' feita':'')+'"><a href="#" class="fx-ev" data-id="'+x.id+'">'+(x.concluida?'✅':(x.prazo&&x.prazo<hj?'🔴':'⬜'))+' '+escHtml(x.titulo)+'</a> <span style="color:var(--tinta-suave)">· '+escHtml(fxNome(x.dono))+(x.prazo?' · prazo '+fxDBR(x.prazo):'')+'</span></div>').join('')+'</div>';
+  }
+  const hist=[...(d.historico||[])].sort((a,b)=>(a.ts||'').localeCompare(b.ts||''));
+  const IC={abertura:'🟢',comentario:'💬',passagem:'➡️',tarefa_criada:'📌',tarefa_concluida:'✅',prazo:'⏰',conclusao:'🏁',reabertura:'↩',cancelamento:'⛔',sistema:'⚙️',edicao:'✎'};
+  h+='<div class="evm-l"><b>Linha do tempo</b><div class="fx-tl">'
+    +(hist.length?hist.map(e=>'<div class="fx-tl-i"><span class="q">'+fmtDtHr(e.ts)+' · '+escHtml(e.por?fxNome(e.por):'sistema')+(e.para?' → '+escHtml(fxNome(e.para)):'')+'</span><br>'+(IC[e.tipo]||'•')+' '+escHtml(e.texto||e.tipo)+'</div>').join(''):'<div class="fx-tl-i"><i>sem registros</i></div>')
+    +'</div></div>';
+  h+='<div id="fxAcaoBox"></div>';
+  h+='<div class="evm-acoes">'
+    +(ab&&pode?'<button type="button" id="dmPassar" class="lar">➡️ Passar para</button>':'')
+    +(ab&&pode?'<button type="button" id="dmTarefa">+ Tarefa</button>':'')
+    +(ab?'<button type="button" id="dmComentar">💬 Comentar</button>':'')
+    +(ab&&pode?'<button type="button" id="dmProx">✎ Próximo passo</button>':'')
+    +(ab&&usuarioAtual.admin?'<button type="button" id="dmEditar">✎ Editar</button>':'')
+    +(ab&&pode?'<button type="button" id="dmConcluir">🏁 Concluir</button>':'')
+    +(!ab&&usuarioAtual.admin?'<button type="button" id="dmReabrir">↩ Reabrir</button>':'')
+    +'<button type="button" id="dmFechar">Fechar</button></div>';
+  $('evModal').innerHTML=h;
+  bg.classList.add('aberto');
+  bg.onclick=ev=>{if(ev.target===bg)fecharDemanda();};
+  $('dmX').onclick=fecharDemanda;$('dmFechar').onclick=fecharDemanda;
+  $('evModal').querySelectorAll('.fx-ev').forEach(a=>a.onclick=ev=>{ev.preventDefault();abrirDetalheEv(a.dataset.id);});
+  const bP=$('dmPassar');if(bP)bP.onclick=()=>fxFormPassar(d);
+  const bT=$('dmTarefa');if(bT)bT.onclick=()=>{fecharDemanda();const a=document.querySelector('.aba[data-v=agenda]');if(a)a.click();$('evTipo').value='tarefa';atualizarCamposTipo();$('evData').value=chaveDia(agora());if(d.franquia_fra){evFraSel=d.franquia_fra;$('evFra').value=frqRotulo(d.franquia_fra)||'';}else{evFraSel=0;$('evFra').value=frqRotulo(0)||'INTERNO / SEDE';}opcoesDemandaSelect($('evDemanda'),d.id);abrirFormAgenda();};
+  const bC=$('dmComentar');if(bC)bC.onclick=()=>fxFormComentar(d);
+  const bX=$('dmProx');if(bX)bX.onclick=()=>fxFormProx(d);
+  const bE=$('dmEditar');if(bE)bE.onclick=()=>{fecharDemanda();fxFormDemanda(d);};
+  const bK=$('dmConcluir');if(bK)bK.onclick=()=>fxFormConcluir(d);
+  const bR=$('dmReabrir');if(bR)bR.onclick=async()=>{const obs=prompt('Motivo da reabertura:');if(obs===null)return;if(await demandaLog(d.id,'reabertura',obs||'Reaberta',{_upd:{status:'ativa',concluida_em:null}})){piscar();await carregarDemandas();desenharFluxos();abrirDemanda(d.id);}};
+}
+function fecharDemanda(){fxDemandaAberta=null;const bg=$('evModalBg');if(bg)bg.classList.remove('aberto');}
+function fxSelPessoas(id,atual){return '<select id="'+id+'">'+CFG.usuarios.filter(u=>u.ativo!==false).map(u=>'<option value="'+u.id+'"'+(u.id===atual?' selected':'')+'>'+escHtml(u.nome.split(' ')[0])+'</option>').join('')+'</select>';}
+function fxFormPassar(d){
+  const box=$('fxAcaoBox');
+  const outro=CFG.usuarios.find(u=>u.id!==d.responsavel_id);
+  box.innerHTML='<div class="fx-acao"><b>Passar para</b>'
+    +'<div class="fx-acao-l">Pessoa '+fxSelPessoas('fxPPessoa',outro?outro.id:null)+' &nbsp; Nova etapa <input id="fxPEtapa" placeholder="ex.: Plano de ação" maxlength="60" style="width:180px"></div>'
+    +'<div class="fx-acao-l">Tarefa que a pessoa recebe <input id="fxPTitulo" placeholder="Título da tarefa (padrão = etapa)" maxlength="120" style="flex:1;min-width:220px"> prazo <input id="fxPPrazo" type="date" value="'+chaveDia(new Date(Date.now()+3*86400000))+'"></div>'
+    +'<div class="fx-acao-l">Próximo passo <input id="fxPProx" placeholder="O que precisa acontecer agora" maxlength="200" style="flex:1;min-width:220px"></div>'
+    +'<div class="fx-acao-l">Recado para quem recebe <input id="fxPObs" placeholder="Contexto da passagem (opcional)" maxlength="300" style="flex:1;min-width:220px"></div>'
+    +'<div class="fx-acao-l"><button class="btn laranja" id="fxPOk">Passar</button><button class="btn claro" id="fxPCancel">Cancelar</button></div></div>';
+  box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  $('fxPCancel').onclick=()=>{box.innerHTML='';};
+  $('fxPOk').onclick=async()=>{
+    const para=$('fxPPessoa').value,etapa=$('fxPEtapa').value.trim(),titulo=($('fxPTitulo').value.trim()||etapa),prazo=$('fxPPrazo').value,prox=$('fxPProx').value.trim(),obs=$('fxPObs').value.trim();
+    if(!etapa){alert('Informe a nova etapa.');return;}
+    if(!prazo||prazo<chaveDia(agora())){alert('Informe um prazo a partir de hoje.');return;}
+    const hoje=chaveDia(agora());
+    const{data:ins,error}=await sb.from('agenda_eventos').insert({user_id:para,titulo:titulo,data:hoje,ini:'00:00',fim:'00:00',tipo:'tarefa',descricao:(obs?obs+'\n':'')+'Demanda: '+d.titulo,participantes:[],franquia_fra:d.franquia_fra||0,prazo,prazo_hora:null,subtarefas:[],criado_por:usuarioAtual.id,categoria:null,demanda_id:d.id}).select('id').single();
+    if(error){erroDB(error);return;}
+    const ok=await demandaLog(d.id,'passagem','Passou para '+fxNome(para)+' · etapa "'+etapa+'" · tarefa "'+titulo+'" com prazo '+fxDBR(prazo)+(obs?' · "'+obs+'"':''),{para,tarefa_id:ins.id,_upd:{responsavel_id:para,etapa,proximo_passo:prox||('Etapa: '+etapa+' (com '+fxNome(para)+')'),status:'ativa'}});
+    if(!ok)return;
+    piscar();await Promise.all([carregarAgenda(),carregarDemandas()]);desenharFluxos();abrirDemanda(d.id);
+  };
+}
+function fxFormComentar(d){
+  const box=$('fxAcaoBox');
+  box.innerHTML='<div class="fx-acao"><b>Comentário</b><div class="fx-acao-l"><input id="fxCTxt" placeholder="O que aconteceu / o que descobriu" maxlength="500" style="flex:1;min-width:240px"></div><div class="fx-acao-l"><button class="btn laranja" id="fxCOk">Registrar</button><button class="btn claro" id="fxCCancel">Cancelar</button></div></div>';
+  $('fxCTxt').focus();$('fxCCancel').onclick=()=>{box.innerHTML='';};
+  const salvar=async()=>{const t=$('fxCTxt').value.trim();if(!t)return;if(await demandaLog(d.id,'comentario',t)){piscar();await carregarDemandas();desenharFluxos();abrirDemanda(d.id);}};
+  $('fxCOk').onclick=salvar;$('fxCTxt').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();salvar();}});
+}
+function fxFormProx(d){
+  const box=$('fxAcaoBox');
+  box.innerHTML='<div class="fx-acao"><b>Próximo passo</b><div class="fx-acao-l"><input id="fxXTxt" value="'+escHtml(d.proximo_passo||'')+'" placeholder="O que precisa acontecer agora" maxlength="200" style="flex:1;min-width:240px"> etapa <input id="fxXEtapa" value="'+escHtml(d.etapa||'')+'" maxlength="60" style="width:160px"></div><div class="fx-acao-l"><button class="btn laranja" id="fxXOk">Salvar</button><button class="btn claro" id="fxXCancel">Cancelar</button></div></div>';
+  $('fxXTxt').focus();$('fxXCancel').onclick=()=>{box.innerHTML='';};
+  $('fxXOk').onclick=async()=>{const t=$('fxXTxt').value.trim(),et=$('fxXEtapa').value.trim();if(await demandaLog(d.id,'edicao','Próximo passo: '+(t||'—')+(et&&et!==d.etapa?' · etapa "'+et+'"':''),{_upd:{proximo_passo:t||null,etapa:et||null}})){piscar();await carregarDemandas();desenharFluxos();abrirDemanda(d.id);}};
+}
+function fxFormConcluir(d){
+  const abertas=fxTarefas(d.id).filter(x=>!x.concluida);
+  const box=$('fxAcaoBox');
+  box.innerHTML='<div class="fx-acao"><b>Concluir demanda</b>'+(abertas.length?'<div class="fx-acao-l" style="color:var(--verm)">⚠️ '+abertas.length+' tarefa(s) ainda em aberto. Elas continuam na agenda das pessoas.</div>':'')
+    +'<div class="fx-acao-l"><input id="fxKTxt" placeholder="Resultado / o que foi resolvido (obrigatório)" maxlength="500" style="flex:1;min-width:240px"></div><div class="fx-acao-l"><button class="btn laranja" id="fxKOk">Concluir</button><button class="btn claro" id="fxKCancel2">Cancelar demanda</button><button class="btn claro" id="fxKCancel">Voltar</button></div></div>';
+  $('fxKTxt').focus();$('fxKCancel').onclick=()=>{box.innerHTML='';};
+  $('fxKOk').onclick=async()=>{const t=$('fxKTxt').value.trim();if(!t){alert('Registre o resultado para concluir.');return;}if(await demandaLog(d.id,'conclusao',t,{_upd:{status:'concluida',concluida_em:new Date().toISOString(),proximo_passo:null}})){piscar();await carregarDemandas();desenharFluxos();abrirDemanda(d.id);}};
+  $('fxKCancel2').onclick=async()=>{const t=$('fxKTxt').value.trim();if(!t){alert('Registre o motivo para cancelar.');return;}if(!confirm('Cancelar a demanda "'+d.titulo+'"?'))return;if(await demandaLog(d.id,'cancelamento',t,{_upd:{status:'cancelada',concluida_em:new Date().toISOString(),proximo_passo:null}})){piscar();await carregarDemandas();desenharFluxos();abrirDemanda(d.id);}};
+}
+/* ---------- nova demanda / editar (admin) ---------- */
+function fxFormDemanda(d){
+  const bg=$('evModalBg');if(!bg||!usuarioAtual.admin)return;
+  const ed=!!d;d=d||{};
+  const fraOpts='<option value="">Rede / sede (sem loja)</option>'+FRQ.filter(f=>f.fra!==0&&f.ativo!==false).map(f=>'<option value="'+f.fra+'"'+(d.franquia_fra===f.fra?' selected':'')+'>'+escHtml('FRA '+f.fra+' · '+f.nome)+'</option>').join('');
+  let h='<div class="evm-topo"><span class="st projeto">'+(ed?'editar demanda':'nova demanda')+'</span><button type="button" class="evm-x" id="dfX">✕</button></div>'
+    +'<div class="fx-acao" style="margin-top:8px">'
+    +'<div class="fx-acao-l"><input id="dfTitulo" value="'+escHtml(d.titulo||'')+'" placeholder="Título da demanda (ex.: Queda de faturamento)" maxlength="120" style="flex:1;min-width:260px"></div>'
+    +'<div class="fx-acao-l">Área <select id="dfArea">'+Object.keys(FX_AREAS).map(a=>'<option value="'+a+'"'+(d.area===a?' selected':'')+'>'+FX_AREAS[a]+'</option>').join('')+'</select>'
+    +' Origem <select id="dfCanal">'+Object.keys(FX_CANAIS).map(c=>'<option value="'+c+'"'+((d.canal||'whatsapp')===c?' selected':'')+'>'+FX_CANAIS[c]+'</option>').join('')+'</select></div>'
+    +'<div class="fx-acao-l">Loja <select id="dfFra" style="max-width:100%">'+fraOpts+'</select></div>'
+    +'<div class="fx-acao-l"><input id="dfAssunto" value="'+escHtml(d.assunto||'')+'" placeholder="Assunto (ex.: precificação, inadimplência, inauguração)" maxlength="80" style="flex:1;min-width:200px"><input id="dfSolic" value="'+escHtml(d.solicitante||'')+'" placeholder="Quem pediu (nome)" maxlength="80" style="width:180px"></div>'
+    +'<div class="fx-acao-l">Prazo pedido <input id="dfPrazoPed" type="date" value="'+escHtml(d.prazo_pedido||'')+'"> &nbsp; Com quem '+fxSelPessoas('dfResp',d.responsavel_id||usuarioAtual.id)+' &nbsp; Etapa <input id="dfEtapa" value="'+escHtml(d.etapa||'')+'" placeholder="ex.: Diagnóstico" maxlength="60" style="width:150px"></div>'
+    +'<div class="fx-acao-l"><input id="dfProx" value="'+escHtml(d.proximo_passo||'')+'" placeholder="Próximo passo (o que precisa acontecer agora)" maxlength="200" style="flex:1;min-width:260px"></div>'
+    +(ed?'':'<div class="fx-acao-l"><label style="font-size:13px"><input type="checkbox" id="dfTarefa" checked style="vertical-align:-2px"> Criar a 1ª tarefa para essa pessoa agora, com prazo</label> <input id="dfTPrazo" type="date" value="'+chaveDia(new Date(Date.now()+3*86400000))+'"></div>')
+    +'<div class="fx-acao-l"><button class="btn laranja" id="dfOk">'+(ed?'Salvar':'Abrir demanda')+'</button><button class="btn claro" id="dfCancel">Cancelar</button></div></div>';
+  $('evModal').innerHTML=h;bg.classList.add('aberto');bg.onclick=ev=>{if(ev.target===bg)fecharDemanda();};
+  $('dfX').onclick=fecharDemanda;$('dfCancel').onclick=fecharDemanda;
+  setTimeout(()=>$('dfTitulo').focus(),50);
+  $('dfOk').onclick=async()=>{
+    const titulo=$('dfTitulo').value.trim(),area=$('dfArea').value,canal=$('dfCanal').value,fra=$('dfFra').value?Number($('dfFra').value):null,assunto=$('dfAssunto').value.trim()||null,solic=$('dfSolic').value.trim()||null,prazoPed=$('dfPrazoPed').value||null,resp=$('dfResp').value,etapa=$('dfEtapa').value.trim()||null,prox=$('dfProx').value.trim()||null;
+    if(!titulo){alert('Informe o título.');$('dfTitulo').focus();return;}
+    if(ed){
+      const ok=await demandaLog(d.id,'edicao','Dados da demanda editados'+(resp!==d.responsavel_id?' · responsável agora '+fxNome(resp):''),{_upd:{titulo,area,canal,franquia_fra:fra,assunto,solicitante:solic,prazo_pedido:prazoPed,responsavel_id:resp,etapa,proximo_passo:prox}});
+      if(!ok)return;piscar();await carregarDemandas();desenharFluxos();abrirDemanda(d.id);return;
+    }
+    const hist=[{ts:new Date().toISOString(),por:usuarioAtual.id,tipo:'abertura',texto:'Abriu a demanda · origem '+(FX_CANAIS[canal]||canal)+(solic?' ('+solic+')':'')+(etapa?' · etapa "'+etapa+'"':'')}];
+    const{data:ins,error}=await sb.from('demandas').insert({titulo,area,canal,franquia_fra:fra,assunto,solicitante:solic,prazo_pedido:prazoPed,responsavel_id:resp,etapa,proximo_passo:prox,status:'ativa',aberta_por:usuarioAtual.id,historico:hist}).select('id').single();
+    if(error){erroDB(error);return;}
+    if($('dfTarefa').checked){
+      const prazo=$('dfTPrazo').value||chaveDia(new Date(Date.now()+3*86400000));
+      const tit=etapa||titulo;
+      const r=await sb.from('agenda_eventos').insert({user_id:resp,titulo:tit,data:chaveDia(agora()),ini:'00:00',fim:'00:00',tipo:'tarefa',descricao:'Demanda: '+titulo+(prox?'\nPróximo passo: '+prox:''),participantes:[],franquia_fra:fra||0,prazo,prazo_hora:null,subtarefas:[],criado_por:usuarioAtual.id,categoria:null,demanda_id:ins.id}).select('id').single();
+      if(r.error)erroDB(r.error);else{hist.push({ts:new Date().toISOString(),por:usuarioAtual.id,tipo:'tarefa_criada',texto:'Tarefa "'+tit+'" para '+fxNome(resp)+' · prazo '+fxDBR(prazo),para:resp,tarefa_id:r.data.id});await sb.from('demandas').update({historico:hist}).eq('id',ins.id);}
+    }
+    piscar();await Promise.all([carregarAgenda(),carregarDemandas()]);desenharFluxos();abrirDemanda(ins.id);
+  };
+}
+
+/* ================================================================
    NAVEGAÇÃO / RELÓGIO / INIT
 ================================================================ */
 const DIAS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
@@ -4328,6 +4599,9 @@ ligarAbas();
     $('chChev').textContent=aberto?'▾':'▴';
   };
   $('btnNovaIdeia').onclick=novaIdeia;
+  $('btnNovaDemanda').onclick=()=>fxFormDemanda(null);
+  $('fxStatus').onchange=desenharFluxos;$('fxPessoa').onchange=desenharFluxos;
+  $('fxBusca').oninput=()=>{clearTimeout(window._fxT);window._fxT=setTimeout(desenharFluxos,250);};
   $('btnExcluirAba').onclick=excluirAba;
   setInterval(tick,30000);
   // sessão persistente: se já estava logado, entra direto

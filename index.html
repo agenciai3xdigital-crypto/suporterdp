@@ -550,6 +550,7 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
     <button class="sino" id="btnSino" title="Avisos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></svg><span class="sino-badge" id="sinoBadge" style="display:none"></span></button>
     <a class="sair" id="btnExpansao" href="expansao/" style="display:none;text-decoration:none;color:inherit" title="Esteira de expansão — mesmo login">Esteira de expansão →</a>
+    <a class="sair" id="btnIC" href="https://agenciai3xdigital-crypto.github.io/analise-geral-franquia/" target="_blank" rel="noopener" style="display:none;text-decoration:none;color:inherit" title="Painel de Inteligência Comercial — login separado (outro projeto)">Inteligência Comercial →</a>
     <button class="sair" id="btnSair">Sair</button>
   </div>
   <div class="cn-bg" id="cnBg"><div class="cn-box"><div class="cn-cab"><strong>Avisos</strong><span class="esp"></span><button type="button" class="btn claro" id="cnPush" style="font-size:12px">Ativar no aparelho</button><button type="button" class="cn-x" id="cnX">×</button></div><div id="cnLista"></div></div></div>
@@ -1245,6 +1246,7 @@ async function iniciarSessao(user){
   $('telaLogin').style.display='none';$('app').style.display='block';
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
   $('btnExpansao').style.display=(usuarioAtual.admin||(usuarioAtual.papeis||[]).includes('expansao'))?'inline-block':'none';
+  $('btnIC').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display='none';
   if(!usuarioAtual.admin){

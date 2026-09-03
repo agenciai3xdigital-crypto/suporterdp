@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
 <!-- Central POP v7.0 · 02/09/2026 · frente Fluxos (demandas) -->
+<!-- v7.0.1 · 03/09/2026 · botão Reabrir tarefa no aviso de conclusão -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#009150">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2058,12 +2059,15 @@ function desenharAvisos(){
     const corH=a.tipo==='reaberta'?'#8C271E':'#3B6D11';
     div.innerHTML='<span>'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')))
       +' <span style="color:'+corH+';font-size:12px">('+dt.toLocaleDateString('pt-BR').slice(0,5)+' às '+dt.toLocaleTimeString('pt-BR').slice(0,5)+')</span></span>'
-      +'<button type="button">OK, ciente</button>';
-    div.querySelector('button').onclick=async()=>{
+      +(a.tipo==='concluida'&&e.concluida?'<button type="button" class="av-reab" style="border-color:var(--verm);color:var(--verm)">↩ Reabrir tarefa</button>':'')
+      +'<button type="button" class="av-ok">OK, ciente</button>';
+    div.querySelector('.av-ok').onclick=async()=>{
       const novo=(e.avisos||[]).map(x=>x.id===a.id?{...x,ciente:true}:x);
       const{error}=await sb.from('agenda_eventos').update({avisos:novo}).eq('id',e.id);
       if(error)erroDB(error);else{await carregarAgenda();desenharAgenda();}
     };
+    const bReab=div.querySelector('.av-reab');
+    if(bReab)bReab.onclick=()=>reabrirDoAviso(e,a.id);
     box.appendChild(div);
   });
 }
@@ -2704,6 +2708,22 @@ async function reabrirTarefa(e){
   if(r1.error){erroDB(r1.error);return;}
   await sb.from('historico_tarefas').delete().match({user_id:e.dono,cid:'ag_'+e.id});
   await carregarAgenda();desenharAgenda();piscar();
+}
+// v7.0.1 — reabrir a partir do aviso de conclusão: reabre + marca ciente numa única escrita
+async function reabrirDoAviso(e,avisoId){
+  const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
+  const obs=prompt('Reabrir a tarefa "'+e.titulo+'" para '+dono+'.\n\nObservação (motivo / o que corrigir) — obrigatória:');
+  if(obs===null)return;
+  if(!obs.trim()){alert('A observação é obrigatória para reabrir.');return;}
+  const qdo=new Date().toISOString();
+  const reab={id:novoId('rb'),por:usuarioAtual.id,quando:qdo,obs:obs.trim()};
+  const avs=(e.avisos||[]).map(x=>x.id===avisoId?{...x,ciente:true}:x); // some o aviso de conclusão de quem pediu
+  avs.push({id:novoId('av'),para:e.dono,tipo:'reaberta',por:usuarioAtual.id,titulo:e.titulo,obs:obs.trim(),quando:qdo,ciente:false});
+  const r1=await sb.from('agenda_eventos').update({concluida:false,concluida_em:null,reaberturas:[...(e.reaberturas||[]),reab],avisos:avs}).eq('id',e.id);
+  if(r1.error){erroDB(r1.error);return;}
+  await sb.from('historico_tarefas').delete().match({user_id:e.dono,cid:'ag_'+e.id});
+  if(e.demanda&&typeof demandaLog==='function')await demandaLog(e.demanda,'reabertura','Tarefa "'+e.titulo+'" reaberta · "'+obs.trim()+'"',{tarefa_id:e.id});
+  await carregarAgenda();redesenharVistaAtiva();atualizarSino();piscar();
 }
 
 /* ===== v9 — Histórico de Eventos Betta (admin) ===== */

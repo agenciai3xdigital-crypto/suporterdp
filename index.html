@@ -6,6 +6,7 @@
 <title>Central POP — Rede POP Pet Center</title>
 <!-- Central POP v7.0 · 02/09/2026 · frente Fluxos (demandas) -->
 <!-- v7.0.1 · 03/09/2026 · botão Reabrir tarefa no aviso de conclusão -->
+<!-- v7.0.2 · 03/09/2026 · reabrir também no sino + banner responsivo no mobile -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#009150">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -286,7 +287,10 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .btn-devolver{border:1.5px solid var(--laranja);color:#a34608;background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
 .btn-concluir{border:1.5px solid var(--verde);color:var(--verde);background:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
 .aviso-done{background:#EAF3DE;border:1.5px solid #639922;border-radius:12px;padding:10px 14px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13.5px;color:#27500A}
-.aviso-done button{border:1.5px solid #3B6D11;color:#27500A;background:#fff;border-radius:8px;padding:4px 12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.aviso-done button{border:1.5px solid #3B6D11;color:#27500A;background:#fff;border-radius:8px;padding:6px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.aviso-done .aviso-txt{flex:1;min-width:0;line-height:1.55}
+.aviso-done .aviso-acoes{display:flex;gap:8px;flex-shrink:0}
+@media(max-width:600px){.aviso-done{flex-direction:column;align-items:stretch;gap:10px}.aviso-done .aviso-acoes{width:100%}.aviso-done .aviso-acoes button{flex:1;padding:9px 8px}}
 .ev-subs-form{flex-basis:100%;display:none;font-size:13px;border:1px dashed var(--linha);border-radius:10px;padding:8px}
 .ev-subs-form .sitem{display:flex;justify-content:space-between;padding:2px 4px}
 .ev-subs-form .sitem button{border:none;background:none;color:var(--tinta-suave);cursor:pointer;font-weight:700}
@@ -2016,8 +2020,14 @@ function desenharCentral(itens){
     if(i.k==='av'){
       const quem=((uPorId(i.a.por)||{}).nome||'—').split(' ')[0];
       const txt=i.a.tipo==='reaberta'?quem+' reabriu sua tarefa':i.a.tipo==='devolvida'?quem+' devolveu a tarefa que você pediu':quem+' concluiu a tarefa que você pediu';
-      d.innerHTML='<div class="t">'+escHtml(txt)+'</div><div class="m">'+escHtml(i.a.titulo)+(i.a.obs?' · '+escHtml(i.a.obs):'')+'</div><div class="m"><button type="button" class="btn claro" style="font-size:11px;padding:2px 8px;margin-top:4px">OK, ciente</button></div>';
-      d.querySelector('button').onclick=async ev=>{ev.stopPropagation();const novo=(i.e.avisos||[]).map(x=>x.id===i.a.id?{...x,ciente:true}:x);const{error}=await sb.from('agenda_eventos').update({avisos:novo}).eq('id',i.e.id);if(error)erroDB(error);else{await carregarAgenda();redesenharVistaAtiva();atualizarSino();desenharCentral();}};
+      const podeReab=i.a.tipo==='concluida'&&i.e.concluida;
+      d.innerHTML='<div class="t">'+escHtml(txt)+'</div><div class="m">'+escHtml(i.a.titulo)+(i.a.obs?' · '+escHtml(i.a.obs):'')+'</div>'
+        +'<div class="m" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">'
+        +(podeReab?'<button type="button" class="cn-reab btn claro" style="font-size:11px;padding:3px 10px;border-color:var(--verm);color:var(--verm)">↩ Reabrir tarefa</button>':'')
+        +'<button type="button" class="cn-ok btn claro" style="font-size:11px;padding:3px 10px">OK, ciente</button></div>';
+      d.querySelector('.cn-ok').onclick=async ev=>{ev.stopPropagation();const novo=(i.e.avisos||[]).map(x=>x.id===i.a.id?{...x,ciente:true}:x);const{error}=await sb.from('agenda_eventos').update({avisos:novo}).eq('id',i.e.id);if(error)erroDB(error);else{await carregarAgenda();redesenharVistaAtiva();atualizarSino();desenharCentral();}};
+      const cnRb=d.querySelector('.cn-reab');
+      if(cnRb)cnRb.onclick=async ev=>{ev.stopPropagation();await reabrirDoAviso(i.e,i.a.id);desenharCentral();};
     }else{
       const dias=Math.round((new Date(hoje+'T12:00:00')-new Date(i.e.prazo+'T12:00:00'))/86400000);
       const st=i.k==='venc'?'<b class="v">vencida há '+dias+' dia'+(dias>1?'s':'')+'</b>':i.k==='hoje'?'<b style="color:#a34608">vence hoje'+(i.e.prazoHora?' às '+i.e.prazoHora:'')+'</b>':'vence '+i.e.prazo.split('-').reverse().slice(0,2).join('/');
@@ -2057,10 +2067,11 @@ function desenharAvisos(){
     const div=document.createElement('div');div.className='aviso-done';
     if(a.tipo==='reaberta'){div.style.background='#FDECEA';div.style.border='1px solid #E8B3AC';}
     const corH=a.tipo==='reaberta'?'#8C271E':'#3B6D11';
-    div.innerHTML='<span>'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')))
+    div.innerHTML='<span class="aviso-txt">'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')))
       +' <span style="color:'+corH+';font-size:12px">('+dt.toLocaleDateString('pt-BR').slice(0,5)+' às '+dt.toLocaleTimeString('pt-BR').slice(0,5)+')</span></span>'
+      +'<span class="aviso-acoes">'
       +(a.tipo==='concluida'&&e.concluida?'<button type="button" class="av-reab" style="border-color:var(--verm);color:var(--verm)">↩ Reabrir tarefa</button>':'')
-      +'<button type="button" class="av-ok">OK, ciente</button>';
+      +'<button type="button" class="av-ok">OK, ciente</button></span>';
     div.querySelector('.av-ok').onclick=async()=>{
       const novo=(e.avisos||[]).map(x=>x.id===a.id?{...x,ciente:true}:x);
       const{error}=await sb.from('agenda_eventos').update({avisos:novo}).eq('id',e.id);

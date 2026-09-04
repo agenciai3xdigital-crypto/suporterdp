@@ -8,6 +8,7 @@
 <!-- v7.0.1 · 03/09/2026 · botão Reabrir tarefa no aviso de conclusão -->
 <!-- v7.0.2 · 03/09/2026 · reabrir também no sino + banner responsivo no mobile -->
 <!-- v7.1 · 03/09/2026 · remove aba Financeiro (dados unificados no painel Inteligência Comercial) -->
+<!-- v7.2 · 04/09/2026 · agenda aceita convite .ics (Google Calendar / Outlook) -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#009150">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -643,6 +644,7 @@ details.recolhe[open] summary{margin-bottom:8px}
       <div class="pills" id="agPills"></div>
       <span class="esp"></span>
       <button class="btn claro" id="btnAtivarPush" title="Receba avisos de prazo de tarefa neste aparelho, mesmo com o painel fechado">Ativar avisos</button>
+      <label class="btn claro" id="btnIcs" title="Importar convite .ics do Google Calendar, Outlook ou e-mail" style="cursor:pointer;font-weight:600">📅 Convite (.ics)<input type="file" accept=".ics,text/calendar" id="inputIcs" style="display:none"></label>
       <button class="btn laranja" id="btnNovoEv">+ Novo</button>
     </div>
     <div class="ag-form" id="agForm" style="display:none">
@@ -2206,6 +2208,105 @@ function abrirFormAgenda(){
   if(!$('evData').value)$('evData').value=$('agData').value||chaveDia(agora());
   setTimeout(()=>{$('evTitulo').scrollIntoView({behavior:'smooth',block:'center'});$('evTitulo').focus();},50);
 }
+/* ===== Importar convite .ics (v7.2) =====
+   Lê o arquivo no navegador, extrai o VEVENT e preenche o formulário.
+   Nada é gravado sem você conferir e clicar em Salvar.                    */
+function icsDesdobra(txt){
+  // linhas continuadas no iCalendar comecam com espaco ou tab
+  return txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n').replace(/\n[ \t]/g,'').split('\n');
+}
+function icsTexto(v){
+  return String(v||'').replace(/\\n/g,'\n').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\').trim();
+}
+function icsData(valor,params){
+  // 20260908T100000 · 20260908T130000Z · 20260908 (dia inteiro)
+  const m=String(valor||'').match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/);
+  if(!m)return null;
+  const [,Y,M,D,h,mi,se,z]=m;
+  if(!h)return {data:`${Y}-${M}-${D}`,hora:null,diaInteiro:true};
+  if(z){ // UTC: converte para o fuso do navegador
+    const d=new Date(Date.UTC(+Y,+M-1,+D,+h,+mi,+se||0));
+    const p=n=>String(n).padStart(2,'0');
+    return {data:`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`,
+            hora:`${p(d.getHours())}:${p(d.getMinutes())}`,diaInteiro:false};
+  }
+  return {data:`${Y}-${M}-${D}`,hora:`${h}:${mi}`,diaInteiro:false};
+}
+function icsParse(txt){
+  const linhas=icsDesdobra(txt),eventos=[];let at=null,alarme=false;
+  for(const ln of linhas){
+    if(ln.startsWith('BEGIN:VEVENT')){at={attendees:[]};alarme=false;continue}
+    if(ln.startsWith('END:VEVENT')){if(at)eventos.push(at);at=null;continue}
+    if(ln.startsWith('BEGIN:VALARM')){alarme=true;continue}
+    if(ln.startsWith('END:VALARM')){alarme=false;continue}
+    if(!at||alarme)continue;
+    const i=ln.indexOf(':');if(i<0)continue;
+    const esq=ln.slice(0,i),val=ln.slice(i+1);
+    const nome=esq.split(';')[0].toUpperCase();
+    const par={};esq.split(';').slice(1).forEach(p=>{const k=p.split('=');if(k.length>1)par[k[0].toUpperCase()]=k.slice(1).join('=')});
+    if(nome==='SUMMARY')at.titulo=icsTexto(val);
+    else if(nome==='DESCRIPTION')at.desc=icsTexto(val);
+    else if(nome==='LOCATION')at.local=icsTexto(val);
+    else if(nome==='UID')at.uid=val.trim();
+    else if(nome==='STATUS')at.status=val.trim();
+    else if(nome==='DTSTART')at.ini=icsData(val.trim(),par);
+    else if(nome==='DTEND')at.fim=icsData(val.trim(),par);
+    else if(nome==='ORGANIZER')at.organizador=(par.CN?icsTexto(par.CN)+' · ':'')+val.replace(/^mailto:/i,'').trim();
+    else if(nome==='ATTENDEE')at.attendees.push({nome:par.CN?icsTexto(par.CN):'',email:val.replace(/^mailto:/i,'').trim(),status:par.PARTSTAT||''});
+    else if(nome==='X-GOOGLE-CONFERENCE')at.meet=val.trim();
+  }
+  return eventos;
+}
+async function importarIcs(file){
+  let txt;
+  try{txt=await file.text()}catch(e){return alert('Não consegui ler o arquivo: '+e.message)}
+  if(!/BEGIN:VCALENDAR/i.test(txt))return alert('Este arquivo não parece um convite de calendário (.ics).');
+  const evs=icsParse(txt).filter(e=>e.ini);
+  if(!evs.length)return alert('O arquivo não tem nenhum compromisso com data.');
+  evs.sort((a,b)=>(a.ini.data+(a.ini.hora||'')).localeCompare(b.ini.data+(b.ini.hora||'')));
+  let ev=evs[0];
+  if(evs.length>1){
+    const lista=evs.map((e,i)=>`${i+1}) ${fxDBR(e.ini.data)}${e.ini.hora?' '+e.ini.hora:''} — ${e.titulo||'(sem título)'}`).join('\n');
+    const q=prompt(`O arquivo tem ${evs.length} compromissos. Qual importar?\n\n${lista}\n\nDigite o número:`,'1');
+    const k=parseInt(q,10);if(!k||k<1||k>evs.length)return;ev=evs[k-1];
+  }
+  if(/^CANCELLED$/i.test(ev.status||'')&&!confirm('Este convite está marcado como CANCELADO. Importar mesmo assim?'))return;
+  // ja existe?
+  if(ev.uid){
+    const {data:dup}=await sb.from('agenda_eventos').select('id,titulo,data').eq('gcal_event_id',ev.uid).limit(1);
+    if(dup&&dup.length&&!confirm(`Este convite já foi importado antes:\n"${dup[0].titulo}" em ${fxDBR(dup[0].data)}.\n\nImportar de novo mesmo assim?`))return;
+  }
+  // preenche o formulario
+  $('evTipo').value='compromisso';$('evTipo').dispatchEvent(new Event('change'));
+  $('evTitulo').value=ev.titulo||'Compromisso importado';
+  $('evData').value=ev.ini.data;
+  if(ev.ini.diaInteiro){$('evIni').value='09:00';$('evFim').value='18:00'}
+  else{
+    $('evIni').value=ev.ini.hora;
+    $('evFim').value=(ev.fim&&ev.fim.hora)?ev.fim.hora:somaHora(ev.ini.hora,1);
+    if(ev.fim&&ev.fim.data&&ev.fim.data!==ev.ini.data&&$('evDataFim'))$('evDataFim').value=ev.fim.data;
+  }
+  const partes=[];
+  if(ev.organizador)partes.push('Organizador: '+ev.organizador);
+  if(ev.attendees.length)partes.push('Convidados: '+ev.attendees.map(a=>a.nome||a.email).join(', '));
+  const link=ev.meet||(/^https?:/i.test(ev.local||'')?ev.local:'');
+  if(link)partes.push('Link: '+link);
+  else if(ev.local)partes.push('Local: '+ev.local);
+  if(ev.desc&&!/^-::~/.test(ev.desc))partes.push(ev.desc.slice(0,400));
+  $('evDesc').value=partes.join(' · ');
+  ICS_UID=ev.uid||null;
+  abrirFormAgenda();
+  const dentro=(ev.attendees||[]).filter(a=>/redepoppetcenter\.com$/i.test(a.email));
+  setTimeout(()=>alert(`Convite lido.\n\n${ev.titulo||'(sem título)'}\n${fxDBR(ev.ini.data)}${ev.ini.hora?' às '+ev.ini.hora:' (dia inteiro)'}\n\n`+
+    (dentro.length?`Convidados da REDE POP: ${dentro.map(a=>a.email).join(', ')}\nMarque os participantes no formulário — o convite traz e-mail, e o painel trabalha com usuário.\n\n`:'')+
+    'Escolha a franquia e confira antes de salvar.'),120);
+}
+let ICS_UID=null;
+function somaHora(hhmm,h){
+  const [a,b]=String(hhmm||'09:00').split(':').map(Number);
+  const t=(a*60+b+h*60)%1440;const p=n=>String(n).padStart(2,'0');
+  return `${p(Math.floor(t/60))}:${p(t%60)}`;
+}
 function fecharFormAgenda(){const f=$('agForm');if(f){f.style.display='none';f.classList.remove('aberto');}}
 /* ===== Recorrência de tarefas (F1) ===== */
 const REP_DIAS=['D','S','T','Q','Q','S','S'];
@@ -2345,7 +2446,8 @@ async function addEvento(){
     const rec=ehTarefa?lerRecorrencia():null;
     if(rec&&(rec.tipo!=='mensal')&&!rec.dias.length){alert('Escolha pelo menos um dia da semana para a repetição.');return;}
     let ins;
-    ({data:ins,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria,recorrencia:rec,demanda_id:demandaId}).select('id').single());
+    ({data:ins,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria,recorrencia:rec,demanda_id:demandaId,gcal_event_id:ICS_UID}).select('id').single());
+    ICS_UID=null;
     if(!error&&demandaId&&ins&&ins.id)await demandaLog(demandaId,'tarefa_criada','Tarefa "'+titulo+'" para '+fxNome(uid)+(prazo?' · prazo '+fxDBR(prazo):''),{para:uid,tarefa_id:ins.id});
     if(!error&&rec&&ins&&ins.id){
       await carregarAgenda();
@@ -4059,6 +4161,8 @@ ligarAbas();
   $('btnSair').onclick=sair;
   $('btnAddEvento').onclick=()=>{if(emModoBetta&&!editEvId)salvarEventoBetta();else addEvento();};
   $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';fecharFormAgenda();};
+  const inpIcs=$('inputIcs');
+  if(inpIcs)inpIcs.onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)await importarIcs(f)};
   $('btnNovoEv').onclick=()=>{if(editEvId||devolverDe)return abrirFormAgenda();$('evData').value=$('agData').value||chaveDia(agora());abrirFormAgenda();};
   $('fabNovo').onclick=()=>{const a=document.querySelector('.aba[data-v=agenda]');if(a&&!a.classList.contains('ativa'))a.click();$('btnNovoEv').click();};
   $('alOk').onclick=()=>$('alBg').classList.remove('on');

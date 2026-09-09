@@ -85,7 +85,7 @@
   <img src="" id="hdrLogo" alt="" style="height:40px;background:#fff;border-radius:8px;padding:4px">
   <div>
     <h1>Painel de Emissão de COF · Rede POP Pet Center</h1>
-    <p>Preencha apenas os campos variáveis — o texto obrigatório (Lei 13.966/2019) é fixo e padronizado. <b style="background:#FF6B15;padding:1px 8px;border-radius:10px">v5.5</b></p>
+    <p>Preencha apenas os campos variáveis — o texto obrigatório (Lei 13.966/2019) é fixo e padronizado. <b style="background:#FF6B15;padding:1px 8px;border-radius:10px">v5.6</b></p>
   </div>
 </header>
 
@@ -217,9 +217,14 @@
 <details>
 <summary>6 · Marca / INPI (Inciso XIV)</summary>
 <div class="fields">
+  <label>Registros / pedidos no INPI — um por linha</label>
+  <textarea id="marcasInpi" rows="5" spellcheck="false">930364201 | Nominativa — "REDE POP PET CENTER" | 35 (gestão de franquias, administração comercial) | 09/05/2023 | 27/05/2025 | 27/05/2035
+931994136 | Mista (logomarca) | 35 (comércio de alimentos, artigos e preparações veterinárias para animais) | 21/09/2023 | 10/06/2025 | 10/06/2035
+931994632 | Mista (logomarca) | 44 (clínica e assistência veterinária, banho, tosa e estética animal) | 21/09/2023 | 10/06/2025 | 10/06/2035</textarea>
+  <div class="hint">6 colunas separadas por <b>|</b>: processo · apresentação · classe · depósito · concessão · vigência. Para incluir uma marca nova, adicione uma linha; para pedido ainda não concedido, escreva "pedido em exame" nas colunas de concessão e vigência. Linhas vazias são ignoradas.</div>
   <label>Texto complementar do inciso XIV</label>
-  <textarea id="txtMarca" rows="6">Os certificados de registro foram emitidos em nome da denominação social anterior da Franqueadora (Agro Franchising e Participações Ltda.), sob o mesmo CNPJ 14.860.843/0001-72, encontrando-se em andamento a anotação da alteração de nome empresarial perante o INPI. A Franqueadora mantém todas as providências necessárias à manutenção, renovação e defesa dos registros da marca, e autoriza seu uso aos franqueados por meio do Contrato de Franquia, na forma da Lei nº 13.966/2019 e da Lei nº 9.279/1996.</textarea>
-  <div class="hint">A tabela com os 3 registros do INPI (concedidos em 2025, vigentes até 2035) é fixa e já entra automaticamente na COF. Este campo é só o parágrafo complementar.</div>
+  <textarea id="txtMarca" rows="6">Os certificados de registro foram emitidos em nome da denominação social anterior da Franqueadora (Agro Franchising e Participações Ltda.), sob o mesmo CNPJ 14.860.843/0001-72. A anotação da alteração de nome empresarial perante o INPI será providenciada pela Franqueadora. A Franqueadora mantém todas as providências necessárias à manutenção, renovação e defesa dos registros da marca, e autoriza seu uso aos franqueados por meio do Contrato de Franquia, na forma da Lei nº 13.966/2019 e da Lei nº 9.279/1996.</textarea>
+  <div class="hint">A tabela do inciso XIV é montada a partir das linhas acima; este campo é o parágrafo complementar de titularidade.</div>
 </div>
 </details>
 
@@ -296,7 +301,7 @@ function state(){
     regiao:g('regiao'),dataEntrega:g('dataEntrega'),tipoOp:$('tipoOp').value,descConv:n('descConv'),prazoAdeq:n('prazoAdeq'),
     metragem:n('metragem'),vTaxa:n('vTaxa'),vProj:n('vProj'),vMob:n('vMob'),vTI:n('vTI'),vSoft:n('vSoft'),vEst:n('vEst'),
     r1:n('r1'),r2:n('r2'),r3:n('r3'),r4:n('r4'),vSoftMes:n('vSoftMes'),
-    nLojas:n('nLojas'),nUFs:n('nUFs'),dataBase:g('dataBase'),exBalanco:g('exBalanco'),listaFranq:$('listaFranq').value,txtMarca:g('txtMarca'),emissor:g('emissor'),versao:g('versaoCof')};
+    nLojas:n('nLojas'),nUFs:n('nUFs'),dataBase:g('dataBase'),exBalanco:g('exBalanco'),listaFranq:$('listaFranq').value,txtMarca:g('txtMarca'),marcasInpi:g('marcasInpi'),emissor:g('emissor'),versao:g('versaoCof')};
   s.vTaxaRepBase=n('vTaxaRepBase'); s.descRep=n('descRep'); s.vLoja=n('vLoja'); s.lojaRep=g('lojaRep'); s.cedente=g('cedente');
   s.vTaxaRep=s.vTaxaRepBase*(1-s.descRep/100);
   s.taxaEfetiva=s.tipoOp==='conversao'?s.vTaxa*(1-s.descConv/100):s.vTaxa;
@@ -631,6 +636,14 @@ ${(()=>{const m=Math.ceil(FORNECEDORES.length/2),a=FORNECEDORES.slice(0,m),b=FOR
 `;
 }
 
+const MARCAS_PADRAO='930364201 | Nominativa — "REDE POP PET CENTER" | 35 (gestão de franquias, administração comercial) | 09/05/2023 | 27/05/2025 | 27/05/2035\n931994136 | Mista (logomarca) | 35 (comércio de alimentos, artigos e preparações veterinárias para animais) | 21/09/2023 | 10/06/2025 | 10/06/2035\n931994632 | Mista (logomarca) | 44 (clínica e assistência veterinária, banho, tosa e estética animal) | 21/09/2023 | 10/06/2025 | 10/06/2035';
+function linhasMarcas(txt){
+  const linhas=String(txt||MARCAS_PADRAO).split('\n').map(l=>l.trim()).filter(Boolean);
+  return linhas.map(l=>{
+    const c=l.split('|').map(x=>esc(x.trim()));while(c.length<6)c.push('—');
+    return '<tr><td><b>'+c[0]+'</b></td><td>'+c[1]+'</td><td>'+c[2]+'</td><td>'+c[3]+'</td><td>'+c[4]+'</td><td>'+c[5]+'</td></tr>';
+  }).join('');
+}
 function cofHTML(d){
   const local=[d.cidade,d.uf].filter(Boolean).join(' – ')+(d.regiao?` (${d.regiao})`:'');
   const conv=d.tipoOp==='conversao';
@@ -848,11 +861,9 @@ ${d.tipoOp==='repasse'?`<li><b>Adequação ao padrão vigente:</b> eventuais ref
 <p>A marca <b>REDE POP PET CENTER</b> encontra-se <b>devidamente registrada</b> perante o INPI — Instituto Nacional da Propriedade Industrial, com garantia de propriedade e uso exclusivo em todo o território nacional, nos termos da Lei nº 9.279/1996, conforme os seguintes certificados de registro:</p>
 <table>
 <tr><th>Processo / Registro</th><th>Apresentação</th><th>Classe NCL(12)</th><th>Depósito</th><th>Concessão</th><th>Vigência até</th></tr>
-<tr><td><b>930364201</b></td><td>Nominativa — "REDE POP PET CENTER"</td><td>35 (gestão de franquias, administração comercial)</td><td>09/05/2023</td><td>27/05/2025</td><td>27/05/2035</td></tr>
-<tr><td><b>931994136</b></td><td>Mista (logomarca)</td><td>35 (comércio de alimentos, artigos e preparações veterinárias para animais)</td><td>21/09/2023</td><td>10/06/2025</td><td>10/06/2035</td></tr>
-<tr><td><b>931994632</b></td><td>Mista (logomarca)</td><td>44 (clínica e assistência veterinária, banho, tosa e estética animal)</td><td>21/09/2023</td><td>10/06/2025</td><td>10/06/2035</td></tr>
+${linhasMarcas(d.marcasInpi)}
 </table>
-<p><b>Titularidade:</b> os três registros são de titularidade da própria Franqueadora, CNPJ 14.860.843/0001-72. ${marcaTxt}</p>
+<p><b>Titularidade:</b> os registros e pedidos acima são de titularidade da própria Franqueadora, CNPJ 14.860.843/0001-72. ${marcaTxt}</p>
 
 <!-- XV -->
 <h2 class="sec">15 · Depois do contrato: know-how e concorrência</h2>
@@ -957,7 +968,7 @@ function render(){
 
 document.querySelectorAll('input,select,textarea').forEach(el=>el.addEventListener('input',render));
 
-const CAMPOS=['nome','cpf','tel','email','cidade','uf','dataEntrega','regiao','tipoOp','descConv','prazoAdeq','lojaRep','metragem','vTaxa','vProj','vMob','vTI','vSoft','vEst','vTaxaRepBase','descRep','vLoja','cedente','r1','r2','r3','r4','vSoftMes','nLojas','nUFs','dataBase','exBalanco','listaFranq','txtMarca','emissor','versaoCof'];
+const CAMPOS=['nome','cpf','tel','email','cidade','uf','dataEntrega','regiao','tipoOp','descConv','prazoAdeq','lojaRep','metragem','vTaxa','vProj','vMob','vTI','vSoft','vEst','vTaxaRepBase','descRep','vLoja','cedente','r1','r2','r3','r4','vSoftMes','nLojas','nUFs','dataBase','exBalanco','listaFranq','txtMarca','marcasInpi','emissor','versaoCof'];
 function coletar(){const o={};for(const id of CAMPOS){const el=$(id);if(el)o[id]=el.value;}return o;}
 function blocoDados(){
   // comentário HTML (não imprime, não aparece no Word) — permite reabrir o .doc com todos os campos

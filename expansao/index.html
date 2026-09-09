@@ -283,6 +283,21 @@ textarea{min-height:64px;resize:vertical}
   .ed{padding:14px}.grid3,.grid4{grid-template-columns:1fr}
   .linkbox input{min-width:0;width:100%}
 }
+.leadAlert{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9000;background:#0d3b2e;color:#fff;
+  border:2px solid #FF6B15;border-radius:14px;padding:12px 18px;display:none;align-items:center;gap:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14.5px;max-width:min(94vw,640px);animation:pulsar 1.2s ease-in-out infinite}
+.leadAlert.on{display:flex}
+.leadAlert b{color:#FFD9BF}
+.leadAlert .btn{background:#FF6B15;color:#fff;border:none}
+@keyframes pulsar{0%,100%{box-shadow:0 10px 30px rgba(0,0,0,.35)}50%{box-shadow:0 0 0 6px rgba(255,107,21,.35)}}
+.cfg{max-width:1100px;margin:0 auto;padding:6px 4px 40px}
+.cfg .bloco{background:#fff;border:1px solid #dde5e1;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.cfg h3{margin:0 0 4px;font-size:15px;color:#00573F}
+.cfg .dica{font-size:12px;color:#7b8a83;margin:0 0 8px}
+.cfg textarea{width:100%;min-height:150px;font:12px/1.5 ui-monospace,Consolas,monospace;border:1.5px solid #cfdad4;border-radius:8px;padding:10px;background:#fbfdfc}
+.cfg textarea.err{border-color:#c0392b;background:#fff6f5}
+.cfg .st{font-size:12px;margin-top:4px}
+.cfg .st.ok{color:#00794f}.cfg .st.err{color:#c0392b}
 </style>
 </head>
 <body>
@@ -325,6 +340,7 @@ textarea{min-height:64px;resize:vertical}
   <button class="tab on" id="tabEsteira">Esteira</button>
   <button class="tab" id="tabFu">Follow-ups <span class="badge" id="fuBadge" style="display:none">0</span></button>
   <button class="tab" id="tabLojas">Lojas para repasse</button>
+  <button class="tab" id="tabConfig" style="display:none">Configurações</button>
 </div>
 
 <div class="filtros" id="filtros"></div>
@@ -346,6 +362,12 @@ textarea{min-height:64px;resize:vertical}
 
 <div id="viewFu" class="fu" style="display:none"></div>
 <div id="viewLojas" class="fu lojas" style="display:none"></div>
+<div id="viewConfig" class="cfg" style="display:none"></div>
+<div class="leadAlert" id="leadAlert" role="alert">
+  <span id="leadAlertTxt"></span>
+  <button class="btn" id="leadAlertAbrir">Abrir lead</button>
+  <button class="btn btn-ghost" id="leadAlertFechar" style="color:#fff">✕</button>
+</div>
 
 <div class="scrim" id="scrim"></div>
 
@@ -417,12 +439,12 @@ const COF_HTML = "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
 const FICHA_PAGINA='ficha-formacao-preco-loja.html';   // página pública do cedente, no mesmo repositório
-const VERSAO='v3.6';  // deploy: suporterdp/expansao/index.html
+const VERSAO='v3.7';  // deploy: suporterdp/expansao/index.html
 let somenteLeitura=false;
 const PRAZO_COF=10;
 const TIPOS={nova:'Loja nova',conversao:'Conversão',repasse:'Repasse'};
 
-const ETAPAS=[
+const ETAPAS_PADRAO=[
  {id:'captacao',nome:{_:'Captação'},sla:1,
   gates:[{id:'c1',t:'Primeiro contato feito em até 24h',req:true},
          {id:'c2',t:'Origem e canal registrados',req:true},
@@ -543,9 +565,35 @@ const ETAPAS=[
        {d:90,c:'Visita',o:'Mês 3: handoff formal ao campo'}]}
 ];
 
-const MOTIVOS=['Capital insuficiente','Sem ponto viável na praça','Perfil reprovado','Parou de responder',
+const MOTIVOS_PADRAO=['Capital insuficiente','Sem ponto viável na praça','Perfil reprovado','Parou de responder',
  'Escolheu outra franquia','Achou o investimento alto','Timing: adiou a decisão','Reprovado no cadastro',
  'Passivo da loja inviabilizou','Cedente e comprador não fecharam valor','Outro'];
+
+/* ---------- régua configurável (exp_config) — spec §5, fallback = padrão do código ---------- */
+let ETAPAS=ETAPAS_PADRAO, MOTIVOS=MOTIVOS_PADRAO, LIMITES={bloqueio:3};
+const LIMITES_PADRAO={bloqueio:3};
+function validarEtapas(v){
+  if(!Array.isArray(v)||!v.length)return 'deve ser uma lista com ao menos 1 etapa';
+  for(const e of v){
+    if(!e||typeof e!=='object')return 'cada etapa deve ser um objeto';
+    if(!e.id)return 'etapa sem "id"';
+    if(!e.nome||typeof e.nome!=='object'||!e.nome._)return 'etapa "'+e.id+'": "nome" precisa ter a chave "_"';
+    if(typeof e.sla!=='number')return 'etapa "'+e.id+'": "sla" deve ser número (dias)';
+    if(!Array.isArray(e.gates))return 'etapa "'+e.id+'": "gates" deve ser lista';
+    for(const g of e.gates){if(!g.id||!g.t)return 'etapa "'+e.id+'": gate sem "id" ou "t"';}
+    if(!Array.isArray(e.cad))return 'etapa "'+e.id+'": "cad" deve ser lista';
+    for(const t of e.cad){if(typeof t.d!=='number'||!t.c||!t.o)return 'etapa "'+e.id+'": toque da cadência precisa de d (número), c (canal) e o (objetivo)';}
+  }
+  return null;
+}
+function validarMotivos(v){return (Array.isArray(v)&&v.length&&v.every(x=>typeof x==='string'))?null:'deve ser uma lista de textos';}
+function validarLimites(v){return (v&&typeof v==='object'&&typeof v.bloqueio==='number'&&v.bloqueio>=1)?null:'deve ser um objeto com "bloqueio" numérico (>=1)';}
+function aplicarConfigLinha(chave,valor){
+  if(chave==='etapas'&&!validarEtapas(valor)){ETAPAS=valor;return true;}
+  if(chave==='motivos_perda'&&!validarMotivos(valor)){MOTIVOS=valor;return true;}
+  if(chave==='semresp_limites'&&!validarLimites(valor)){LIMITES=valor;return true;}
+  return false;
+}
 
 let estado={leads:[],seq:1,emissor:''};
 let aba='esteira', filtro='todos', lojaAberta=null, lojaModo='ver';
@@ -586,6 +634,7 @@ async function carregar(){
     lojas:rs.data.map(r=>({...r.dados,_ficha:{status:r.ficha_status,enviadoEm:r.enviado_em,atualizadoEm:r.atualizado_em}})),
     emissor:'',seq:1,seqL:1};
   const em=rc.data.find(c=>c.chave==='emissor');estado.emissor=em&&em.valor?(em.valor.v||''):'';
+  rc.data.forEach(c=>{if(c.chave!=='emissor')aplicarConfigLinha(c.chave,c.valor);});
   rt.data.forEach(t=>{const s=estado.lojas.find(x=>x.id===t.loja_id);if(s)fichaDe(s).token=t;});
   estado.leads.forEach(l=>{l.tipo=l.tipo||'nova';l.toques=l.toques||{};l.gates=l.gates||{};});
   estado.lojas.sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
@@ -629,6 +678,10 @@ function assinar(){
   supa.channel('esteira-expansao')
     .on('postgres_changes',{event:'*',schema:'public',table:'exp_lojas'},ev=>aplicarRemoto('lojas',ev))
     .on('postgres_changes',{event:'*',schema:'public',table:'exp_leads'},ev=>aplicarRemoto('leads',ev))
+    .on('postgres_changes',{event:'*',schema:'public',table:'exp_config'},ev=>{
+      const r=ev.new;if(!r||!r.chave||r.chave==='emissor')return;
+      if(aplicarConfigLinha(r.chave,r.valor)){toast('Configuração "'+r.chave+'" atualizada por outro usuário.');if(aba==='config')desenharConfig();desenhar();}
+    })
     .subscribe();
 }
 function aplicarRemoto(col,ev){
@@ -656,10 +709,93 @@ function aplicarRemoto(col,ev){
     if(r.ficha_status==='recebida'){obj._ficha.token=null;if(fichaAntes!=='recebida')toast('Ficha de formação de preço de '+(r.dados.nome||'loja')+' recebida do cedente.');}
     if(r.ficha_status==='interna')obj._ficha.token=null;
   }else obj=r.dados;
+  const inseriu=i<0;
   if(i>=0)arr[i]=obj;else arr.push(obj);
+  if(col==='leads'&&inseriu&&ev.eventType==='INSERT'&&obj.status!=='perdido')avisarLeadNovo(obj);
   snap[col][r.id]=jRemoto;
   if(!editando){desenhar();if(col==='leads'&&atual&&atual.id===r.id)abrir(r.id);}
 }
+
+/* ---------- aba Configurações (admin) — régua editável, spec §5 ---------- */
+const CFG_BLOCOS=[
+ {chave:'etapas',titulo:'Etapas, gates, SLAs e cadências (ETAPAS)',validar:validarEtapas,get:()=>ETAPAS,set:v=>ETAPAS=v,padrao:()=>ETAPAS_PADRAO,
+  dica:'Uma entrada por etapa: id, nome ({"_":"Nome",conversao:"...",repasse:"..."}), sla (dias), gates (id, t, req, so/nao por tipo) e cad (d = dias após entrar na etapa, c = canal, o = objetivo). Mantenha os ids das etapas — os leads gravados referenciam esses ids.'},
+ {chave:'motivos_perda',titulo:'Motivos de perda (MOTIVOS)',validar:validarMotivos,get:()=>MOTIVOS,set:v=>MOTIVOS=v,padrao:()=>MOTIVOS_PADRAO,
+  dica:'Lista de textos exibida no registro de perda.'},
+ {chave:'semresp_limites',titulo:'Limites de "sem resposta" (LIMITES)',validar:validarLimites,get:()=>LIMITES,set:v=>LIMITES=v,padrao:()=>LIMITES_PADRAO,
+  dica:'bloqueio = nº de tentativas seguidas sem resposta que trava o avanço do lead (hoje: 3). Estrutura pronta para os campos futuros da spec (aviso, espacar).'}];
+function desenharConfig(){
+  const v=document.getElementById('viewConfig');
+  if(!perfil||!perfil.is_admin){v.innerHTML='<div class="bloco">Somente administradores acessam as configurações.</div>';return;}
+  v.innerHTML='<div class="bloco"><h3>Régua de atendimento configurável</h3>'+
+    '<p class="dica">Os valores abaixo são os vigentes (banco <code>exp_config</code>; na ausência, o padrão do código). Salvar grava no Supabase e aplica na hora, para todos, sem novo deploy. JSON inválido não é salvo.</p></div>'+
+    CFG_BLOCOS.map((b,i)=>'<div class="bloco"><h3>'+b.titulo+'</h3><p class="dica">'+b.dica+'</p>'+
+      '<textarea id="cfgT'+i+'" spellcheck="false">'+esc(JSON.stringify(b.get(),null,1))+'</textarea>'+
+      '<div class="st" id="cfgS'+i+'"></div></div>').join('')+
+    '<div class="bloco" style="display:flex;gap:10px;flex-wrap:wrap">'+
+    '<button class="btn" id="cfgSalvar">Salvar configurações</button>'+
+    '<button class="btn btn-ghost" id="cfgPadrao">Preencher com o padrão do código</button>'+
+    '<span class="st" id="cfgSt"></span></div>';
+  document.getElementById('cfgPadrao').onclick=()=>{
+    CFG_BLOCOS.forEach((b,i)=>{document.getElementById('cfgT'+i).value=JSON.stringify(b.padrao(),null,1);
+      const s=document.getElementById('cfgS'+i);s.textContent='Preenchido com o padrão do código — clique em Salvar para aplicar.';s.className='st';});
+  };
+  document.getElementById('cfgSalvar').onclick=salvarConfig;
+}
+async function salvarConfig(){
+  if(!perfil||!perfil.is_admin)return;
+  const st=document.getElementById('cfgSt');
+  const linhas=[];let erro=false;
+  CFG_BLOCOS.forEach((b,i)=>{
+    const ta=document.getElementById('cfgT'+i),s=document.getElementById('cfgS'+i);
+    let v;ta.classList.remove('err');s.className='st';s.textContent='';
+    try{v=JSON.parse(ta.value);}catch(e){erro=true;ta.classList.add('err');s.className='st err';s.textContent='JSON inválido: '+e.message;return;}
+    const msg=b.validar(v);
+    if(msg){erro=true;ta.classList.add('err');s.className='st err';s.textContent='Estrutura inválida: '+msg;return;}
+    linhas.push({b,v,s});
+  });
+  if(erro){st.className='st err';st.textContent='Corrija os blocos marcados — nada foi salvo.';return;}
+  st.className='st';st.textContent='Salvando…';
+  try{
+    const agora=new Date().toISOString();
+    const {error}=await supa.from('exp_config').upsert(linhas.map(x=>({chave:x.b.chave,valor:x.v,atualizado_em:agora})));
+    if(error)throw error;
+    linhas.forEach(x=>{x.b.set(x.v);x.s.className='st ok';x.s.textContent='Salvo e aplicado.';});
+    st.className='st ok';st.textContent='Configurações salvas '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' — já valem para todos os usuários.';
+    desenhar();toast('Régua de atendimento atualizada.');
+  }catch(e){st.className='st err';st.textContent='Erro ao salvar: '+(e.message||e);}
+}
+
+/* ---------- aviso em tempo real de lead novo (spec §4) ---------- */
+let leadsNovos=[];
+function bipe(){try{
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  [[880,0],[1175,.18]].forEach(([f,t])=>{const o=ac.createOscillator(),g=ac.createGain();
+    o.frequency.value=f;o.type='sine';o.connect(g);g.connect(ac.destination);
+    g.gain.setValueAtTime(.22,ac.currentTime+t);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+t+.35);
+    o.start(ac.currentTime+t);o.stop(ac.currentTime+t+.4);});
+}catch(e){}}
+function avisarLeadNovo(l){
+  leadsNovos.push(l.id);
+  const rot=(l.nome||'Sem nome')+(l.cidade?' — '+l.cidade+(l.uf?'/'+l.uf:''):'');
+  document.getElementById('leadAlertTxt').innerHTML=(leadsNovos.length>1?'<b>'+leadsNovos.length+' leads novos</b> na esteira. Último: ':'🔔 <b>Lead novo:</b> ')+esc(rot)+' · <b>contato imediato</b>';
+  document.getElementById('leadAlert').classList.add('on');
+  document.title='(🔔 '+leadsNovos.length+') Esteira de expansão';
+  bipe();
+  if('Notification' in window&&Notification.permission==='granted'){
+    try{const n=new Notification('Lead novo na esteira',{body:rot+' — contato humano imediato',tag:'lead-novo'});
+      n.onclick=()=>{window.focus();abrirAlertaLead();};}catch(e){}
+  }
+  toast('Lead novo: '+rot);
+}
+function abrirAlertaLead(){
+  const id=leadsNovos[leadsNovos.length-1];
+  fecharAlertaLead();
+  if(id){aba='esteira';desenhar();abrir(id);}
+}
+function fecharAlertaLead(){leadsNovos=[];document.getElementById('leadAlert').classList.remove('on');document.title='Esteira de expansão · Rede POP';}
+document.getElementById('leadAlertAbrir').onclick=abrirAlertaLead;
+document.getElementById('leadAlertFechar').onclick=fecharAlertaLead;
 
 /* ---------- login (mesmo Auth do Plantão) ---------- */
 async function iniciar(){
@@ -689,6 +825,8 @@ async function entrou(session){
   somenteLeitura=!temPapel('expansao');
   document.getElementById('quem').textContent=perfil.nome+(perfil.is_admin?' · admin':somenteLeitura?' · diretoria (leitura)':'')+' · '+VERSAO;
   if(perfil.is_admin)document.getElementById('btnCofDireta').style.display='';
+  if(perfil.is_admin)document.getElementById('tabConfig').style.display='';
+  if('Notification' in window&&Notification.permission==='default'){try{Notification.requestPermission();}catch(e){}}
   if(somenteLeitura)document.body.classList.add('leitura');
   document.getElementById('login').style.display='none';
   try{await carregar();assinar();carregarFranquias();}
@@ -844,10 +982,12 @@ function desenhar(){
   document.getElementById('viewEsteira').style.display=aba==='esteira'?'':'none';
   document.getElementById('viewFu').style.display=aba==='fu'?'':'none';
   document.getElementById('viewLojas').style.display=aba==='lojas'?'':'none';
-  document.getElementById('filtros').style.display=aba==='lojas'?'none':'';
+  document.getElementById('viewConfig').style.display=aba==='config'?'':'none';
+  document.getElementById('filtros').style.display=(aba==='lojas'||aba==='config')?'none':'';
   document.getElementById('tabEsteira').classList.toggle('on',aba==='esteira');
   document.getElementById('tabFu').classList.toggle('on',aba==='fu');
   document.getElementById('tabLojas').classList.toggle('on',aba==='lojas');
+  document.getElementById('tabConfig').classList.toggle('on',aba==='config');
   document.getElementById('tabLojas').textContent='Lojas para repasse ('+
     (estado.lojas||[]).filter(s=>s.status!=='repassada').length+')';
 
@@ -864,6 +1004,7 @@ function desenhar(){
 
   if(aba==='esteira')desenharEsteira();
   else if(aba==='fu')desenharFu();
+  else if(aba==='config')desenharConfig();
   else desenharLojas();
 }
 
@@ -984,7 +1125,7 @@ function abrir(id){
   const ts=toques(l);
 
   document.getElementById('drBody').innerHTML=`
-   ${(l.semResp||0)>=3?`<div class="box block"><b>${l.semResp} tentativas seguidas sem resposta</b>
+   ${(l.semResp||0)>=LIMITES.bloqueio?`<div class="box block"><b>${l.semResp} tentativas seguidas sem resposta</b>
      Troque de canal uma vez ou encerre o lead. Lead que não responde ocupa lugar no funil e distorce a sua taxa de conversão.</div>`:''}
    ${trava?`<div class="box ${lib&&hoje()<lib?'block':''}"><b>Trava legal da COF</b>${esc(trava)}
      <br>Lei 13.966/2019, art. 2º. Assinar ou receber a taxa antes disso permite ao franqueado anular o contrato e exigir de volta tudo que pagou.</div>`:''}
@@ -1642,6 +1783,7 @@ document.getElementById('btnPerdas').onclick=perdas;
 document.getElementById('tabEsteira').onclick=()=>{aba='esteira';desenhar()};
 document.getElementById('tabFu').onclick=()=>{aba='fu';desenhar()};
 document.getElementById('tabLojas').onclick=()=>{aba='lojas';lojaAberta=null;desenhar()};
+document.getElementById('tabConfig').onclick=()=>{aba='config';desenhar()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){fechar();document.getElementById('modal').classList.remove('on');}});
 iniciar();
 </script>

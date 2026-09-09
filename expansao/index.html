@@ -309,6 +309,7 @@ textarea{min-height:64px;resize:vertical}
     <div class="actions">
       <a class="btn btn-ghost" href="../" id="btnCentral" style="text-decoration:none">← Central POP</a>
       <button class="btn" id="btnNovo">Cadastrar candidato</button>
+      <button class="btn btn-ghost" id="btnCofDireta" style="display:none" title="Emitir uma COF avulsa, sem vínculo com a esteira (somente admin)">Gerar COF</button>
       <button class="btn btn-ghost" id="btnCsv">Baixar CSV</button>
       <button class="btn btn-ghost" id="btnPerdas">Motivos de perda</button>
       <button class="btn btn-ghost" id="btnExportar" title="Baixa um JSON com toda a esteira">Backup JSON</button>
@@ -416,7 +417,7 @@ const COF_HTML = "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n<meta charset=
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
 const FICHA_PAGINA='ficha-formacao-preco-loja.html';   // página pública do cedente, no mesmo repositório
-const VERSAO='v3.5.2';  // deploy: suporterdp/expansao/index.html
+const VERSAO='v3.6';  // deploy: suporterdp/expansao/index.html
 let somenteLeitura=false;
 const PRAZO_COF=10;
 const TIPOS={nova:'Loja nova',conversao:'Conversão',repasse:'Repasse'};
@@ -687,6 +688,7 @@ async function entrou(session){
   }
   somenteLeitura=!temPapel('expansao');
   document.getElementById('quem').textContent=perfil.nome+(perfil.is_admin?' · admin':somenteLeitura?' · diretoria (leitura)':'')+' · '+VERSAO;
+  if(perfil.is_admin)document.getElementById('btnCofDireta').style.display='';
   if(somenteLeitura)document.body.classList.add('leitura');
   document.getElementById('login').style.display='none';
   try{await carregar();assinar();carregarFranquias();}
@@ -1090,12 +1092,28 @@ function voltar(l){l.etapa=ETAPAS[idx(l.etapa)-1].id;l.desdeEm=hoje();salvar();a
 
 /* ---------- COF acoplada ---------- */
 let cofLead=null, cofPayload=null;
+function limparCofFrame(){const fr=document.getElementById('cofframe');fr.removeAttribute('srcdoc');fr.src='about:blank';}
+function abrirCofDireta(){
+  if(!perfil||!perfil.is_admin)return;
+  cofLead=null;
+  document.getElementById('cofNome').textContent='COF · Emissão direta';
+  document.getElementById('cofSp').textContent='sem vínculo com a esteira · somente admin';
+  document.getElementById('cofData').value=hoje();
+  document.getElementById('cofRegistrar').style.display='none';
+  const fr=document.getElementById('cofframe');
+  cofPayload={tipo:'lead',dataEntrega:document.getElementById('cofData').value,emissor:estado.emissor||''};
+  fr.onload=()=>{try{fr.contentWindow.postMessage(cofPayload,'*');}catch(e){}};
+  fr.removeAttribute('srcdoc');fr.src='cof.html?v='+Date.now();
+  document.getElementById('cofwrap').classList.add('on');
+}
+document.getElementById('btnCofDireta').onclick=abrirCofDireta;
 window.addEventListener('message',ev=>{
   if(ev.data&&ev.data.tipo==='cof-pronto'&&cofPayload){
     try{document.getElementById('cofframe').contentWindow.postMessage(cofPayload,'*');}catch(e){}
   }
 });
 function abrirCof(l){
+  document.getElementById('cofRegistrar').style.display='';
   cofLead=l;
   document.getElementById('cofNome').textContent='COF · '+l.nome;
   document.getElementById('cofSp').textContent=TIPOS[l.tipo]+' · '+(l.cidade||'')+(l.uf?'/'+l.uf:'');
@@ -1108,12 +1126,12 @@ function abrirCof(l){
       tipoOp:l.tipo,lojaRep:l.lojaRef||'',emissor:estado.emissor||'',
       vLoja:(lojaDo(l)&&lojaDo(l).valorPedido)||0};
   fr.onload=()=>{try{fr.contentWindow.postMessage(cofPayload,'*');}catch(e){}};
-  fr.srcdoc=COF_HTML;
+  fr.removeAttribute('srcdoc');fr.src='cof.html?v='+Date.now();
   document.getElementById('cofwrap').classList.add('on');
 }
 document.getElementById('cofFechar').onclick=()=>{
   document.getElementById('cofwrap').classList.remove('on');
-  document.getElementById('cofframe').srcdoc='';cofLead=null;};
+  limparCofFrame();cofLead=null;};
 document.getElementById('cofEmissor').onchange=e=>{estado.emissor=e.target.value;salvar();};
 document.getElementById('cofData').onchange=e=>{
   const fr=document.getElementById('cofframe');
@@ -1132,7 +1150,7 @@ document.getElementById('cofRegistrar').onclick=()=>{
   }
   salvar();
   document.getElementById('cofwrap').classList.remove('on');
-  document.getElementById('cofframe').srcdoc='';
+  limparCofFrame();
   const id=cofLead.id;cofLead=null;desenhar();abrir(id);
 };
 

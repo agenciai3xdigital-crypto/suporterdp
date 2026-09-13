@@ -9,6 +9,9 @@
 <!-- v7.0.2 · 03/09/2026 · reabrir também no sino + banner responsivo no mobile -->
 <!-- v7.1 · 03/09/2026 · remove aba Financeiro (dados unificados no painel Inteligência Comercial) -->
 <!-- v7.2 · 04/09/2026 · agenda aceita convite .ics (Google Calendar / Outlook) -->
+<!-- v7.6 · 09/09/2026 · pop-up de detalhes do item + trava de sobreposição de horário -->
+<!-- v7.7 · 13/09/2026 · aba Eventos (tipo evento da agenda_eventos): acompanhamento de tarefas,
+     custo/ROI do Evento Betta e busca por loja. Absorve a visão "Histórico Betta" da Agenda. -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#009150">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -499,6 +502,48 @@ details.recolhe[open] summary{margin-bottom:8px}
 .status-salvo{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none}
 .status-salvo.show{opacity:.92}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+/* ===== v7.7 — aba EVENTOS ===== */
+.evt-card{display:flex;gap:12px;align-items:flex-start;background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.evt-card:hover{border-color:var(--tinta-suave)}
+.evt-card.passado{opacity:.72}
+.evt-card.atrasado{border-left:4px solid var(--verm)}
+.evt-data{flex:0 0 52px;text-align:center;background:var(--porcelana);border-radius:10px;padding:6px 0;line-height:1.1}
+.evt-data b{display:block;font-family:'Archivo',sans-serif;font-size:20px;font-weight:800;color:var(--tinta)}
+.evt-data span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave)}
+.evt-corpo{flex:1;min-width:0}
+.evt-t{font-weight:700;font-size:14.5px;line-height:1.35;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.evt-n{font-size:12.5px;color:var(--tinta-suave);margin-top:3px;line-height:1.5}
+.evt-bar{height:6px;border-radius:99px;background:var(--porcelana);margin:8px 0 5px;overflow:hidden}
+.evt-bar i{display:block;height:100%;background:var(--verde);border-radius:99px;transition:width .3s}
+.evt-bar.parcial i{background:var(--laranja)}
+.evt-bar.vazio i{background:var(--linha)}
+.evt-roi{font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;margin-left:4px}
+.evt-roi.pos{background:var(--verde-suave);color:var(--verde)}
+.evt-roi.neg{background:#FBD9D6;color:#B3241A}
+.evt-roi.sem{background:var(--porcelana);color:var(--tinta-suave)}
+.evt-vazio{text-align:center;color:var(--tinta-suave);font-size:13.5px;padding:26px 12px;border:1px dashed var(--linha);border-radius:12px}
+@media (max-width:720px){.evt-data{flex:0 0 44px}.evt-t{font-size:14px}}
+/* ===== v7.8 — quartinho (itens da franqueadora) ===== */
+.qt-grupo{font-family:'Archivo',sans-serif;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--tinta-suave);margin:14px 0 6px}
+.qt-item{display:flex;gap:10px;align-items:center;background:var(--papel);border:1px solid var(--linha);border-radius:10px;padding:9px 12px;margin-bottom:6px}
+.qt-item.fora{border-left:4px solid var(--laranja)}
+.qt-item.atrasado{border-left:4px solid var(--verm);background:#FEF6F5}
+.qt-item.baixado{opacity:.55}
+.qt-ic{flex:0 0 34px;height:34px;border-radius:9px;background:var(--porcelana);display:flex;align-items:center;justify-content:center;font-size:17px}
+.qt-corpo{flex:1;min-width:0}
+.qt-nome{font-weight:700;font-size:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.qt-cod{font-size:10.5px;font-weight:800;color:var(--tinta-suave);background:var(--porcelana);border-radius:5px;padding:1px 6px;letter-spacing:.04em}
+.qt-sub{font-size:12.5px;color:var(--tinta-suave);margin-top:2px;line-height:1.45}
+.qt-acao{flex:0 0 auto;display:flex;gap:6px}
+.qt-sel{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;border:1.5px solid var(--linha);border-radius:9px;margin-bottom:5px;cursor:pointer;font-size:13.5px}
+.qt-sel.on{border-color:var(--verde);background:var(--verde-suave)}
+.qt-sel input{width:auto!important;margin-top:2px;flex:0 0 auto}
+.qt-cx{max-height:230px;overflow:auto;margin:6px 0 2px;padding-right:2px}
+.qt-form label{display:block;font-size:12px;font-weight:700;color:var(--tinta-suave);margin:10px 0 3px}
+.qt-form input,.qt-form select,.qt-form textarea{width:100%;font-family:inherit;font-size:13.5px;padding:7px 9px;border:1.5px solid var(--linha);border-radius:8px;background:#fff;color:var(--tinta)}
+.qt-form input[type=checkbox]{width:auto;padding:0;border:0;flex:0 0 auto;accent-color:var(--verde)}
+.qt-form textarea{min-height:54px;resize:vertical}
+.qt-hist{font-size:12.5px;color:var(--tinta-suave);border-left:2px solid var(--linha);padding-left:9px;margin:4px 0;line-height:1.5}
 /* ===== v7.6 — pop-up de detalhes (agenda) ===== */
 #evModalBg{position:fixed;inset:0;background:rgba(22,51,61,.5);display:none;align-items:center;justify-content:center;z-index:1200;padding:18px 14px}
 #evModalBg.aberto{display:flex}
@@ -559,6 +604,7 @@ details.recolhe[open] summary{margin-bottom:8px}
   <div class="abas" id="barraAbas">
     <button class="aba ativa" data-v="dia">Hoje <span class="aba-badge" id="abaDiaBadge" style="display:none"></span></button>
     <button class="aba" data-v="agenda">Agenda</button>
+    <button class="aba" data-v="eventos" id="abaEventos">Eventos <span class="aba-badge" id="abaEvBadge" style="display:none"></span></button>
     <button class="aba" data-v="fluxos" id="abaFluxos">Fluxos</button>
     <span id="abasCustom" style="display:contents"></span>
     <button class="aba" data-v="insights" id="abaInsights" style="display:none">Equipe</button>
@@ -584,6 +630,46 @@ details.recolhe[open] summary{margin-bottom:8px}
     </div>
     <div id="bdLista"></div>
     <p class="aviso">Fluxo: 💡 ideia → aprovação da diretoria/supervisores (admins) → 🚀 projeto → botão "Agendar" leva direto para a Agenda.</p>
+  </div>
+
+  <!-- ===== EVENTOS (v7.7) ===== -->
+  <div class="vista" id="v-eventos">
+    <div class="ag-topo ag-barra">
+      <div class="pills" id="evtModo">
+        <button class="pill visao on" data-m="eventos" type="button">📅 Eventos</button>
+        <button class="pill visao" data-m="quartinho" type="button">📦 Quartinho <span class="aba-badge" id="qtBadge" style="display:none"></span></button>
+      </div>
+      <span class="esp"></span>
+      <button class="btn laranja" id="btnNovoEvento">+ Novo evento</button>
+      <button class="btn laranja" id="btnNovaSaida" style="display:none">📤 Registrar saída</button>
+      <button class="btn claro" id="btnNovoItem" style="display:none">+ Item</button>
+    </div>
+
+    <div id="evtBloco">
+      <div class="resumo" id="evtResumo"></div>
+      <div class="ag-topo" style="gap:8px">
+        <div class="pills" id="evtPills"></div>
+      </div>
+      <div class="ag-topo" style="gap:8px">
+        <select id="evtFra"><option value="">Todas as lojas</option></select>
+        <input id="evtBusca" placeholder="Buscar por título, loja ou responsável…" style="flex:1;min-width:160px">
+      </div>
+      <div id="evtLista"></div>
+      <p class="aviso">Cada evento reúne as tarefas que ele gerou. Clique em um card para ver o detalhe, acompanhar as tarefas e subir o relatório de vendas.</p>
+    </div>
+
+    <div id="qtBloco" style="display:none">
+      <div class="resumo" id="qtResumo"></div>
+      <div class="ag-topo" style="gap:8px">
+        <div class="pills" id="qtPills"></div>
+      </div>
+      <div class="ag-topo" style="gap:8px">
+        <select id="qtCat"><option value="">Todas as categorias</option></select>
+        <input id="qtBusca" placeholder="Buscar item, pessoa ou loja…" style="flex:1;min-width:160px">
+      </div>
+      <div id="qtLista"></div>
+      <p class="aviso" id="qtAviso">O quartinho fica trancado: quem pega registra a saída aqui e recebe uma tarefa de devolução com prazo. Nada é apagado — todo movimento fica no histórico do item.</p>
+    </div>
   </div>
 
   <!-- ===== FLUXOS (v7.0) ===== -->
@@ -693,7 +779,6 @@ details.recolhe[open] summary{margin-bottom:8px}
           <option value="intervalo">Intervalo</option>
           <option value="meus">Criados por mim</option>
           <option value="conferencia">✅ Conferência</option>
-          <option value="historico_betta">🐟 Histórico Betta</option>
           <option value="franquias">Franquias (histórico)</option>
         </select>
       </label>
@@ -1003,7 +1088,10 @@ async function salvarEventoBetta(){
   const dataCriacao=chaveDia(agora());
   const custo=Number($('evCusto').value)||0;
   const dados={custo_total:custo,faturamento_direto:null,faturamento_carrinho:null,filial_arquivo:null,processado_em:null,pedido_num:pdfBettaExtra.pedido_num||null};
-  const {data:pai,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini:null,fim:null,tipo:'evento',descricao:$('evDesc').value.trim(),participantes:[...evPartsSel],franquia_fra:evFraSel,dados_evento:dados,criado_por:usuarioAtual.id}).select().single();
+  // v7.7 — ini/fim são NOT NULL no banco: mandar null derrubava a criação do evento
+  // (era por isso que nenhum Evento Betta gerava as tarefas das regras).
+  const iniEv=$('evIni').value||'00:00', fimEv=$('evFim').value||'23:59';
+  const {data:pai,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini:iniEv,fim:fimEv,tipo:'evento',descricao:$('evDesc').value.trim(),participantes:[...evPartsSel],franquia_fra:evFraSel,dados_evento:dados,criado_por:usuarioAtual.id}).select().single();
   if(error){erroDB(error);return;}
   const ativos=REGRAS_BETTA.filter(r=>r.ativo!==false);
   if(!ativos.length){alert('Evento criado, mas não há regras cadastradas em Admin → Regras do Evento Betta — nenhuma tarefa foi gerada.');}
@@ -1101,7 +1189,7 @@ async function carregarAgenda(){
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
-  if(usuarioAtual){try{atualizarSino();notificarLocalNovos();}catch(_){}}
+  if(usuarioAtual){try{atualizarSino();notificarLocalNovos();atualizarBadgeEventos();}catch(_){}}
 }
 async function carregarAbas(){
   const {data:abas}=await sb.from('abas_custom').select('*').order('ordem').order('criada_em');
@@ -1183,6 +1271,8 @@ function ligarRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'tarefas_fixas'},async()=>{await carregarBase();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'abas_custom'},async()=>{await carregarAbas();renderAbasCustom();redesenharVistaAtiva();})
     .on('postgres_changes',{event:'*',schema:'public',table:'itens_aba'},async()=>{await carregarAbas();redesenharVistaAtiva();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'itens_movimentos'},()=>{clearTimeout(window._qtRT);window._qtRT=setTimeout(async()=>{await carregarItens();if(vistaAtiva()==='eventos')redesenharVistaAtiva();else atualizarBadgeQuartinho();},400);})
+    .on('postgres_changes',{event:'*',schema:'public',table:'itens_quartinho'},()=>{clearTimeout(window._qtRT2);window._qtRT2=setTimeout(async()=>{await carregarItens();if(vistaAtiva()==='eventos')redesenharVistaAtiva();},400);})
     .on('postgres_changes',{event:'*',schema:'public',table:'demandas'},()=>{clearTimeout(window._dmRT);window._dmRT=setTimeout(async()=>{await carregarDemandas();if(vistaAtiva()==='fluxos')desenharFluxos();if(fxDemandaAberta&&$('evModalBg').classList.contains('aberto'))abrirDemanda(fxDemandaAberta);},400);})
     .subscribe(st=>{$('syncStatus').textContent=st==='SUBSCRIBED'?'● tempo real':'○ reconectando…';$('syncStatus').style.color=st==='SUBSCRIBED'?'var(--verde)':'var(--ambar)';});
 }
@@ -1196,6 +1286,7 @@ function redesenharVistaAtiva(){
   if(v==='admin')desenharAdmin();
   if(v==='board')desenharBoard();
   if(v==='fluxos')desenharFluxos();
+  if(v==='eventos'){qtModo==='quartinho'?desenharQuartinho():desenharEventos();}
   desenharTimeProg();
 }
 
@@ -1242,7 +1333,7 @@ async function iniciarSessao(user){
   usuarioAtual=perfil;
   sb.from('acessos').insert({user_id:user.id}).then(()=>{});
   await carregarLidos();
-  await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas(),carregarDemandas()]);
+  await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas(),carregarDemandas(),carregarItens()]);
   ligarRealtime();
   registrarSW();estadoPushInicial();
   $('telaLogin').style.display='none';$('app').style.display='block';
@@ -1269,7 +1360,7 @@ async function iniciarSessao(user){
   $('insPeriodo').onchange=desenharInsights;
   renderAbasCustom();
   $('agData').value=chaveDia(agora());$('evData').value=chaveDia(agora());
-  tick();desenharDia();if(usuarioAtual.admin)desenharAdmin();
+  tick();desenharDia();atualizarBadgeEventos();if(usuarioAtual.admin)desenharAdmin();
   let abaIni=new URLSearchParams(location.search).get('aba');
   if(abaIni==='rotina')abaIni='insights';
   if(abaIni){
@@ -2029,7 +2120,7 @@ function desenharAgenda(){
   $('agLbl2').style.display=modo==='intervalo'?'inline-block':'none';
   $('agPessoaLbl').style.display=(usuarioAtual.admin&&['dia','semana','mes','intervalo'].includes(modo))?'inline-block':'none';
   $('agPorPessoaLbl').style.display=(usuarioAtual.admin&&(modo==='semana'||modo==='mes'))?'inline-block':'none';
-  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':((modo==='conferencia'||modo==='historico_betta')?'Ref.:':'De:'))));
+  $('agRotData').textContent=modo==='dia'?'Dia:':(modo==='semana'?'Semana de:':(modo==='mes'?'Mês de:':(modo==='franquias'?'Período até:':(modo==='conferencia'?'Ref.:':'De:'))));
   if(modo==='franquias'){
     $('agPrevia').innerHTML='';
     return desenharAgendaFranquias(lista);
@@ -2041,10 +2132,6 @@ function desenharAgenda(){
   if(modo==='conferencia'&&usuarioAtual.admin){
     $('agPrevia').innerHTML='';
     return desenharAgendaConferencia(lista);
-  }
-  if(modo==='historico_betta'&&usuarioAtual.admin){
-    $('agPrevia').innerHTML='';
-    return desenharHistoricoBetta(lista);
   }
   if(!usuarioAtual.admin&&modo==='mes'){
     $('agPrevia').innerHTML='';
@@ -2181,7 +2268,7 @@ function sairEdicao(){
 }
 function desenharAgPills(){
   const box=$('agPills');if(!box)return;
-  const sel=$('agModo');const ROT={dia:'Dia',semana:'Semana',mes:'Mês',intervalo:'Intervalo',meus:'Minhas',conferencia:'Conferência',historico_betta:'Betta',franquias:'Franquias'};
+  const sel=$('agModo');const ROT={dia:'Dia',semana:'Semana',mes:'Mês',intervalo:'Intervalo',meus:'Minhas',conferencia:'Conferência',franquias:'Franquias'};
   box.innerHTML='';
   [...sel.options].forEach(o=>{const b=document.createElement('button');b.type='button';b.className='pill'+(sel.value===o.value?' on':'');b.textContent=ROT[o.value]||o.textContent;b.onclick=()=>{sel.value=o.value;sel.onchange&&sel.onchange();desenharAgPills();};box.appendChild(b);});
 }
@@ -2190,6 +2277,7 @@ function montarNavMobile(){
   const IC={dia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
     agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
     fluxos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 7l8 4M8 17l8-4"/></svg>',
+    eventos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.3 4.9 5.2.7-3.8 3.7.9 5.3L12 15l-4.6 2.6.9-5.3L4.5 8.6l5.2-.7z"/><path d="M6 21h12"/></svg>',
     insights:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 19c0-2 2-3.5 4-3.5s3 1 3 3"/></svg>',
     financeiro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-6"/></svg>',
     admin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>'};
@@ -2584,6 +2672,7 @@ function abrirDetalheEv(id){
       +'</div>';
   }
   if(e.tipo==='evento'){
+    h+=htmlKitEvento(e.id);
     const filhos=todosEventosUnicos().filter(x=>x.eventoPai===e.id);
     if(filhos.length){
       const feitos=filhos.filter(x=>x.concluida).length;
@@ -2770,31 +2859,466 @@ async function reabrirDoAviso(e,avisoId){
 }
 
 /* ===== v9 — Histórico de Eventos Betta (admin) ===== */
-function desenharHistoricoBetta(lista){
-  if(!usuarioAtual.admin)return;
-  const itens=todosEventosUnicos().filter(e=>e.dadosEvento&&e.dadosEvento.custo_total!=null)
-    .sort((a,b)=>{const rb=roiCarrinho(b.dadosEvento),ra=roiCarrinho(a.dadosEvento);return(rb==null?-999:rb)-(ra==null?-999:ra);});
-  const sec=document.createElement('div');sec.className='ag-sec';
-  sec.innerHTML='🐟 Histórico de Eventos Betta <span class="qtd">'+itens.length+'</span>';
-  lista.appendChild(sec);
-  if(!itens.length){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum Evento Betta com custo registrado ainda. Crie um Evento na Agenda e use o botão "🐟 Modelo: Evento Betta".';lista.appendChild(p);return;}
-  let sC=0,sD=0,sV=0,pendentesUpload=0;
-  itens.forEach(e=>{sC+=e.dadosEvento.custo_total||0;sD+=e.dadosEvento.faturamento_direto||0;sV+=e.dadosEvento.faturamento_carrinho||0;if(e.dadosEvento.faturamento_direto==null)pendentesUpload++;});
-  const resumo=document.createElement('div');resumo.style.cssText='font-size:12.5px;color:var(--tinta-suave);margin:-4px 0 10px';
-  resumo.textContent='Custo total: '+fmtReaisBetta(sC)+' · direto: '+fmtReaisBetta(sD)+' · carrinho completo: '+fmtReaisBetta(sV)+(pendentesUpload?' · '+pendentesUpload+' evento(s) aguardando upload':'');
-  lista.appendChild(resumo);
-  itens.forEach(e=>{
-    const d=e.dadosEvento;
-    const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
-    const div=document.createElement('div');div.className='evento ev-tarefa';div.dataset.evid=e.id;
-    div.innerHTML='<div class="hora">🐟 '+e.data.split('-').reverse().slice(0,2).join('/')+'</div>'
-      +'<div class="det"><div class="t">'+escHtml(e.titulo)+((e.fra===0||e.fra)?' <span class="st ideia">'+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+'</span>':'')+'</div>'
-      +'<div class="n">👤 '+escHtml(dono)+' · custo '+fmtReaisBetta(d.custo_total)+(d.pedido_num?' (pedido #'+escHtml(d.pedido_num)+')':'')+' · direto '+fmtReaisBetta(d.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(d))+') · carrinho '+fmtReaisBetta(d.faturamento_carrinho)+' ('+fmtRoiTxt(roiCarrinho(d))+')'
-      +' · tarefas '+todosEventosUnicos().filter(x=>x.eventoPai===e.id&&x.concluida).length+'/'+todosEventosUnicos().filter(x=>x.eventoPai===e.id).length+'</div></div>';
-    div.onclick=()=>abrirDetalheEv(e.id);
-    lista.appendChild(div);
-  });
+/* ================================================================
+   EVENTOS — v7.7
+   Aba própria para os itens tipo "evento" da agenda_eventos.
+   Cada evento é o pai das tarefas geradas por ele (evento_pai)
+   e, quando é Evento Betta, carrega custo e faturamento em dados_evento.
+================================================================ */
+let evtFiltro='proximos', evtFraSel='', evtBusca='';
+const EVT_MES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function evtDataCurta(iso){const[a,m,d]=iso.split('-');return{d:d,m:EVT_MES[Number(m)-1]||'',a:a};}
+function evtTarefas(id){return todosEventosUnicos().filter(x=>x.eventoPai===id);}
+function evtResumoTarefas(id){
+  const t=evtTarefas(id),hoje=chaveDia(agora());
+  return{total:t.length,feitas:t.filter(x=>x.concluida).length,atrasadas:t.filter(x=>!x.concluida&&x.prazo&&x.prazo<hoje).length};
 }
+function evtTodos(){
+  return todosEventosUnicos().filter(e=>e.tipo==='evento').sort((a,b)=>b.data.localeCompare(a.data));
+}
+function evtAtrasadasTotal(){
+  const hoje=chaveDia(agora());
+  return evtTodos().filter(e=>e.data>=hoje||evtTarefas(e.id).some(x=>!x.concluida))
+    .reduce((s,e)=>s+evtResumoTarefas(e.id).atrasadas,0);
+}
+function atualizarBadgeEventos(){
+  const b=$('abaEvBadge');if(!b)return;
+  const n=evtAtrasadasTotal();
+  const q=(typeof ITENS_Q!=='undefined')?ITENS_Q.filter(qtAtrasado).length:0;
+  const t=n+q;
+  b.textContent=t;b.style.display=t?'inline-block':'none';
+  b.title=[n?n+' tarefa(s) de evento atrasada(s)':'',q?q+' item(ns) com devolução atrasada':''].filter(Boolean).join(' · ');
+}
+function evtRoiTag(e){
+  if(!e.dadosEvento||e.dadosEvento.custo_total==null)return '';
+  const r=roiCarrinho(e.dadosEvento);
+  const cls=r==null?'sem':(r>=0?'pos':'neg');
+  return '<span class="evt-roi '+cls+'" title="Retorno sobre o carrinho completo">ROI '+fmtRoiTxt(r)+'</span>';
+}
+function desenharEventos(){
+  const v=$('v-eventos');if(!v||!usuarioAtual)return;
+  const hoje=chaveDia(agora());
+  const todos=evtTodos();
+
+  const PILLS={proximos:'Próximos',passados:'Realizados',todos:'Todos'};
+  const conta=k=>todos.filter(e=>k==='todos'||(k==='proximos'?e.data>=hoje:e.data<hoje)).length;
+  const pills=$('evtPills');
+  pills.innerHTML=Object.keys(PILLS).map(k=>'<button class="pill'+(evtFiltro===k?' on':'')+'" data-f="'+k+'">'+PILLS[k]+' ('+conta(k)+')</button>').join('');
+  pills.querySelectorAll('.pill').forEach(b=>b.onclick=()=>{evtFiltro=b.dataset.f;desenharEventos();});
+
+  const selF=$('evtFra');
+  const fras=[...new Set(todos.filter(e=>e.fra===0||e.fra).map(e=>e.fra))].sort((a,b)=>a-b);
+  const manter=selF.value;
+  selF.innerHTML='<option value="">Todas as lojas</option>'+fras.map(f=>'<option value="'+f+'">'+escHtml(frqRotulo(f)||('FRA '+f))+'</option>').join('');
+  selF.value=fras.map(String).includes(manter)?manter:'';
+  evtFraSel=selF.value;
+
+  const d30=new Date(agora().getTime()+30*86400000).toISOString().slice(0,10);
+  const proximos30=todos.filter(e=>e.data>=hoje&&e.data<=d30).length;
+  let abertas=0,atrasadas=0,custo=0,comRoi=[];
+  todos.forEach(e=>{
+    const r=evtResumoTarefas(e.id);
+    abertas+=r.total-r.feitas;atrasadas+=r.atrasadas;
+    if(e.dadosEvento&&e.dadosEvento.custo_total!=null){
+      custo+=e.dadosEvento.custo_total||0;
+      const roi=roiCarrinho(e.dadosEvento);if(roi!=null)comRoi.push(roi);
+    }
+  });
+  const roiMedio=comRoi.length?Math.round(comRoi.reduce((s,x)=>s+x,0)/comRoi.length*10)/10:null;
+  $('evtResumo').innerHTML=
+     '<div class="kpi"><div class="n">'+proximos30+'</div><div class="l">Eventos nos próximos 30 dias</div></div>'
+    +'<div class="kpi'+(abertas?' atencao':'')+'"><div class="n">'+abertas+'</div><div class="l">Tarefas de evento em aberto</div></div>'
+    +'<div class="kpi'+(atrasadas?' alerta':'')+'"><div class="n">'+atrasadas+'</div><div class="l">Tarefas atrasadas</div></div>'
+    +'<div class="kpi'+(roiMedio!=null&&roiMedio>=0?' ok':'')+'"><div class="n" style="font-size:20px;line-height:1.4">'+(roiMedio==null?'—':fmtRoiTxt(roiMedio))+'</div><div class="l">ROI médio · investido '+fmtReaisBetta(custo)+'</div></div>';
+
+  const busca=(($('evtBusca')||{}).value||'').trim().toLowerCase();
+  evtBusca=busca;
+  const lista=todos.filter(e=>{
+    if(evtFiltro==='proximos'&&e.data<hoje)return false;
+    if(evtFiltro==='passados'&&e.data>=hoje)return false;
+    if(evtFraSel!==''&&String(e.fra)!==evtFraSel)return false;
+    if(busca){
+      const alvo=(e.titulo+' '+(frqRotulo(e.fra)||'')+' '+(((uPorId(e.dono)||{}).nome)||'')+' '+(e.descricao||'')).toLowerCase();
+      if(!alvo.includes(busca))return false;
+    }
+    return true;
+  });
+  if(evtFiltro==='proximos')lista.sort((a,b)=>a.data.localeCompare(b.data));
+
+  const box=$('evtLista');
+  if(!lista.length){
+    box.innerHTML='<div class="evt-vazio">'+(todos.length
+      ?'Nenhum evento com esses filtros.'
+      :'Nenhum evento cadastrado ainda.<br>Use “+ Novo evento” — se for um Evento Betta, o botão 🐟 Modelo gera as tarefas com prazo automático.')+'</div>';
+    atualizarBadgeEventos();return;
+  }
+  box.innerHTML=lista.map(e=>{
+    const dt=evtDataCurta(e.data),r=evtResumoTarefas(e.id);
+    const pct=r.total?Math.round(r.feitas/r.total*100):0;
+    const passado=e.data<hoje;
+    const dono=((uPorId(e.dono)||{}).nome||'—').split(' ')[0];
+    const outros=(e.participantes||[]).filter(p=>p!==e.dono).length;
+    const d=e.dadosEvento;
+    let linhaBetta='';
+    if(d&&d.custo_total!=null){
+      linhaBetta='<div class="evt-n">🐟 Custo '+fmtReaisBetta(d.custo_total)
+        +(d.pedido_num?' (pedido #'+escHtml(d.pedido_num)+')':'')
+        +(d.faturamento_direto!=null
+          ?' · direto '+fmtReaisBetta(d.faturamento_direto)+' ('+fmtRoiTxt(roiDireto(d))+') · carrinho '+fmtReaisBetta(d.faturamento_carrinho)
+          :' · <b style="color:var(--laranja)">relatório de vendas pendente</b>')+'</div>';
+    }
+    return '<div class="evt-card'+(passado?' passado':'')+(r.atrasadas?' atrasado':'')+'" data-id="'+e.id+'">'
+      +'<div class="evt-data"><b>'+dt.d+'</b><span>'+dt.m+'</span></div>'
+      +'<div class="evt-corpo">'
+      +'<div class="evt-t">'+escHtml(e.titulo)+(d&&d.custo_total!=null?evtRoiTag(e):'')
+      +(r.atrasadas?'<span class="prazo-tag u3">'+r.atrasadas+' atrasada'+(r.atrasadas>1?'s':'')+'</span>':'')+'</div>'
+      +'<div class="evt-n">'+((e.fra===0||e.fra)?'🏪 '+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+' · ':'')
+      +'👤 '+escHtml(dono)+(outros?' +'+outros:'')+'</div>'
+      +(r.total
+        ?'<div class="evt-bar'+(pct===100?'':(pct?' parcial':' vazio'))+'"><i style="width:'+(pct||2)+'%"></i></div>'
+         +'<div class="evt-n">'+r.feitas+' de '+r.total+' tarefas concluídas</div>'
+        :'<div class="evt-n" style="margin-top:6px">Sem tarefas vinculadas</div>')
+      +linhaBetta
+      +'</div></div>';
+  }).join('');
+  box.querySelectorAll('.evt-card').forEach(c=>c.onclick=()=>abrirDetalheEv(c.dataset.id));
+  atualizarBadgeEventos();
+}
+
+/* ================================================================
+   QUARTINHO — v7.8
+   Controle dos itens da franqueadora que saem para eventos ou
+   empréstimo a franqueado. Cada linha é UMA PEÇA física.
+   Fluxo curto: marca os itens, diz para onde vão, pronto.
+================================================================ */
+let ITENS_Q=[], MOVS_Q=[], qtFiltro='todos', qtSelSaida=new Set(), qtModo='eventos';
+const QT_ICONES={estrutura:'⛺',eletronico:'📷',comunicacao:'🚩',ambientacao:'🟩',geral:'📦'};
+const QT_CATS={estrutura:'Estrutura',eletronico:'Eletrônicos',comunicacao:'Comunicação',ambientacao:'Ambientação',geral:'Geral'};
+const QT_IC_COD=[[/^TENDA/,'⛺'],[/^MESA/,'🪑'],[/^SEP/,'🚧'],[/^BAND/,'🚩'],[/^CAM/,'📷'],[/^ITROP/,'🔊'],[/^TAPETE/,'🟩']];
+function qtIcone(cat,cod){
+  if(cod){const r=QT_IC_COD.find(x=>x[0].test(cod));if(r)return r[1];}
+  return QT_ICONES[cat]||QT_ICONES.geral;
+}
+const qtCatNome=c=>QT_CATS[c]||c;
+const qtNome=uid=>((uPorId(uid)||{}).nome||'—').split(' ')[0];
+const qtDBR=iso=>iso?String(iso).slice(0,10).split('-').reverse().join('/'):'—';
+function qtAtrasado(i){return i.situacao==='fora'&&i.prazo&&i.prazo<chaveDia(agora());}
+function qtItemPorId(id){return ITENS_Q.find(i=>i.id===id);}
+
+async function carregarItens(){
+  const [a,b]=await Promise.all([
+    sb.from('itens_status').select('*').order('ordem').order('codigo'),
+    sb.from('itens_movimentos').select('*').order('quando',{ascending:false}).limit(500)
+  ]);
+  ITENS_Q=a.data||[];MOVS_Q=b.data||[];
+}
+function qtDestinoTxt(i){
+  if(i.evento_id){const e=todosEventosUnicos().find(x=>x.id===i.evento_id);if(e)return'🎪 '+e.titulo;}
+  if(i.franquia_fra===0||i.franquia_fra)return'🏪 '+(frqRotulo(i.franquia_fra)||('FRA '+i.franquia_fra));
+  return i.destino?'📍 '+i.destino:'—';
+}
+function qtForaTotal(){return ITENS_Q.filter(i=>i.situacao==='fora').length;}
+function qtAtrasadosTotal(){return ITENS_Q.filter(qtAtrasado).length;}
+function atualizarBadgeQuartinho(){
+  const b=$('qtBadge');if(!b)return;
+  const n=qtAtrasadosTotal();
+  b.textContent=n;b.style.display=n?'inline-block':'none';
+  b.title=n?n+' item(ns) com devolução atrasada':'';
+}
+function trocarModoEventos(m){
+  qtModo=m;
+  document.querySelectorAll('#evtModo .pill').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  const ev=m==='eventos';
+  $('evtBloco').style.display=ev?'':'none';
+  $('qtBloco').style.display=ev?'none':'';
+  $('btnNovoEvento').style.display=ev?'':'none';
+  $('btnNovaSaida').style.display=ev?'none':'';
+  $('btnNovoItem').style.display=(!ev&&usuarioAtual.admin)?'':'none';
+  ev?desenharEventos():desenharQuartinho();
+}
+function desenharQuartinho(){
+  if(!usuarioAtual||!$('qtLista'))return;
+  const fora=qtForaTotal(),atras=qtAtrasadosTotal();
+  const meus=ITENS_Q.filter(i=>i.situacao==='fora'&&i.com_quem===usuarioAtual.id).length;
+  const total=ITENS_Q.filter(i=>i.ativo).length;
+  $('qtResumo').innerHTML=
+     '<div class="kpi ok"><div class="n">'+(total-fora)+'</div><div class="l">No quartinho</div></div>'
+    +'<div class="kpi'+(fora?' atencao':'')+'"><div class="n">'+fora+'</div><div class="l">Fora agora</div></div>'
+    +'<div class="kpi'+(atras?' alerta':'')+'"><div class="n">'+atras+'</div><div class="l">Devolução atrasada</div></div>'
+    +'<div class="kpi"><div class="n">'+meus+'</div><div class="l">Estão com você</div></div>';
+
+  const PF={todos:'Todos',fora:'Fora ('+fora+')',meus:'Comigo ('+meus+')',atrasados:'Atrasados ('+atras+')'};
+  const pills=$('qtPills');
+  pills.innerHTML=Object.keys(PF).map(k=>'<button class="pill'+(qtFiltro===k?' on':'')+'" data-f="'+k+'" type="button">'+PF[k]+'</button>').join('');
+  pills.querySelectorAll('.pill').forEach(b=>b.onclick=()=>{qtFiltro=b.dataset.f;desenharQuartinho();});
+
+  const selC=$('qtCat'),manter=selC.value;
+  const cats=[...new Set(ITENS_Q.map(i=>i.categoria))];
+  selC.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>'<option value="'+c+'">'+escHtml(qtCatNome(c))+'</option>').join('');
+  selC.value=cats.includes(manter)?manter:'';
+
+  const busca=(($('qtBusca')||{}).value||'').trim().toLowerCase();
+  let lista=ITENS_Q.filter(i=>{
+    if(!i.ativo&&qtFiltro!=='todos')return false;
+    if(qtFiltro==='fora'&&i.situacao!=='fora')return false;
+    if(qtFiltro==='meus'&&!(i.situacao==='fora'&&i.com_quem===usuarioAtual.id))return false;
+    if(qtFiltro==='atrasados'&&!qtAtrasado(i))return false;
+    if(selC.value&&i.categoria!==selC.value)return false;
+    if(busca){
+      const alvo=(i.nome+' '+i.codigo+' '+qtCatNome(i.categoria)+' '+(i.com_quem?qtNome(i.com_quem):'')+' '+qtDestinoTxt(i)+' '+(i.obs||'')).toLowerCase();
+      if(!alvo.includes(busca))return false;
+    }
+    return true;
+  });
+  const box=$('qtLista');
+  if(!lista.length){
+    box.innerHTML='<div class="evt-vazio">Nenhum item com esses filtros.</div>';
+    atualizarBadgeQuartinho();return;
+  }
+  const grupos={};
+  lista.forEach(i=>{(grupos[i.categoria]=grupos[i.categoria]||[]).push(i);});
+  box.innerHTML=Object.keys(grupos).map(cat=>{
+    const g=grupos[cat],gFora=g.filter(x=>x.situacao==='fora').length;
+    return '<div class="qt-grupo">'+escHtml(qtCatNome(cat))+' <span style="font-weight:600;text-transform:none;letter-spacing:0">· '+(g.length-gFora)+' de '+g.length+' no quartinho</span></div>'
+      +g.map(i=>{
+        const atrasado=qtAtrasado(i),fora=i.situacao==='fora';
+        const sub=fora
+          ?'👤 <b>'+escHtml(qtNome(i.com_quem))+'</b> · '+escHtml(qtDestinoTxt(i))+' · saiu '+qtDBR(i.desde)
+            +(i.prazo?' · devolver até <b'+(atrasado?' style="color:var(--verm)"':'')+'>'+qtDBR(i.prazo)+'</b>':'')
+          :(i.situacao==='baixado'?'Baixado do acervo'+(i.obs?' · '+escHtml(i.obs):''):'No quartinho'+(i.desde?' desde '+qtDBR(i.desde):''));
+        return '<div class="qt-item'+(fora?' fora':'')+(atrasado?' atrasado':'')+(i.situacao==='baixado'?' baixado':'')+'" data-id="'+i.id+'">'
+          +'<div class="qt-ic">'+qtIcone(i.categoria,i.codigo)+'</div>'
+          +'<div class="qt-corpo"><div class="qt-nome">'+escHtml(i.nome)+'<span class="qt-cod">'+escHtml(i.codigo)+'</span>'
+                    +(atrasado?'<span class="prazo-tag u4">atrasado</span>':'')+'</div>'
+          +'<div class="qt-sub">'+sub+'</div></div>'
+          +'<div class="qt-acao">'+(fora?'<button class="btn-concluir" data-dev="'+i.id+'" type="button">↩ Devolver</button>':'')+'</div>'
+          +'</div>';
+      }).join('');
+  }).join('');
+  box.querySelectorAll('.qt-item').forEach(el=>el.onclick=ev=>{if(ev.target.closest('button'))return;abrirItem(el.dataset.id);});
+  box.querySelectorAll('[data-dev]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();abrirDevolucao([b.dataset.dev]);});
+  atualizarBadgeQuartinho();
+}
+
+/* ---------- detalhe do item ---------- */
+function abrirItem(id){
+  const i=qtItemPorId(id),bg=$('evModalBg');if(!i||!bg)return;
+  const movs=MOVS_Q.filter(m=>m.item_id===id).slice(0,12);
+  const fora=i.situacao==='fora';
+  let h='<div class="evm-topo"><span class="st '+(fora?'projeto':'aprovada')+'">'+(fora?'fora':'no quartinho')+'</span>'
+    +(qtAtrasado(i)?'<span class="prazo-tag u4">devolução atrasada</span>':'')
+    +'<button type="button" class="evm-x" id="evmX" title="Fechar">✕</button></div>'
+    +'<h3>'+qtIcone(i.categoria,i.codigo)+' '+escHtml(i.nome)+' <span class="qt-cod">'+escHtml(i.codigo)+'</span></h3>'
+    +'<div class="evm-l">📦 '+escHtml(qtCatNome(i.categoria))+'</div>';
+  if(fora){
+    h+='<div class="evm-l">👤 Está com <b>'+escHtml(qtNome(i.com_quem))+'</b> desde '+qtDBR(i.desde)+'</div>'
+      +'<div class="evm-l">'+escHtml(qtDestinoTxt(i))+'</div>'
+      +(i.prazo?'<div class="evm-l">⏰ Devolver até <b>'+qtDBR(i.prazo)+'</b></div>':'')
+      +(i.obs?'<div class="evm-l evm-desc">'+escHtml(i.obs)+'</div>':'');
+  }
+  if(i.observacao)h+='<div class="evm-l evm-desc">'+escHtml(i.observacao)+'</div>';
+  h+='<div class="evm-l"><b>Histórico</b>'+(movs.length?movs.map(m=>{
+      const q=m.tipo==='saida'?'saiu com '+qtNome(m.com_quem):(m.tipo==='devolucao'?'devolvido por '+qtNome(m.registrado_por):m.tipo);
+      return '<div class="qt-hist">'+fmtDtHr(m.quando)+' · '+escHtml(q)+(m.obs?' · "'+escHtml(m.obs)+'"':'')+'</div>';
+    }).join(''):'<div class="qt-hist">Nenhum movimento registrado ainda.</div>')+'</div>';
+  h+='<div class="evm-acoes">'
+    +(fora?'<button type="button" id="qtmDev">↩ Registrar devolução</button>':'<button type="button" id="qtmSai" class="lar">📤 Registrar saída</button>')
+    +'<button type="button" id="evmFechar">Fechar</button></div>';
+  $('evModal').innerHTML=h;bg.classList.add('aberto');
+  bg.onclick=ev=>{if(ev.target===bg)fecharDetalheEv();};
+  $('evmX').onclick=fecharDetalheEv;$('evmFechar').onclick=fecharDetalheEv;
+  const bd=$('qtmDev');if(bd)bd.onclick=()=>abrirDevolucao([i.id]);
+  const bs=$('qtmSai');if(bs)bs.onclick=()=>abrirSaida([i.id]);
+}
+
+/* ---------- saída ---------- */
+function abrirSaida(pre){
+  const bg=$('evModalBg');if(!bg)return;
+  const disp=ITENS_Q.filter(i=>i.ativo&&i.situacao==='no_quartinho');
+  qtSelSaida=new Set((pre||[]).filter(id=>disp.some(i=>i.id===id)));
+  if(!disp.length){alert('Todos os itens ativos já estão fora do quartinho.');return;}
+  const hoje=chaveDia(agora());
+  const eventos=todosEventosUnicos().filter(e=>e.tipo==='evento'&&e.data>=addDiasISO(hoje,-7)).sort((a,b)=>a.data.localeCompare(b.data));
+  const h='<div class="evm-topo"><span class="st projeto">saída do quartinho</span>'
+    +'<button type="button" class="evm-x" id="evmX" title="Fechar">✕</button></div>'
+    +'<h3>📤 Registrar saída de itens</h3>'
+    +'<div class="qt-form">'
+    +'<label>Itens que estão saindo <span id="qtSelN" style="font-weight:600;color:var(--tinta-suave)"></span></label>'
+    +'<div class="qt-cx" id="qtCx">'+disp.map(i=>'<label class="qt-sel" data-id="'+i.id+'"><input type="checkbox" data-chk="'+i.id+'"><span>'+qtIcone(i.categoria,i.codigo)+' '+escHtml(i.nome)+' <span class="qt-cod">'+escHtml(i.codigo)+'</span></span></label>').join('')+'</div>'
+    +'<label>Quem está levando</label>'
+    +'<select id="qtQuem"'+(usuarioAtual.admin?'':' disabled')+'>'+CFG.usuarios.map(u=>'<option value="'+u.id+'"'+(u.id===usuarioAtual.id?' selected':'')+'>'+escHtml(u.nome)+'</option>').join('')+'</select>'
+    +'<label>Para onde vai</label>'
+    +'<select id="qtDestTipo"><option value="evento">Evento da agenda</option><option value="franquia">Empréstimo a franqueado</option><option value="outro">Outro destino</option></select>'
+    +'<div id="qtDestEvento"><label>Evento</label><select id="qtEvento">'+(eventos.length?eventos.map(e=>'<option value="'+e.id+'">'+qtDBR(e.data)+' · '+escHtml(e.titulo)+'</option>').join(''):'<option value="">— nenhum evento cadastrado —</option>')+'</select></div>'
+    +'<div id="qtDestFra" style="display:none"><label>Franquia</label><input id="qtFra" list="qtFraList" placeholder="Nome ou número da loja" autocomplete="off">'
+    +'<datalist id="qtFraList">'+FRQ.map(f=>'<option value="'+escHtml(f.fra+' · '+f.nome)+'">').join('')+'</datalist></div>'
+    +'<div id="qtDestOutro" style="display:none"><label>Destino</label><input id="qtOutro" placeholder="Ex.: feira em Curitiba, manutenção"></div>'
+    +'<label>Devolver até</label><input id="qtPrazo" type="date" value="'+addDiasISO(hoje,7)+'">'
+    +'<label style="display:flex;gap:6px;align-items:center;font-weight:600;text-transform:none;color:var(--tinta);margin-top:10px"><input type="checkbox" id="qtCriarTarefa" checked style="width:auto"> Criar tarefa de devolução com prazo para quem levou</label>'
+    +'<label>Observação (opcional)</label><textarea id="qtObs" placeholder="Ex.: tenda com a perna emendada, levar com cuidado"></textarea>'
+    +'</div>'
+    +'<div class="evm-acoes"><button type="button" id="qtSalvar" class="lar">Registrar saída</button><button type="button" id="evmFechar">Cancelar</button></div>';
+  $('evModal').innerHTML=h;bg.classList.add('aberto');
+  bg.onclick=ev=>{if(ev.target===bg)fecharDetalheEv();};
+  $('evmX').onclick=fecharDetalheEv;$('evmFechar').onclick=fecharDetalheEv;
+  const marcarN=()=>{$('qtSelN').textContent=qtSelSaida.size?'· '+qtSelSaida.size+' selecionado(s)':'· nenhum selecionado';};
+  $('qtCx').querySelectorAll('.qt-sel').forEach(l=>{
+    const id=l.dataset.id,chk=l.querySelector('input');
+    chk.checked=qtSelSaida.has(id);l.classList.toggle('on',chk.checked);
+    chk.onchange=()=>{chk.checked?qtSelSaida.add(id):qtSelSaida.delete(id);l.classList.toggle('on',chk.checked);marcarN();ajustarPrazoSugerido();};
+  });
+  marcarN();
+  const trocaDest=()=>{
+    const t=$('qtDestTipo').value;
+    $('qtDestEvento').style.display=t==='evento'?'':'none';
+    $('qtDestFra').style.display=t==='franquia'?'':'none';
+    $('qtDestOutro').style.display=t==='outro'?'':'none';
+    ajustarPrazoSugerido();
+  };
+  function ajustarPrazoSugerido(){
+    if($('qtDestTipo').value!=='evento')return;
+    const ev=todosEventosUnicos().find(x=>x.id===$('qtEvento').value);
+    if(ev)$('qtPrazo').value=addDiasISO(ev.data,2);
+  }
+  $('qtDestTipo').onchange=trocaDest;$('qtEvento').onchange=ajustarPrazoSugerido;
+  trocaDest();
+  $('qtSalvar').onclick=salvarSaida;
+}
+async function salvarSaida(){
+  if(!qtSelSaida.size){alert('Escolha pelo menos um item.');return;}
+  const btn=$('qtSalvar');btn.disabled=true;
+  try{
+    const quem=$('qtQuem').value||usuarioAtual.id;
+    const tipo=$('qtDestTipo').value;
+    const prazo=$('qtPrazo').value||null;
+    const obs=$('qtObs').value.trim()||null;
+    let eventoId=null,fra=null,destino=null,rotulo='';
+    if(tipo==='evento'){
+      eventoId=$('qtEvento').value||null;
+      if(!eventoId){alert('Escolha o evento — ou troque o destino para empréstimo/outro.');btn.disabled=false;return;}
+      const ev=todosEventosUnicos().find(x=>x.id===eventoId);rotulo=ev?ev.titulo:'evento';
+      if(ev&&(ev.fra===0||ev.fra))fra=ev.fra;
+    }else if(tipo==='franquia'){
+      const txt=($('qtFra').value||'').trim();
+      const m=txt.match(/^(\d+)/);
+      if(!m){alert('Escolha a franquia pelo número, como aparece na lista.');btn.disabled=false;return;}
+      fra=parseInt(m[1],10);rotulo=frqRotulo(fra)||('FRA '+fra);destino=rotulo;
+    }else{
+      destino=($('qtOutro').value||'').trim();
+      if(!destino){alert('Escreva para onde os itens estão indo.');btn.disabled=false;return;}
+      rotulo=destino;
+    }
+    const ids=[...qtSelSaida];
+    const nomes=ids.map(id=>(qtItemPorId(id)||{}).nome).filter(Boolean);
+    let tarefaId=null;
+    if($('qtCriarTarefa').checked&&prazo){
+      const titulo='Devolver ao quartinho: '+nomes.slice(0,3).join(', ')+(nomes.length>3?' +'+(nomes.length-3):'');
+      const {data:tf,error:et}=await sb.from('agenda_eventos').insert({
+        user_id:quem,titulo,data:chaveDia(agora()),ini:'00:00',fim:'00:00',tipo:'tarefa',
+        descricao:nomes.join('\n')+'\n\nDestino: '+rotulo+(obs?'\nObs: '+obs:''),
+        participantes:[],franquia_fra:fra,prazo,prazo_hora:null,subtarefas:[],
+        criado_por:usuarioAtual.id,categoria:null,evento_pai:eventoId
+      }).select('id').single();
+      if(et){erroDB(et);btn.disabled=false;return;}
+      tarefaId=tf.id;
+    }
+    const linhas=ids.map(id=>({item_id:id,tipo:'saida',com_quem:quem,registrado_por:usuarioAtual.id,
+      evento_id:eventoId,franquia_fra:fra,destino,prazo,obs,tarefa_id:tarefaId}));
+    const {error}=await sb.from('itens_movimentos').insert(linhas);
+    if(error){erroDB(error);btn.disabled=false;return;}
+    fecharDetalheEv();qtSelSaida.clear();
+    await Promise.all([carregarItens(),carregarAgenda()]);
+    desenharQuartinho();piscar();
+  }catch(err){erroDB(err);btn.disabled=false;}
+}
+
+/* ---------- devolução ---------- */
+function abrirDevolucao(ids){
+  const bg=$('evModalBg');if(!bg)return;
+  const itens=ids.map(qtItemPorId).filter(i=>i&&i.situacao==='fora');
+  if(!itens.length){alert('Esse item já consta como devolvido.');return;}
+  const mesmoLote=itens[0].tarefa_id?ITENS_Q.filter(i=>i.situacao==='fora'&&i.tarefa_id===itens[0].tarefa_id):[];
+  const extras=mesmoLote.filter(i=>!ids.includes(i.id));
+  const h='<div class="evm-topo"><span class="st aprovada">devolução</span>'
+    +'<button type="button" class="evm-x" id="evmX" title="Fechar">✕</button></div>'
+    +'<h3>↩ Devolver ao quartinho</h3>'
+    +'<div class="qt-form"><label>Itens voltando</label><div class="qt-cx" id="qtCx">'
+    +itens.concat(extras).map(i=>'<label class="qt-sel'+(ids.includes(i.id)?' on':'')+'" data-id="'+i.id+'"><input type="checkbox" '+(ids.includes(i.id)?'checked':'')+'><span>'+qtIcone(i.categoria,i.codigo)+' '+escHtml(i.nome)+' <span class="qt-cod">'+escHtml(i.codigo)+'</span> · com '+escHtml(qtNome(i.com_quem))+'</span></label>').join('')
+    +'</div>'
+    +(extras.length?'<p class="aviso" style="margin:6px 0 0;text-align:left">Os outros itens que saíram no mesmo lote já aparecem aí — marque os que voltaram junto.</p>':'')
+    +'<label>Observação (opcional)</label><textarea id="qtObsDev" placeholder="Ex.: um separador voltou torto"></textarea></div>'
+    +'<div class="evm-acoes"><button type="button" id="qtDevOk" class="lar">Confirmar devolução</button><button type="button" id="evmFechar">Cancelar</button></div>';
+  $('evModal').innerHTML=h;bg.classList.add('aberto');
+  bg.onclick=ev=>{if(ev.target===bg)fecharDetalheEv();};
+  $('evmX').onclick=fecharDetalheEv;$('evmFechar').onclick=fecharDetalheEv;
+  $('qtCx').querySelectorAll('.qt-sel').forEach(l=>{
+    const chk=l.querySelector('input');chk.onchange=()=>l.classList.toggle('on',chk.checked);
+  });
+  $('qtDevOk').onclick=async()=>{
+    const escolhidos=[...$('qtCx').querySelectorAll('.qt-sel')].filter(l=>l.querySelector('input').checked).map(l=>l.dataset.id);
+    if(!escolhidos.length){alert('Marque ao menos um item.');return;}
+    $('qtDevOk').disabled=true;
+    const obs=$('qtObsDev').value.trim()||null;
+    const linhas=escolhidos.map(id=>{const i=qtItemPorId(id);
+      return {item_id:id,tipo:'devolucao',com_quem:null,registrado_por:usuarioAtual.id,
+        evento_id:i.evento_id,franquia_fra:i.franquia_fra,destino:i.destino,prazo:null,obs,tarefa_id:i.tarefa_id};});
+    const {error}=await sb.from('itens_movimentos').insert(linhas);
+    if(error){erroDB(error);$('qtDevOk').disabled=false;return;}
+    const tarefas=[...new Set(escolhidos.map(id=>(qtItemPorId(id)||{}).tarefa_id).filter(Boolean))];
+    fecharDetalheEv();
+    await carregarItens();
+    for(const tid of tarefas){
+      const restam=ITENS_Q.filter(i=>i.situacao==='fora'&&i.tarefa_id===tid).length;
+      const tf=todosEventosUnicos().find(x=>x.id===tid);
+      if(!restam&&tf&&!tf.concluida){
+        await sb.from('agenda_eventos').update({concluida:true,concluida_em:new Date().toISOString(),concluida_obs:'Itens devolvidos ao quartinho'}).eq('id',tid);
+      }
+    }
+    await carregarAgenda();
+    desenharQuartinho();piscar();
+  };
+}
+
+/* ---------- novo item (admin) ---------- */
+function abrirNovoItem(){
+  const bg=$('evModalBg');if(!bg||!usuarioAtual.admin)return;
+  const h='<div class="evm-topo"><span class="st projeto">novo item</span><button type="button" class="evm-x" id="evmX">✕</button></div>'
+    +'<h3>📦 Cadastrar peça do quartinho</h3>'
+    +'<div class="qt-form">'
+    +'<label>Nome</label><input id="qtiNome" placeholder="Ex.: Tenda 04" maxlength="80">'
+    +'<label>Código</label><input id="qtiCod" placeholder="Ex.: TENDA-04" maxlength="30">'
+    +'<label>Categoria</label><select id="qtiCat">'+Object.keys(QT_CATS).map(c=>'<option value="'+c+'">'+QT_CATS[c]+'</option>').join('')+'</select>'
+    +'<label>Observação (opcional)</label><textarea id="qtiObs" placeholder="Ex.: comprada em 2025, lona bege"></textarea>'
+    +'<p class="aviso" style="text-align:left;margin:8px 0 0">Cadastre uma linha por peça. Se são 4 mesas iguais, são 4 itens — é o que permite saber qual está com quem.</p>'
+    +'</div>'
+    +'<div class="evm-acoes"><button type="button" id="qtiOk" class="lar">Cadastrar</button><button type="button" id="evmFechar">Cancelar</button></div>';
+  $('evModal').innerHTML=h;bg.classList.add('aberto');
+  bg.onclick=ev=>{if(ev.target===bg)fecharDetalheEv();};
+  $('evmX').onclick=fecharDetalheEv;$('evmFechar').onclick=fecharDetalheEv;
+  $('qtiOk').onclick=async()=>{
+    const nome=$('qtiNome').value.trim(),cod=$('qtiCod').value.trim().toUpperCase();
+    if(!nome||!cod){alert('Preencha nome e código.');return;}
+    if(ITENS_Q.some(i=>i.codigo===cod)){alert('Já existe um item com o código '+cod+'.');return;}
+    $('qtiOk').disabled=true;
+    const {error}=await sb.from('itens_quartinho').insert({nome,codigo:cod,categoria:$('qtiCat').value,
+      observacao:$('qtiObs').value.trim()||null,ordem:(ITENS_Q.length+1)*10,criado_por:usuarioAtual.id});
+    if(error){erroDB(error);$('qtiOk').disabled=false;return;}
+    fecharDetalheEv();await carregarItens();desenharQuartinho();piscar();
+  };
+}
+/* ---------- kit do evento (usado no pop-up do evento) ---------- */
+function htmlKitEvento(eventoId){
+  const fora=ITENS_Q.filter(i=>i.situacao==='fora'&&i.evento_id===eventoId);
+  const hist=[...new Set(MOVS_Q.filter(m=>m.evento_id===eventoId&&m.tipo==='saida').map(m=>m.item_id))];
+  if(!hist.length)return '';
+  const devolvidos=hist.length-fora.length;
+  return '<div class="evm-l"><b>📦 Kit do quartinho · '+devolvidos+' de '+hist.length+' devolvidos</b>'
+    +hist.map(id=>{const i=qtItemPorId(id);if(!i)return '';
+      const aindaFora=fora.some(f=>f.id===id);
+      return '<div class="evm-sub'+(aindaFora?'':' feita')+'">'+(aindaFora?(qtAtrasado(i)?'🔴':'⬜'):'✅')+' '+escHtml(i.nome)+' <span style="color:var(--tinta-suave)">· '+escHtml(i.codigo)+(aindaFora?' · com '+escHtml(qtNome(i.com_quem))+(i.prazo?' · até '+qtDBR(i.prazo):''):'')+'</span></div>';
+    }).join('')+'</div>';
+}
+
 /* ===== Agenda consolidada (admin): semana, mês e intervalo ===== */
 function pessoaFiltro(){const s=$('agPessoa');return (usuarioAtual&&usuarioAtual.admin&&s&&s.value)?s.value:null;}
 function evsDoDia(iso){
@@ -4181,6 +4705,21 @@ ligarAbas();
   $('agData2').onchange=desenharAgenda;
   $('agModo').onchange=desenharAgenda;
   $('evTipo').onchange=()=>{atualizarCamposTipo();desenharEvParts();};
+  // v7.7 — aba Eventos
+  $('btnNovoEvento').onclick=()=>{
+    const a=document.querySelector('.aba[data-v=agenda]');if(a)a.click();
+    sairEdicao();
+    $('evTipo').value='evento';$('evTipo').dispatchEvent(new Event('change'));
+    $('evData').value=$('agData').value||chaveDia(agora());
+    abrirFormAgenda();
+  };
+  $('evtFra').onchange=desenharEventos;
+  $('evtModo').querySelectorAll('.pill').forEach(b=>b.onclick=()=>trocarModoEventos(b.dataset.m));
+  $('btnNovaSaida').onclick=()=>abrirSaida([]);
+  $('btnNovoItem').onclick=abrirNovoItem;
+  $('qtCat').onchange=desenharQuartinho;
+  $('qtBusca').addEventListener('input',()=>{clearTimeout(window._qtB);window._qtB=setTimeout(desenharQuartinho,180);});
+  $('evtBusca').addEventListener('input',()=>{clearTimeout(window._evtB);window._evtB=setTimeout(desenharEventos,180);});
   $('btnModeloBetta').onclick=()=>{
     emModoBetta=true;
     $('evCustoLbl').style.display='inline-flex';

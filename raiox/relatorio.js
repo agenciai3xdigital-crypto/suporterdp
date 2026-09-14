@@ -124,6 +124,7 @@
   // avisos do banco (trava de nota, dado defasado, custo sem cadastro) no topo do relatório
   const avisos = [];
   if (S.sem_nota_motivo) avisos.push('<b>Sem nota:</b> ' + esc(S.sem_nota_motivo) + ' A nota crua do motor (' + br(fullQ.data.dados.score, 0) + ') aparece no cartão só como referência.');
+  if (S.kpis.mes_parcial) avisos.push('<b>Carga parcial:</b> ' + mesBR(S.kpis.mes_parcial.mes) + ' entrou no banco com só ' + br(S.kpis.mes_parcial.cupons) + ' vendas (a loja faz ~' + br(S.kpis.mes_parcial.esperado) + ' por mês). Para não derrubar a nota de crescimento, a janela fechou em ' + mesBR(S.mes_ref) + '. Reenvie o BI de ' + mesBR(S.kpis.mes_parcial.mes) + ' completo no painel de Inteligência Comercial, com a recarga marcada, e peça o recálculo.');
   if ((S.kpis.defasagem_meses || 0) >= 2) avisos.push('<b>Dado defasado:</b> a última venda carregada é de ' + mesBR(S.mes_ref) + '. Carregue o BI mais recente no painel de Inteligência Comercial antes de usar estes números.');
   const cz = S.tarefas && S.tarefas.find(t => t.chave === 'custoZero');
   if (cz) avisos.push('<b>Custo sem cadastro:</b> ' + pc(cz.dados.pct) + ' da receita de produto (' + kmil(cz.dados.valor) + ') está sem custo no One Pet — a margem reportada está inflada; a máquina usa a margem ajustada.');

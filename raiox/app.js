@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v2.1';
+const VERSAO = 'v2.1.2';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const br = (n, d = 0) => (isFinite(n) ? n : 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -155,6 +155,7 @@ function desenharRede() {
       const c = consAtiva(f.fra);
       const situ = !s ? '<span class="st cinza">aguardando carga</span>'
         : [(s.kpis.defasagem_meses || 0) >= 2 ? `<span class="st lar" title="último mês com venda: ${mesBR(s.mes_ref)}">dado de ${mesBR(s.mes_ref)}</span>` : '',
+          s.kpis.mes_parcial ? `<span class="st lar" title="${mesBR(s.kpis.mes_parcial.mes)} entrou com ${s.kpis.mes_parcial.cupons} vendas (esperado ~${s.kpis.mes_parcial.esperado}); janela fechou em ${mesBR(s.mes_ref)}">carga parcial ${mesBR(s.kpis.mes_parcial.mes)}</span>` : '',
           c ? `<span class="st roxo">consultoria desde ${dBR(c.inicio)}</span>` : '',
           FILA.has(f.fra) ? '<span class="st cinza">↻ na fila</span>' : ''].filter(Boolean).join(' ');
       return `<tr data-fra="${f.fra}"><td class="num">${f.fra}</td><td><div class="t">${esc(f.nome)}</div><div class="s">${esc((f.cidade || '') + (f.estado ? '/' + f.estado : ''))}${f.consultor ? ' · ' + esc(f.consultor) : ''}</div></td>`
@@ -168,8 +169,9 @@ function desenharRede() {
 ['rdCons', 'rdUf'].forEach(id => $(id).onchange = desenharRede);
 $('rdBusca').addEventListener('input', () => { clearTimeout(window._b); window._b = setTimeout(desenharRede, 180); });
 $('btnRecalcRede').onclick = async () => {
-  if (!confirm('Pedir o recálculo de todas as lojas? A rotina atende na próxima rodada (a cada 2 horas).')) return;
-  const fras = Object.keys(SNAPS).map(Number).filter(f => !FILA.has(f));
+  if (!confirm('Pedir o recálculo de todas as lojas? A rotina atende na próxima rodada (a cada 2 horas). Lojas sem venda no banco são ignoradas por ela.')) return;
+  // todas as ativas, não só as que já têm raio-x: assim a primeira leitura também sai pelo painel
+  const fras = FRQ.filter(f => f.ativo !== false && f.fra > 0).map(f => f.fra).filter(f => !FILA.has(f));
   if (!fras.length) { toast('já está tudo na fila'); return; }
   const { error } = await sb.from('raiox_fila').insert(fras.map(fra => ({ fra, pedido_por: usuario.id })));
   if (error) return erro(error);
@@ -206,6 +208,7 @@ function cabecaLoja(f, s) {
       <div style="font-size:13px;color:var(--tinta-suave)">FRA ${f.fra} · ${esc((f.cidade || '') + (f.estado ? '/' + f.estado : ''))}${f.consultor ? ' · consultor ' + esc(f.consultor) + (pc_ ? '' : ' <span class="st lar" title="não existe perfil com esse nome na Central">sem login</span>') : ''}</div>
       ${s && s.sem_nota_motivo ? `<div style="margin-top:8px;font-size:13px;color:var(--verm)">⚠ ${esc(s.sem_nota_motivo)}</div>` : ''}
       ${s && (s.kpis.defasagem_meses || 0) >= 2 ? `<div style="margin-top:6px;font-size:13px;color:#a34608">⚠ Última venda carregada em ${mesBR(s.mes_ref)} — carregar o BI mais recente antes de usar estes números.</div>` : ''}
+      ${s && s.kpis.mes_parcial ? `<div style="margin-top:6px;font-size:13px;color:#a34608">⚠ ${mesBR(s.kpis.mes_parcial.mes)} entrou com só ${s.kpis.mes_parcial.cupons} vendas (esperado ~${s.kpis.mes_parcial.esperado}) — carga parcial; a janela fechou em ${mesBR(s.mes_ref)}. Reenvie o BI completo com a recarga marcada.</div>` : ''}
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         ${c ? `<span class="st roxo" style="align-self:center">consultoria ativa desde ${dBR(c.inicio)} · ${esc(primeiro(nomeDe(c.consultor_id)))}</span>` : (podeIniciar && s ? '<button class="btn laranja" id="btnIniciarCons">▶ Iniciar consultoria de faturamento</button>' : '')}
         ${s ? `<button class="btn claro" id="btnRecalc"${FILA.has(f.fra) ? ' disabled' : ''}>${FILA.has(f.fra) ? '↻ na fila' : '↻ Recalcular'}</button>` : ''}

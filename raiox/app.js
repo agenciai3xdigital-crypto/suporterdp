@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v2.0';
+const VERSAO = 'v2.1';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const br = (n, d = 0) => (isFinite(n) ? n : 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -48,8 +48,8 @@ async function entrou(session) {
   if (ehAdmin()) $('btnRecalcRede').style.display = '';
   try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); }
   catch (e) { erro(e); }
-  const fraUrl = new URLSearchParams(location.search).get('fra');
-  if (fraUrl) abrirLoja(+fraUrl);
+  const qs = new URLSearchParams(location.search), fraUrl = qs.get('fra');
+  if (fraUrl) abrirLoja(+fraUrl, qs.get('aba'));
 }
 $('loginForm').onsubmit = async ev => {
   ev.preventDefault(); const b = $('loginBtn'), er = $('loginErro'); b.disabled = true; er.textContent = '';
@@ -177,7 +177,7 @@ $('btnRecalcRede').onclick = async () => {
 };
 
 /* ================= LOJA ================= */
-async function abrirLoja(fra) {
+async function abrirLoja(fra, aba) {
   lojaAtual = fra;
   document.querySelectorAll('.aba').forEach(a => a.classList.toggle('ativa', a.dataset.v === 'loja'));
   document.querySelectorAll('.vista').forEach(v => v.classList.toggle('ativa', v.id === 'v-loja'));
@@ -187,12 +187,14 @@ async function abrirLoja(fra) {
   const s = SNAPS[fra], f = frqDe(fra);
   if (!s) { box.innerHTML = cabecaLoja(f, null) + '<div class="vazio">Esta loja ainda não tem raio-x: o banco de compras não recebeu o BI de vendas dela. Depois da carga, a rotina noturna calcula sozinha.</div>'; return; }
   // o relatório completo (motor visual original da máquina) roda em relatorio.html, alimentado pelo banco
-  box.innerHTML = cabecaLoja(f, s) + `<div class="painel" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
+  box.innerHTML = cabecaLoja(f, s) + `<div class="painel" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}${aba ? '&aba=' + encodeURIComponent(aba) : ''}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
   ligarFicha(f, s, { tarefas: s.tarefas || [] });
 }
 window.addEventListener('message', ev => {
-  if (ev.origin !== location.origin || !ev.data || ev.data.raiox !== 'altura') return;
-  const fr = $('ljFrame'); if (fr && ev.data.fra === lojaAtual) fr.style.height = Math.max(400, ev.data.altura + 24) + 'px';
+  if (ev.origin !== location.origin || !ev.data || ev.data.fra !== lojaAtual) return;
+  const fr = $('ljFrame'); if (!fr) return;
+  if (ev.data.raiox === 'altura') fr.style.height = Math.max(400, ev.data.altura + 24) + 'px';
+  if (ev.data.raiox === 'topo') window.scrollTo({ top: Math.max(0, fr.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' });
 });
 function cabecaLoja(f, s) {
   const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDoConsultor(f.consultor);

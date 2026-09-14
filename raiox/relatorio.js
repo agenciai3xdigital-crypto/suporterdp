@@ -135,7 +135,10 @@
   rep.insertAdjacentHTML('beforeend', buildEvolucaoHTML());
   initChartHovers();   // registra também os gráficos novos
   await buildConsultoriaHTML();
+  buildTarefasTab();
+  montarAbas();
   ligarExportacoes();
+  ajustarModais();
   avisarPai(); new ResizeObserver(avisarPai).observe(document.body);
   window.addEventListener('message', ev => { if (ev.origin !== location.origin || !ev.data) return; if (ev.data.raiox === 'ir') { const el = document.getElementById(ev.data.alvo); if (el) el.scrollIntoView({ behavior: 'smooth' }); } });
 
@@ -215,7 +218,6 @@
     if (dScore != null && decorrido >= 45 && dScore <= 0) gargalos.push(`<b>Nota não subiu</b> depois de ${br(decorrido)} dias (${c.score_inicial} → ${S.score}). Revise se as tarefas concluídas atacam os achados de maior peso (identificação de cliente e margem pesam mais na nota).`);
     if (S.mes_ref === c.mes_ref_base && decorrido >= 40) gargalos.push(`<b>O raio-x ainda é o mesmo do início</b> (${mesBR(S.mes_ref)}): carregar o BI do mês seguinte no painel de Inteligência Comercial para a evolução aparecer.`);
     if (!gargalos.length) gargalos.push('<b>Nenhum gargalo identificado</b> — plano dentro do prazo e reuniões em dia.');
-    const linhaItem = i => { const venc = i.tipo === 'tarefa' ? i.prazo : i.data; const atr = !i.concluida && venc && venc < hojeISO; return `<tr style="${i.concluida ? 'opacity:.55' : ''}"><td>${i.tipo === 'tarefa' ? '☐' : '📅'} ${esc(i.titulo)}</td><td class="num">${dBR(venc)}</td><td>${i.concluida ? '<span class="stbadge" style="background:#009150;color:#fff">feita' + (i.concluida_em ? ' ' + dBR(i.concluida_em) : '') + '</span>' : atr ? '<span class="stbadge" style="background:#C0392B;color:#fff">vencida</span>' : '<span class="stbadge" style="background:#EDF4F0;color:#00573F">a fazer</span>'}</td></tr>`; };
 
     let cmp = '';
     const B = baseQ.data;
@@ -248,12 +250,99 @@
         <div class="kpi"><div class="lab">Próxima tarefa</div><div class="val" style="font-size:1rem">${tProx.length ? dBR(tProx.sort((x, y) => String(x.prazo).localeCompare(String(y.prazo)))[0].prazo) : '—'}</div><div class="delta neutro">${tProx.length ? esc(tProx[0].titulo) : 'nada pendente'}</div></div>
       </div>
       <div class="card"><h3>Gargalos da consultoria</h3><div class="note">O que está segurando o resultado — calculado da agenda e dos raios-x, não de opinião</div>${gargalos.map(g => `<div class="callout ${/vencida|não subiu|Travada/.test(g) ? 'red' : ''}">${g}</div>`).join('')}</div>
-      <div class="card" style="margin-top:16px"><h3>Plano de 90 dias na agenda</h3><div class="note">${br(itens.length)} itens · reuniões e tarefas criadas quando a consultoria começou · só admin edita</div>
-        <div class="tbl-scroll"><table class="num"><thead><tr><th>Item</th><th class="num">Data / prazo</th><th>Situação</th></tr></thead><tbody>${itens.map(linhaItem).join('') || '<tr><td colspan="3">Nenhum item ligado a esta consultoria.</td></tr>'}</tbody></table></div></div>
+      <div class="callout" style="margin-top:16px">Os ${br(itens.length)} itens do plano de 90 dias (reuniões e tarefas) ficam na aba <b>Tarefas</b>, onde dá para marcar o que foi feito.</div>
       ${cmp}
     </div></section>`);
     initChartHovers();
-    window.__consultoria = { c, itens, tarefas, reunioes, tAtras, rPend, ritmo, pctTarefas, pctTempo };
+    window.__consultoria = { c, itens, tarefas, reunioes, tAtras, rPend, ritmo, pctTarefas, pctTempo, nomes };
+  }
+
+  /* ===== aba TAREFAS: plano da consultoria (com ação) + achados do raio-x ===== */
+  function buildTarefasTab() {
+    const cc = window.__consultoria;
+    const sec = document.createElement('section'); sec.id = 'planoCons'; sec.className = 'plano-cons';
+    const secTarefas = document.getElementById('tarefas');
+    const secTit = secTarefas && secTarefas.querySelector('h2'); if (secTit) secTit.textContent = 'Achados do raio-x';
+    if (!cc) {
+      sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Plano de trabalho</h2><span class="hint">Nasce quando o consultor inicia a consultoria de faturamento (botão no topo da aba Loja)</span></div>
+        <div class="card"><div class="callout">Esta loja ainda não tem consultoria ativa. Os achados abaixo já mostram por onde começar; ao iniciar a consultoria, cada achado vira tarefa com prazo na agenda do consultor, e as reuniões quinzenais com o franqueado ficam marcadas.</div></div></div>`;
+      rep.insertBefore(sec, secTarefas); return;
+    }
+    const { c, itens, nomes } = cc;
+    const venc = i => i.tipo === 'tarefa' ? i.prazo : i.data;
+    const em7 = (() => { const d = new Date(hoje); d.setDate(d.getDate() + 7); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+    const abertos = itens.filter(i => !i.concluida).sort((a, b) => String(venc(a)).localeCompare(String(venc(b))));
+    const G = { venc: abertos.filter(i => venc(i) && venc(i) < hojeISO), hoje: abertos.filter(i => venc(i) === hojeISO), semana: abertos.filter(i => venc(i) > hojeISO && venc(i) <= em7), depois: abertos.filter(i => !venc(i) || venc(i) > em7), feitas: itens.filter(i => i.concluida).sort((a, b) => String(b.concluida_em || '').localeCompare(String(a.concluida_em || ''))) };
+    const item = i => { const v = venc(i), cls = i.concluida ? 'feita' : (v && v < hojeISO) ? 'venc' : v === hojeISO ? 'hoje' : '';
+      return `<div class="item-plano ${cls}"><div><div class="tt">${i.tipo === 'tarefa' ? '☐' : '📅'} ${esc(i.titulo)}</div><div class="sub">${i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : 'reunião ' + dBR(v) + (i.ini ? ' às ' + String(i.ini).slice(0, 5) : '')}${i.concluida ? ' · feita' + (i.concluida_em ? ' em ' + dBR(i.concluida_em) : '') : cls === 'venc' ? ' · <b style="color:var(--alerta)">vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)</b>' : ''} · ${esc(nomes[i.user_id] || '')}</div></div>
+        <div class="acao">${i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}</div></div>`; };
+    const grupo = (tit, lista, vazio) => `<div class="grupo"><h4>${tit} · ${br(lista.length)}</h4>${lista.length ? lista.map(item).join('') : `<div style="font-size:.78rem;color:var(--ink-2);padding:4px 0 8px">${vazio}</div>`}</div>`;
+    sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Plano de 90 dias</h2><span class="hint num">${esc(nomes[c.consultor_id] || 'consultor')} · ${dBR(c.inicio)} a ${dBR(c.fim_previsto)} · ${br(itens.length)} itens · marcar aqui atualiza a agenda da Central</span></div>
+      <div class="resumo-tarefas num">
+        <div class="kpi"><div class="lab">Vencidas</div><div class="val" style="color:${G.venc.length ? 'var(--alerta)' : 'inherit'}">${br(G.venc.length)}</div></div>
+        <div class="kpi"><div class="lab">Hoje + 7 dias</div><div class="val">${br(G.hoje.length + G.semana.length)}</div></div>
+        <div class="kpi"><div class="lab">Feitas</div><div class="val">${br(G.feitas.length)}<span style="font-size:.6em;color:var(--ink-2)"> / ${br(itens.length)}</span></div></div>
+        <div class="kpi"><div class="lab">Ritmo</div><div class="val" style="font-size:1.1rem;color:${cc.ritmo.c}">${cc.ritmo.l}</div><div class="delta neutro">${pc(cc.pctTarefas, 0)} feitas · ${pc(cc.pctTempo, 0)} do prazo</div></div>
+      </div>
+      <div class="card">
+        ${grupo('Vencidas', G.venc, 'Nada vencido.')}
+        ${grupo('Hoje', G.hoje, 'Nada para hoje.')}
+        ${grupo('Próximos 7 dias', G.semana, 'Nada nesta semana.')}
+        ${grupo('Depois', G.depois, 'Nada mais agendado.')}
+        ${grupo('Feitas', G.feitas, 'Nenhuma ainda.')}
+        <div class="note" style="margin-top:12px">Quem marca: o consultor responsável ou um admin. Editar prazo, título ou apagar continua só na agenda, por admin.</div>
+      </div></div>`;
+    rep.insertBefore(sec, secTarefas);
+    sec.querySelectorAll('[data-concluir],[data-reabrir]').forEach(b => b.onclick = async () => {
+      const id = b.dataset.concluir || b.dataset.reabrir, feito = !!b.dataset.concluir;
+      b.disabled = true;
+      const { data, error } = await sb.from('agenda_eventos').update({ concluida: feito, concluida_em: feito ? new Date().toISOString() : null }).eq('id', id).select('id');
+      if (error || !data || !data.length) { b.disabled = false; alert(error ? error.message : 'Sem permissão: só o consultor responsável ou um admin marca este item.'); return; }
+      const it = itens.find(x => x.id === id); if (it) { it.concluida = feito; it.concluida_em = feito ? new Date().toISOString() : null; }
+      const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
+      cc.tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO); cc.rPend = reunioes.filter(r => r.data < hojeISO && !r.concluida);
+      cc.pctTarefas = tarefas.length ? 100 * tarefas.filter(t => t.concluida).length / tarefas.length : 0;
+      cc.ritmo = cc.pctTarefas >= cc.pctTempo - 10 ? { l: 'No ritmo', c: '#009150' } : cc.pctTarefas >= cc.pctTempo - 30 ? { l: 'Atrasando', c: '#E67E22' } : { l: 'Travada', c: '#C0392B' };
+      sec.remove(); buildTarefasTab(); montarAbas(true);
+    });
+  }
+
+  /* ===== abas: cada bloco do relatório vai para uma aba; cabeçalho e KPIs ficam sempre ===== */
+  function montarAbas(manter) {
+    const de = el => {
+      if (el.id === 'evolucao') return 'evolucao';
+      if (el.id === 'consultoria') return 'consultoria';
+      if (el.id === 'planoCons' || el.id === 'tarefas') return 'tarefas';
+      const h = el.querySelector && el.querySelector('h2'); const t = h ? h.textContent : '';
+      if (/Lista de resgate/i.test(t)) return 'clientes';
+      if (/prateleira|Sobrando parado|Posição de estoque|Compras e fornecedores/i.test(t)) return 'estoque';
+      if (el.tagName === 'SECTION' || el.tagName === 'FOOTER') return 'diag';
+      return null;   // hero, kpis, avisos: sempre visíveis
+    };
+    [...rep.children].forEach(el => { const a = de(el); if (a) el.setAttribute('data-aba', a); else el.removeAttribute('data-aba'); });
+    const cc = window.__consultoria, nAbertas = cc ? cc.tAtras.length + cc.rPend.length : 0;
+    const bd = $('abaTarefasN'); if (bd) { bd.textContent = nAbertas; bd.style.display = nAbertas ? '' : 'none'; }
+    const pedida = new URLSearchParams(location.search).get('aba');
+    const ligada = document.querySelector('.abas .aba.on');
+    const atual = manter && ligada ? ligada.dataset.aba : null;
+    const ir = (aba, rolar) => {
+      document.querySelectorAll('.abas .aba').forEach(b => b.classList.toggle('on', b.dataset.aba === aba));
+      rep.querySelectorAll('[data-aba]').forEach(el => el.classList.toggle('on', el.dataset.aba === aba));
+      if (rolar && window.parent !== window) window.parent.postMessage({ raiox: 'topo', fra: FRA }, location.protocol === 'file:' ? '*' : location.origin);
+      avisarPai();
+    };
+    document.querySelectorAll('.abas .aba').forEach(b => b.onclick = () => ir(b.dataset.aba, true));
+    ir(atual || (['diag', 'tarefas', 'clientes', 'estoque', 'evolucao', 'consultoria'].includes(pedida) ? pedida : 'diag'), false);
+    const ex = $('exportar');
+    if (ex && !ex.dataset.ligado) { ex.dataset.ligado = '1'; $('btnExportar').onclick = () => ex.classList.toggle('on'); document.addEventListener('click', e => { if (!ex.contains(e.target)) ex.classList.remove('on'); }); }
+  }
+
+  /* ===== modais: "fixed" dentro do iframe cai no meio do documento inteiro; abre onde o usuário clicou ===== */
+  function ajustarModais() {
+    let ultimoY = 0; document.addEventListener('click', e => { ultimoY = e.pageY; }, true);
+    const ov = $('mixModal'); if (!ov) return;
+    const reposiciona = () => { ov.style.position = 'absolute'; ov.style.top = '0'; ov.style.height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight) + 'px'; ov.style.alignItems = 'flex-start'; ov.style.paddingTop = Math.max(20, ultimoY - 140) + 'px'; };
+    ['abrirMixMes', 'abrirGateInfo'].forEach(fn => { const orig = window[fn]; if (typeof orig === 'function') window[fn] = function () { orig.apply(this, arguments); reposiciona(); }; });
   }
 
   /* ===== exportações (arquivos para mandar ao franqueado / guardar) ===== */
@@ -277,6 +366,5 @@
       cc.itens.forEach(i => { const venc = i.tipo === 'tarefa' ? i.prazo : i.data; l.push([i.tipo === 'tarefa' ? 'tarefa' : 'reuniao', '"' + String(i.titulo || '').replace(/"/g, '""') + '"', venc || '', i.concluida ? 'feita' : (venc && venc < hojeISO ? 'vencida' : 'a fazer'), i.concluida_em ? String(i.concluida_em).slice(0, 10) : ''].join(';')); });
       baixar('plano_consultoria_' + tag + '.csv', '﻿' + l.join('\r\n'), 'text/csv;charset=utf-8');
     };
-    ['btnEvolucao', 'btnConsultoria'].forEach(id => { const b = $(id); if (!b) return; b.onclick = () => { const el = $(id === 'btnEvolucao' ? 'evolucao' : 'consultoria'); if (el) el.scrollIntoView({ behavior: 'smooth' }); else alert('Esta loja não tem consultoria.'); }; });
   }
 })().catch(e => { console.error(e); const r = document.getElementById('report'); if (r) r.innerHTML = '<div class="wrap" style="padding:40px 20px"><div class="alerta-filial">Erro ao montar o relatório: ' + String(e.message || e).replace(/[<>]/g, '') + '</div></div>'; });

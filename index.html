@@ -10,7 +10,7 @@
 <!-- v7.1 · 03/09/2026 · remove aba Financeiro (dados unificados no painel Inteligência Comercial) -->
 <!-- v7.2 · 04/09/2026 · agenda aceita convite .ics (Google Calendar / Outlook) -->
 <!-- v7.6 · 09/09/2026 · pop-up de detalhes do item + trava de sobreposição de horário -->
-<!-- v7.9 · 14/09/2026 · link Raio-X no cabeçalho (raiox/), itens de consultoria na agenda
+<!-- v7.9.1 · 14/09/2026 · link "Consultoria" da agenda abre a aba Tarefas do Raio-X · v7.9 · link Raio-X no cabeçalho (raiox/), itens de consultoria na agenda
      (consultoria_id) sem Editar para não-admin — a trava real fica no banco. -->
 <!-- v7.7 · 13/09/2026 · aba Eventos (tipo evento da agenda_eventos): acompanhamento de tarefas,
      custo/ROI do Evento Betta e busca por loja. Absorve a visão "Histórico Betta" da Agenda. -->
@@ -2694,7 +2694,7 @@ function abrirDetalheEv(id){
     +(!ehT?'<a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a><button type="button" id="evmIcs">.ics</button>':'')
     +'<button type="button" id="evmDia">📂 Abrir no dia</button>'
     +(((e.por||e.dono)===usuarioAtual.id&&(!e.consultoriaId||usuarioAtual.admin))?'<button type="button" id="evmEd">✎ Editar</button>':'')
-    +(e.consultoriaId?'<a href="raiox/?fra='+(e.fra||'')+'" style="color:var(--foco);font-weight:700;padding:6px 10px">🩻 Consultoria</a>':'')
+    +(e.consultoriaId?'<a href="raiox/?fra='+(e.fra||'')+'&aba=tarefas" style="color:var(--foco);font-weight:700;padding:6px 10px">🩻 Consultoria</a>':'')
     +(((e.rec||e.recPai)&&(usuarioAtual.admin||(e.por||e.dono)===usuarioAtual.id))?'<button type="button" id="evmSerie" title="Remove as ocorrências futuras em aberto">↻ Excluir série</button>':'')
     +'<button type="button" id="evmFechar">Fechar</button></div>';
   $('evModal').innerHTML=h;

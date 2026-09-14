@@ -228,6 +228,35 @@ footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);fon
   .tbl-scroll{max-height:none;overflow:visible;border:none}
   tr{break-inside:avoid}
 }
+
+/* ===== ABAS DO RELATÓRIO (Central POP) ===== */
+.abas{display:flex;gap:4px;flex-wrap:wrap}
+.abas .aba{border:none;background:transparent;border-radius:9px;padding:8px 14px;font-weight:700;font-size:.84rem;color:var(--ink-2);display:flex;gap:6px;align-items:center}
+.abas .aba:hover{background:#EDF4F0;color:var(--verde-900)}
+.abas .aba.on{background:var(--verde-900);color:#fff}
+.abas .badge{background:var(--alerta);color:#fff;border-radius:99px;font-size:.66rem;padding:1px 7px;line-height:1.4}
+.abas .aba.on .badge{background:var(--amarelo);color:var(--ink)}
+.exportar{position:relative}
+.exportar .menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--linha);border-radius:12px;box-shadow:0 12px 30px rgba(16,35,28,.16);padding:8px;z-index:60;min-width:260px}
+.exportar.on .menu{display:flex;flex-direction:column;gap:4px}
+.exportar .menu .btn{text-align:left;width:100%}
+#report [data-aba]{display:none}
+#report [data-aba].on{display:block}
+.plano-cons .grupo{margin-top:14px}
+.plano-cons .grupo h4{font-size:.78rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);margin-bottom:6px}
+.item-plano{display:flex;gap:12px;align-items:flex-start;border-left:4px solid var(--linha);background:#FAFCFA;border-radius:10px;padding:10px 14px;margin-bottom:6px}
+.item-plano.venc{border-left-color:var(--alerta);background:#FFF7F6}
+.item-plano.hoje{border-left-color:var(--amarelo)}
+.item-plano.feita{opacity:.55}
+.item-plano.feita .tt{text-decoration:line-through}
+.item-plano .tt{font-weight:700;font-size:.86rem}
+.item-plano .sub{font-size:.74rem;color:var(--ink-2)}
+.item-plano .acao{margin-left:auto;flex:0 0 auto}
+.item-plano .acao button{border:1.5px solid var(--verde-600);background:#fff;color:var(--verde-900);border-radius:8px;padding:5px 10px;font-size:.74rem;font-weight:700}
+.item-plano .acao button.feita{border-color:var(--linha);color:var(--ink-2)}
+.resumo-tarefas{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+@media (max-width:560px){.resumo-tarefas{grid-template-columns:repeat(2,1fr)}}
+@media print{#report [data-aba]{display:block!important}.abas,.exportar{display:none!important}}
 </style>
 </head>
 <body>
@@ -284,18 +313,34 @@ footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);fon
 
 <!-- ============ BARRA DE AÇÕES ============ -->
 <div class="toolbar no-print" id="toolbar">
-  <div class="wrap">
-    <span class="tit" id="tbTitulo">Diagnóstico</span>
-    <button class="btn btn-sec" id="btnTarefas">Tarefas</button>
-    <button class="btn btn-sec" id="btnTarefasCSV">⬇ Tarefas (CSV)</button>
-    <button class="btn btn-sec" id="btnSnapshot">⬇ Instantâneo (JSON)</button>
-    <button class="btn btn-sec" id="btnCSV">⬇ Lista de resgate (CSV)</button>
+  <div class="wrap" style="padding:8px 20px 0;gap:6px">
+    <span class="tit" id="tbTitulo" style="width:100%;margin:0 0 4px">Diagnóstico</span>
+  </div>
+  <div class="wrap" style="padding:0 20px 8px;gap:6px">
+    <nav class="abas" id="abas">
+      <button class="aba on" data-aba="diag" type="button">Diagnóstico</button>
+      <button class="aba" data-aba="tarefas" type="button">Tarefas <b id="abaTarefasN" class="badge" style="display:none"></b></button>
+      <button class="aba" data-aba="clientes" type="button">Clientes</button>
+      <button class="aba" data-aba="estoque" type="button">Estoque</button>
+      <button class="aba" data-aba="evolucao" type="button">Evolução</button>
+      <button class="aba" data-aba="consultoria" type="button">Consultoria</button>
+    </nav>
+    <span style="flex:1"></span>
+    <div class="exportar" id="exportar">
+      <button class="btn btn-sec" id="btnExportar" type="button">⬇ Exportar ▾</button>
+      <div class="menu" id="menuExportar">
+        <button class="btn btn-pdf" id="btnPDF">⬇ Relatório em PDF</button>
+        <button class="btn btn-sec" id="btnCSV">⬇ Lista de resgate (CSV)</button>
+        <button class="btn btn-sec" id="btnTarefasCSV">⬇ Achados do raio-x (CSV)</button>
+        <button class="btn btn-sec" id="btnPlanoCSV">⬇ Plano da consultoria (CSV)</button>
+        <button class="btn btn-sec" id="btnEvolucaoCSV">⬇ Evolução mensal (CSV)</button>
+        <button class="btn btn-sec" id="btnSnapshot">⬇ Instantâneo (JSON)</button>
+      </div>
+    </div>
+    <button class="btn btn-sec" id="btnTarefas" style="display:none">Tarefas</button>
     <button class="btn btn-sec" id="btnNova" style="display:none">Nova análise</button>
-    <button class="btn btn-sec" id="btnEvolucao">Evolução</button>
-    <button class="btn btn-sec" id="btnConsultoria">Consultoria</button>
-    <button class="btn btn-sec" id="btnEvolucaoCSV">⬇ Evolução (CSV)</button>
-    <button class="btn btn-sec" id="btnPlanoCSV">⬇ Plano (CSV)</button>
-    <button class="btn btn-pdf" id="btnPDF">⬇ Exportar PDF</button>
+    <button class="btn btn-sec" id="btnEvolucao" style="display:none">Evolução</button>
+    <button class="btn btn-sec" id="btnConsultoria" style="display:none">Consultoria</button>
   </div>
 </div>
 
@@ -1889,6 +1934,6 @@ $('btnNova').addEventListener('click', () => {
 });
 })();
 </script>
-<script src="relatorio.js?v=2.0"></script>
+<script src="relatorio.js?v=2.1"></script>
 </body>
 </html>

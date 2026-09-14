@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Raio-X POP · Central POP</title>
+<!-- Raio-X POP v1.0 · 14/09/2026 · diagnóstico de lucratividade por loja dentro da Central POP.
+     Mesmo login da Central (projeto agenda.suporte). O cálculo roda no banco de compras pela rotina
+     rede-pop-jobs e grava só o resultado nas tabelas raiox_*. Esta página lê, mostra e inicia a
+     consultoria de faturamento (plano de 90 dias na agenda). Motor de estoque/ABC embutido para
+     os arquivos que o banco não tem. -->
+<link rel="icon" href="../icone-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --porcelana:#EEF3F0; --papel:#FFFFFF; --tinta:#14332A; --tinta-suave:#5A7268; --linha:#D3DFD8;
+  --laranja:#FF6B15; --laranja-suave:#FFEDE1; --petroleo:#00573F; --petroleo-suave:#E0EFE9;
+  --ambar:#B97E10; --ambar-suave:#FBF1DC; --foco:#5B4A9E; --foco-suave:#ECE8F8;
+  --verde:#009150; --verde-suave:#E2F2EA; --verde-claro:#A8D3C4; --verm:#C0392B; --verm-suave:#FBECEA;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--porcelana);color:var(--tinta);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+a{color:var(--petroleo)}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:0 18px 60px}
+/* topo */
+.topo{background:var(--papel);border-bottom:1px solid var(--linha)}
+.topo .in{max-width:1180px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topo img{height:40px}
+.topo h1{font-family:'Archivo',sans-serif;font-weight:900;font-size:19px;line-height:1.1}
+.topo h1 small{display:block;font-family:'Inter';font-weight:500;font-size:12px;color:var(--tinta-suave)}
+.topo .esp{flex:1}
+.topo .quem{font-size:12.5px;color:var(--tinta-suave)}
+.btn{border:none;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn.laranja{background:var(--laranja);color:#fff}
+.btn.claro{background:#fff;border:1.5px solid var(--linha);color:var(--tinta)}
+.btn.verde{background:var(--verde);color:#fff}
+.btn.verm{background:#fff;border:1.5px solid var(--verm);color:var(--verm)}
+.btn:disabled{opacity:.5;cursor:default}
+/* abas */
+.abas{display:flex;gap:2px;margin:14px 0 18px;border-bottom:1px solid var(--linha);overflow-x:auto}
+.aba{background:none;border:none;padding:10px 14px;font-weight:700;font-size:14px;color:var(--tinta-suave);border-bottom:3px solid transparent;white-space:nowrap}
+.aba.ativa{color:var(--tinta);border-bottom-color:var(--laranja)}
+.vista{display:none}.vista.ativa{display:block}
+/* componentes */
+.resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:12px 14px}
+.kpi .n{font-family:'Archivo',sans-serif;font-weight:800;font-size:26px;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--tinta-suave);margin-top:2px}
+.kpi.alerta .n{color:var(--verm)} .kpi.ok .n{color:var(--verde)} .kpi.atencao .n{color:#a34608}
+.painel{background:var(--papel);border:1px solid var(--linha);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.painel h3{font-family:'Archivo',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.painel h3 small{font-family:'Inter';text-transform:none;letter-spacing:0;font-weight:500;color:var(--tinta-suave);font-size:12px}
+.barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.barra .esp{flex:1}
+.barra input,.barra select{padding:8px 10px;border:1.5px solid var(--linha);border-radius:9px;background:#fff;font-size:13.5px}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:13px;font-weight:600;padding:5px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta-suave);border-radius:99px}
+.pill.on{background:var(--tinta);border-color:var(--tinta);color:#fff}
+.st{font-size:10px;font-weight:800;border-radius:99px;padding:2px 9px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.st.q1{background:var(--verde-suave);color:var(--verde)} .st.q2{background:var(--petroleo-suave);color:var(--petroleo)}
+.st.q3{background:var(--ambar-suave);color:var(--ambar)} .st.q4{background:var(--verm-suave);color:var(--verm)}
+.st.cinza{background:var(--porcelana);color:var(--tinta-suave)} .st.roxo{background:var(--foco-suave);color:var(--foco)}
+.st.lar{background:var(--laranja-suave);color:#a34608}
+.aviso{font-size:12.5px;color:var(--tinta-suave);margin-top:14px;text-align:center}
+.vazio{text-align:center;color:var(--tinta-suave);font-size:13.5px;padding:26px 12px;border:1px dashed var(--linha);border-radius:12px}
+/* tabela da rede */
+.tw{overflow-x:auto}
+table.rede{width:100%;border-collapse:collapse;font-size:13.5px}
+table.rede th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave);text-align:left;padding:8px 8px;border-bottom:1px solid var(--linha);white-space:nowrap;cursor:pointer;user-select:none}
+table.rede th.r,table.rede td.r{text-align:right}
+table.rede td{padding:9px 8px;border-bottom:1px solid var(--porcelana);vertical-align:middle}
+table.rede tr[data-fra]{cursor:pointer} table.rede tr[data-fra]:hover td{background:#F7FAF8}
+table.rede .t{font-weight:700} table.rede .s{font-size:12px;color:var(--tinta-suave)}
+.score{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:30px;border-radius:9px;font-family:'Archivo';font-weight:800;font-size:16px;padding:0 8px}
+.score.q1{background:var(--verde-suave);color:var(--verde)} .score.q2{background:var(--petroleo-suave);color:var(--petroleo)}
+.score.q3{background:var(--ambar-suave);color:var(--ambar)} .score.q4{background:var(--verm-suave);color:var(--verm)}
+.score.sn{background:var(--porcelana);color:var(--tinta-suave);font-size:11px;font-family:'Inter';font-weight:700}
+.mini{display:inline-block;width:64px;height:6px;border-radius:99px;background:var(--porcelana);vertical-align:middle;overflow:hidden;margin-right:6px}
+.mini i{display:block;height:100%;background:var(--verde)} .mini.m i{background:var(--ambar)} .mini.r i{background:var(--verm)}
+/* ficha */
+.ficha-topo{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.ficha-topo .big{font-family:'Archivo';font-weight:900;font-size:56px;line-height:1;min-width:120px}
+.ficha-topo .big small{display:block;font-family:'Inter';font-weight:600;font-size:12px;color:var(--tinta-suave);letter-spacing:.04em;text-transform:uppercase}
+.subs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;flex:1;min-width:280px}
+.sub{background:var(--porcelana);border-radius:10px;padding:8px 10px}
+.sub b{display:block;font-family:'Archivo';font-size:18px} .sub span{font-size:11px;color:var(--tinta-suave)}
+.sub .bar{height:5px;border-radius:99px;background:#fff;margin-top:5px;overflow:hidden}.sub .bar i{display:block;height:100%;background:var(--petroleo)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}.subs{grid-template-columns:repeat(3,1fr)}}
+.lin{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--porcelana);font-size:13.5px}
+.lin:last-child{border-bottom:none} .lin b{font-variant-numeric:tabular-nums}
+.tag{font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px}
+.tag.alta{background:var(--verm-suave);color:var(--verm)} .tag.media{background:var(--laranja-suave);color:#a34608} .tag.baixa{background:var(--ambar-suave);color:var(--ambar)}
+.tarefa{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--porcelana);font-size:13.5px}
+.tarefa:last-child{border-bottom:none} .tarefa .tx b{display:block} .tarefa .tx span{color:var(--tinta-suave);font-size:12.5px}
+.serie{display:flex;gap:3px;align-items:flex-end;height:120px;padding:6px 0 0}
+.serie .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;min-width:0}
+.serie .col .b{width:100%;background:var(--verde-claro);border-radius:4px 4px 0 0;position:relative}
+.serie .col .b i{position:absolute;left:0;right:0;bottom:0;background:var(--verde);border-radius:4px 4px 0 0}
+.serie .col .l{font-size:10px;color:var(--tinta-suave);white-space:nowrap}
+.serie .col.ref .b{background:var(--laranja-suave)} .serie .col.ref .b i{background:var(--laranja)}
+table.lista{width:100%;border-collapse:collapse;font-size:13px}
+table.lista th{font-size:11px;text-transform:uppercase;color:var(--tinta-suave);text-align:left;padding:6px 6px;border-bottom:1px solid var(--linha)}
+table.lista td{padding:6px 6px;border-bottom:1px solid var(--porcelana)}
+table.lista td.r,table.lista th.r{text-align:right}
+.banda{font-size:10px;font-weight:800;border-radius:99px;padding:2px 8px;color:#fff}
+.banda.b46{background:#FDAE25;color:#10231C} .banda.b61{background:#E67E22} .banda.b90{background:#C0392B}
+.mix{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--porcelana);margin:6px 0}
+.mix i{display:block;height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--tinta-suave)}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.hora{display:grid;grid-template-columns:repeat(15,1fr);gap:2px;align-items:end;height:70px}
+.hora div{background:var(--petroleo);border-radius:3px 3px 0 0;opacity:.85}
+.hora-l{display:grid;grid-template-columns:repeat(15,1fr);font-size:9px;color:var(--tinta-suave);text-align:center}
+/* modal */
+#mBg{position:fixed;inset:0;background:rgba(22,51,61,.5);display:none;align-items:center;justify-content:center;z-index:1200;padding:18px 14px}
+#mBg.on{display:flex}
+#mBox{background:var(--papel);border-radius:14px;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:16px 18px 14px;box-shadow:0 20px 60px rgba(14,90,100,.35)}
+#mBox h3{font-family:'Archivo';font-size:17px;margin:6px 0 8px}
+.form label{display:block;font-size:12px;font-weight:700;color:var(--tinta-suave);margin:10px 0 3px}
+.form input,.form select,.form textarea{width:100%;padding:7px 9px;border:1.5px solid var(--linha);border-radius:8px;background:#fff;font-size:13.5px}
+.form textarea{min-height:60px;resize:vertical}
+.acoes{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.drop{border:2px dashed var(--linha);border-radius:14px;padding:26px;text-align:center;background:#fff}
+.drop.on{border-color:var(--verde);background:var(--verde-suave)}
+.status{font-size:13px;margin-top:8px}.status.err{color:var(--verm)}.status.ok{color:var(--verde)}
+.toast{position:fixed;bottom:16px;right:16px;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:8px 14px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:1300}
+.toast.on{opacity:.94}
+/* login */
+#login{max-width:380px;margin:60px auto;background:var(--papel);border:1px solid var(--linha);border-radius:16px;padding:26px}
+#login img{height:44px;margin-bottom:14px}
+#login input{width:100%;padding:10px;border:1.5px solid var(--linha);border-radius:9px;margin:6px 0 12px}
+#login .err{color:var(--verm);font-size:13px;min-height:18px}
+@media(max-width:640px){.ficha-topo .big{font-size:44px}.wrap{padding:0 12px 60px}}
+@media print{.topo,.abas,.barra,.btn,.aviso{display:none!important}.painel{break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<div class="topo"><div class="in">
+  <a href="../"><img src="../logo-pop.png" alt="Rede POP"></a>
+  <h1>Raio-X POP <small>diagnóstico de lucratividade por loja · Central POP</small></h1>
+  <span class="esp"></span>
+  <span class="quem" id="quem"></span>
+  <a class="btn claro" href="../">← Central</a>
+  <button class="btn claro" id="btnSair" style="display:none">Sair</button>
+</div></div>
+
+<div id="login">
+  <img src="../logo-pop.png" alt="Rede POP">
+  <h2 style="font-family:'Archivo';font-size:17px;margin-bottom:4px">Entrar</h2>
+  <p style="font-size:13px;color:var(--tinta-suave)">Mesmo e-mail e senha da Central POP.</p>
+  <form id="loginForm">
+    <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username" required>
+    <input type="password" id="loginSenha" placeholder="Senha" autocomplete="current-password" required>
+    <button class="btn laranja" type="submit" id="loginBtn">Entrar</button>
+    <div class="err" id="loginErro"></div>
+  </form>
+</div>
+
+<div class="wrap" id="app" style="display:none">
+  <div class="abas" id="abas">
+    <button class="aba ativa" data-v="rede">Rede</button>
+    <button class="aba" data-v="loja" id="abaLoja">Loja</button>
+    <button class="aba" data-v="consult">Consultorias <span id="cntCons" class="st roxo" style="display:none"></span></button>
+    <button class="aba" data-v="arquivos">Arquivos de estoque</button>
+  </div>
+
+  <!-- ===== REDE ===== -->
+  <div class="vista ativa" id="v-rede">
+    <div class="resumo" id="rdResumo"></div>
+    <div class="barra">
+      <div class="pills" id="rdPills"></div>
+      <span class="esp"></span>
+      <select id="rdCons"><option value="">Todos os consultores</option></select>
+      <select id="rdUf"><option value="">Todas as UFs</option></select>
+      <input id="rdBusca" placeholder="FRA, loja ou cidade" style="min-width:180px">
+      <button class="btn claro" id="btnRecalcRede" style="display:none" title="Pede à rotina que recalcule a rede inteira na próxima rodada (a cada 2 horas)">↻ Recalcular rede</button>
+    </div>
+    <div class="painel"><div class="tw"><table class="rede" id="rdTab"></table></div></div>
+    <p class="aviso">Nota de 0 a 100 pela fórmula da Máquina de Análise de Lojas, sobre os últimos 12 meses fechados. Piores primeiro. Loja com mais de 20% da receita de produto sem custo cadastrado fica sem nota até corrigir o cadastro.</p>
+  </div>
+
+  <!-- ===== LOJA ===== -->
+  <div class="vista" id="v-loja">
+    <div id="ljConteudo"><div class="vazio">Escolha uma loja na aba Rede.</div></div>
+  </div>
+
+  <!-- ===== CONSULTORIAS ===== -->
+  <div class="vista" id="v-consult">
+    <div class="resumo" id="csResumo"></div>
+    <div class="painel"><h3>Consultorias de faturamento <small>o consultor inicia na ficha da loja; o plano de 90 dias nasce na agenda</small></h3><div id="csLista"></div></div>
+  </div>
+
+  <!-- ===== ARQUIVOS ===== -->
+  <div class="vista" id="v-arquivos">
+    <div class="painel">
+      <h3>Arquivos que o banco não tem <small>estoque parado · posição de estoque · ABC de produtos — exporte do One Pet em CSV</small></h3>
+      <div class="barra">
+        <label style="font-size:13px;font-weight:700">Loja <select id="arqFra" style="margin-left:6px"></select></label>
+      </div>
+      <div class="drop" id="arqDrop">
+        <input type="file" id="arqInput" accept=".csv,text/csv" multiple style="display:none">
+        <b>Arraste os arquivos aqui</b> ou <button class="btn claro" type="button" id="arqEscolher">escolher</button>
+        <p style="font-size:12.5px;color:var(--tinta-suave);margin-top:6px">Tudo é lido no seu navegador. Só o resumo (itens parados, ruptura, capital empatado) é guardado na Central — a lista completa de produtos não sai daqui.</p>
+        <div class="status" id="arqStatus"></div>
+      </div>
+      <div id="arqLista" style="margin-top:14px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="mBg"><div id="mBox"></div></div>
+<div class="toast" id="toast">salvo ✓</div>
+
+<script src="motor.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

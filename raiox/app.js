@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v1.2';
+const VERSAO = 'v2.0';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const br = (n, d = 0) => (isFinite(n) ? n : 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -18,7 +18,7 @@ const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').
 function toast(t) { const el = $('toast'); el.textContent = t || 'salvo ✓'; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 1400); }
 function erro(e) { console.error(e); alert('Erro: ' + (e.message || e)); }
 
-let sb, usuario, perfil, PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ESTQ = {}, FILA = new Set();
+let sb, usuario, perfil, PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ITENS = [], ESTQ = {}, FILA = new Set();
 let rdFiltro = 'todas', lojaAtual = null, rdOrd = { k: 'score', asc: true };
 const ehAdmin = () => !!(perfil && perfil.is_admin);
 const nomeDe = uid => ((PERFIS.find(p => p.id === uid) || {}).nome || '—');
@@ -67,14 +67,16 @@ async function fetchAll(builder, step = 1000) {
   return all;
 }
 async function carregarTudo() {
-  const [pf, fq, sn, cs, es, fl] = await Promise.all([
+  const [pf, fq, sn, cs, es, fl, it] = await Promise.all([
     sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor').order('criado_em'),
     sb.from('franquias').select('fra,nome,cidade,estado,consultor,ativo').order('fra'),
     fetchAll(() => sb.from('raiox_snapshots_atual').select('fra,mes_ref,janela_meses,perfil,calculado_em,score,sem_nota_motivo,sub,kpis,tarefas').order('fra')),
     sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }),
     fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')),
-    sb.from('raiox_fila').select('fra').is('processado_em', null)
+    sb.from('raiox_fila').select('fra').is('processado_em', null),
+    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data'))
   ]);
+  ITENS = it || [];
   PERFIS = (pf.data || []).filter(p => !/robo\.raiox/i.test(p.nome || ''));
   FRQ = (fq.data || []);
   SNAPS = {}; (sn || []).forEach(s => { SNAPS[s.fra] = s; });   // a vista já traz só o mais recente por loja
@@ -83,7 +85,7 @@ async function carregarTudo() {
   FILA = new Set((fl.data || []).map(f => f.fra));
 }
 async function recarregar(o) {
-  if (o === 'cons') { const { data } = await sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }); CONS = data || []; }
+  if (o === 'cons') { const { data } = await sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }); CONS = data || []; ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data')); }
   if (o === 'estoque') { const es = await fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')); ESTQ = {}; es.forEach(e => { const k = e.fra + '|' + e.tipo; if (!ESTQ[k]) ESTQ[k] = e; }); }
 }
 function quartis() {
@@ -184,16 +186,14 @@ async function abrirLoja(fra) {
   const box = $('ljConteudo');
   const s = SNAPS[fra], f = frqDe(fra);
   if (!s) { box.innerHTML = cabecaLoja(f, null) + '<div class="vazio">Esta loja ainda não tem raio-x: o banco de compras não recebeu o BI de vendas dela. Depois da carga, a rotina noturna calcula sozinha.</div>'; return; }
-  box.innerHTML = cabecaLoja(f, s) + '<div class="vazio">Carregando a ficha…</div>';
-  const [{ data: full, error }, { data: resg }] = await Promise.all([
-    sb.from('raiox_snapshots').select('dados').eq('fra', fra).eq('mes_ref', s.mes_ref).single(),
-    sb.from('raiox_resgate').select('*').eq('fra', fra).eq('mes_ref', s.mes_ref).order('gasto_mes', { ascending: false })
-  ]);
-  if (error) return erro(error);
-  const R = full.dados;
-  box.innerHTML = cabecaLoja(f, s) + fichaHTML(f, s, R, resg || []);
-  ligarFicha(f, s, R, resg || []);
+  // o relatório completo (motor visual original da máquina) roda em relatorio.html, alimentado pelo banco
+  box.innerHTML = cabecaLoja(f, s) + `<div class="painel" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
+  ligarFicha(f, s, { tarefas: s.tarefas || [] });
 }
+window.addEventListener('message', ev => {
+  if (ev.origin !== location.origin || !ev.data || ev.data.raiox !== 'altura') return;
+  const fr = $('ljFrame'); if (fr && ev.data.fra === lojaAtual) fr.style.height = Math.max(400, ev.data.altura + 24) + 'px';
+});
 function cabecaLoja(f, s) {
   const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDoConsultor(f.consultor);
   const podeIniciar = !c && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
@@ -238,113 +238,10 @@ const TXT_TAREFA = {
 const txtTarefa = t => { try { return TXT_TAREFA[t.chave] ? TXT_TAREFA[t.chave](t.dados || {}) : esc(t.chave); } catch (_) { return esc(t.chave); } };
 const sevOk = s => ['alta', 'media', 'baixa'].includes(s) ? s : 'baixa';
 
-function fichaHTML(f, s, R, resg) {
-  const k = s.kpis;
-  const serie = R.mensal || [];
-  const maxR = Math.max(...serie.map(m => m.receita), 1);
-  const CORES = ['#00573F', '#009150', '#A8D3C4', '#FF6B15', '#FDAE25', '#5B4A9E', '#E67E22', '#8A5A00', '#C0392B', '#5A7268'];
-  const mix = (R.mix9 || []);
-  const bandas = R.buckets || {}, geral = R.bucketsGeral || {};
-  const est = { par: ESTQ[f.fra + '|estoqueparado'], atu: ESTQ[f.fra + '|estoqueatual'], abc: ESTQ[f.fra + '|abcprod'] };
-  let h = '';
-  // 1 · números do período
-  h += `<div class="painel"><h3>Números do período <small>${mesBR(k.mes_ini)} a ${mesBR(s.mes_ref)} · ${k.meses} meses · ${br(k.linhas)} linhas de venda · calculado ${dBR(s.calculado_em)}</small></h3>
-    <div class="resumo">
-      <div class="kpi"><div class="n">${kmil(k.receita_mes)}</div><div class="l">Receita média / mês</div></div>
-      <div class="kpi"><div class="n">${kmil(k.lucro_mes)}</div><div class="l">Lucro bruto / mês</div></div>
-      <div class="kpi"><div class="n">${pc(k.margem_adj)}</div><div class="l">Margem ajustada <span title="reportada: ${pc(k.margem_rep)} — inflada pelas linhas sem custo">(rep. ${pc(k.margem_rep, 0)})</span></div></div>
-      <div class="kpi"><div class="n">${money(k.ticket)}</div><div class="l">Ticket médio · ${br(k.cupons_mes, 0)} cupons/mês</div></div>
-      <div class="kpi${k.ident_pct < 60 ? ' alerta' : ''}"><div class="n">${pc(k.ident_pct, 0)}</div><div class="l">Receita identificada</div></div>
-      <div class="kpi${k.cz_rec_pct > 5 ? ' alerta' : ''}"><div class="n">${pc(k.cz_rec_pct)}</div><div class="l">Receita de produto sem custo</div></div>
-    </div>
-    <div class="serie">${serie.map((m, i) => `<div class="col${i === serie.length - 1 ? ' ref' : ''}" title="${m.label}: receita ${money(m.receita)} · lucro ${money(m.lucro)} · ${br(m.cupons)} cupons"><div class="b" style="height:${Math.max(3, 100 * m.receita / maxR)}px"><i style="height:${Math.max(0, 100 * (m.lucro / Math.max(m.receita, 1)))}%"></i></div><div class="l">${m.label.slice(0, 3)}</div></div>`).join('')}</div>
-    <div class="leg" style="margin-top:6px"><span><i style="background:var(--verde-claro)"></i>receita</span><span><i style="background:var(--verde)"></i>lucro (proporção)</span></div></div>`;
-  // 2 · vazamentos + metas
-  h += `<div class="grid2"><div class="painel"><h3>Vazamentos <small>R$ por mês, calculados dos dados da loja</small></h3>
-    <div class="lin"><span>Farmácia abaixo do pico</span><b>${money(R.v1)}</b></div>
-    <div class="lin"><span>Clientes de ração inativos (${br(R.inativos)} × ${money(R.gastoMensalHist)} × 15%)</span><b>${money(R.v2)}</b></div>
-    <div class="lin"><span>Banho avulso sem pacote (${br(R.metaPacotes)} clientes)</span><b>${money(R.v3)}</b></div>
-    <div class="lin"><span>Margem no balcão (vendedor abaixo dos demais)</span><b>${money(R.v4)}</b></div>
-    <div class="lin" style="font-weight:800"><span>Total recuperável</span><b>${money(R.vazTotal)}/mês</b></div></div>
-    <div class="painel"><h3>Metas <small>derivadas do histórico da própria loja</small></h3>
-    <div class="lin"><span>Receita · piso</span><b>${money(R.metas.receita.piso)}</b></div>
-    <div class="lin"><span>Receita · meta</span><b>${money(R.metas.receita.meta)}</b></div>
-    <div class="lin"><span>Receita · ouro</span><b>${money(R.metas.receita.ouro)}</b></div>
-    <div class="lin"><span>Lucro · meta</span><b>${money(R.metas.lucro.meta)}</b></div>
-    <div class="lin"><span>Cupons · meta</span><b>${br(R.metas.cupons.meta, 0)}/mês</b></div>
-    <div class="lin"><span>Resgatar clientes de ração</span><b>${br(R.metas.resgateAlvo)}</b></div>
-    <div class="lin"><span>Pacotes de B&T em 30 dias</span><b>${br(R.metas.btAlvo30)} de ${br(R.metas.btAlvoTotal)}</b></div></div></div>`;
-  // 3 · plano de acao
-  h += `<div class="painel"><h3>Plano de ação sugerido <small>${R.tarefas.length} item(ns) · ordem de gravidade</small></h3>` +
-    (R.tarefas.length ? R.tarefas.map(t => `<div class="tarefa"><span class="tag ${sevOk(t.sev)}" style="align-self:flex-start;margin-top:2px">${sevOk(t.sev)}</span><div class="tx"><b>${txtTarefa(t)}</b></div></div>`).join('') : '<div class="vazio">Nenhum alerta. Os indicadores estão dentro do esperado.</div>') + '</div>';
-  // 4 · mix + clientes
-  h += `<div class="grid2"><div class="painel"><h3>Mix por grupo <small>serviços: ${pc(R.servShare)} da receita</small></h3>
-    <div class="mix">${mix.map((g, i) => `<i style="width:${g.share}%;background:${CORES[i % CORES.length]}" title="${esc(g.grupo)} ${pc(g.share)} · margem ${pc(g.margem, 0)}"></i>`).join('')}</div>
-    <div class="leg">${mix.map((g, i) => `<span><i style="background:${CORES[i % CORES.length]}"></i>${esc(g.grupo)} ${pc(g.share, 0)} · mg ${pc(g.margem, 0)}</span>`).join('')}</div>
-    ${R.piorGrupoNeg ? `<div class="lin" style="margin-top:8px"><span>Grupo com mais prejuízo em linhas</span><b>${esc(R.piorGrupoNeg[0])} · ${money(R.piorGrupoNeg[1])}</b></div>` : ''}
-    <div class="lin"><span>Delivery</span><b>${pc(R.entrega.share)} da receita · ticket ${money(R.entrega.ticket)} (${R.entrega.premio >= 0 ? '+' : ''}${pc(R.entrega.premio, 0)} vs loja)</b></div>
-    <div class="lin"><span>Itens com desconto</span><b>${pc(R.descItens)} · ${money(R.descRS)} no período</b></div></div>
-    <div class="painel"><h3>Clientes <small>${br(R.cliTot)} identificados · ${br(R.ativosUlt)} ativos no último mês</small></h3>
-    <div class="lin"><span>Ciclo de recompra de ração</span><b>${R.ciclo ? R.ciclo + ' dias' : '—'}</b></div>
-    <div class="lin"><span>Carteira de ração em dia (≤45 d)</span><b>${pc(k.ret45, 0)} de ${br(R.cliRac)}</b></div>
-    <div class="lin"><span>Ração · resgatar / urgente / reativar</span><b>${br(bandas['46-60'])} / ${br(bandas['61-90'])} / ${br(bandas['90+'])}</b></div>
-    <div class="lin"><span>Geral · 90+ dias sem comprar</span><b>${br(geral['90+'])}</b></div>
-    <div class="lin"><span>Sem telefone no cadastro</span><b>${br(R.semTel)}</b></div>
-    <div class="lin"><span>Banho e tosa · clientes / com produto</span><b>${br(R.btCli)} / ${pc(R.crossBT, 0)}</b></div>
-    <div class="lin"><span>Gasto médio: cliente de B&T × sem B&T</span><b>${money(R.gastoBT)} × ${money(R.gastoN)}</b></div></div></div>`;
-  // 5 · equipe + horario
-  const vend = (R.vend || []).slice(0, 8);
-  h += `<div class="grid2"><div class="painel"><h3>Vendedores <small>com ≥10% dos cupons</small></h3>${vend.length ? `<table class="lista"><tr><th>Nome</th><th class="r">Receita</th><th class="r">Ticket</th><th class="r">Margem</th><th class="r">Desc.</th></tr>${vend.map(v => `<tr><td>${esc(v.nome)}</td><td class="r">${kmil(v.rec)}</td><td class="r">${money(v.ticket)}</td><td class="r">${pc(v.margem, 0)}</td><td class="r">${pc(v.descPct, 0)}</td></tr>`).join('')}</table>` : '<div class="vazio">Sem vendedor registrado.</div>'}</div>
-    <div class="painel"><h3>Horário de pico <small>${R.horaSemana ? 'cupons por hora · cobertura ' + pc(R.horaSemana.cobertura, 0) : 'sem hora de pagamento nesta carga'}</small></h3>
-    ${R.horaSemana ? `<div class="hora">${R.horaSemana.horaCount.map(c => `<div style="height:${Math.max(2, 100 * c / Math.max(...R.horaSemana.horaCount, 1))}%" title="${c} cupons"></div>`).join('')}</div><div class="hora-l">${R.horaSemana.horas.map(x => `<span>${x}</span>`).join('')}</div>
-    <div class="lin" style="margin-top:8px"><span>Dias</span><b>${R.horaSemana.dias.map((d, i) => d + ' ' + br(R.horaSemana.diaCount[i])).join(' · ')}</b></div>` : '<div class="vazio">A hora do pagamento entra com a carga nova do BI (v6.24 do painel).</div>'}</div></div>`;
-  // 6 · governanca + compras
-  const g = R.governanca || {};
-  h += `<div class="grid2"><div class="painel"><h3>Governança do cadastro</h3>
-    <div class="lin"><span>Canal de venda preenchido</span><b>${pc(g.canalPct, 0)}</b></div>
-    <div class="lin"><span>Bairro preenchido</span><b>${pc(g.bairroPct, 0)}</b></div>
-    <div class="lin"><span>Avaliação do banho</span><b>${g.avalPct == null ? 'não medido pelo BI' : pc(g.avalPct, 0)}</b></div>
-    <div class="lin"><span>Operador do B&T</span><b>${g.opBTPct == null ? 'não medido pelo BI' : pc(g.opBTPct, 0)}</b></div>
-    <div class="lin"><span>Veterinário</span><b>${g.temVet ? pc(g.vetPct, 0) + (g.vetSuspeito ? ' · suspeito' : '') : 'sem consultório'}</b></div></div>
-    <div class="painel"><h3>Compras <small>${R.compras ? 'relatório de entradas · ' + dBR(R.compras.periodoIni) + ' a ' + dBR(R.compras.periodoFim) : 'sem entradas no período'}</small></h3>
-    ${R.compras ? `<div class="lin"><span>Total comprado</span><b>${kmil(R.compras.totalComprado)}</b></div><div class="lin"><span>Fornecedores · top 3</span><b>${br(R.compras.nFornecedores)} · ${pc(R.compras.top3Share, 0)}</b></div>
-    ${(R.compras.porFornecedor || []).slice(0, 5).map(x => `<div class="lin"><span>${esc(x.nome)}</span><b>${pc(x.share, 0)}</b></div>`).join('')}
-    ${(R.compras.custoSubindo || []).length ? `<div class="lin"><span>Custo subindo &gt;15%</span><b>${br(R.compras.custoSubindo.length)} item(ns)</b></div>` : ''}` : '<div class="vazio">Sem relatório de entradas carregado para esta loja.</div>'}</div></div>`;
-  // 7 · estoque (uploads)
-  h += `<div class="painel"><h3>Estoque e ruptura <small>dos arquivos enviados na aba Arquivos</small></h3>` + resumoEstoqueHTML(est) + '</div>';
-  // 8 · resgate
-  h += `<div class="painel"><h3>Lista de resgate <small>${br(resg.length)} clientes inativos com maior gasto · código do One Pet + telefone, sem nome</small>
-    <span style="flex:1"></span><div class="pills" id="rgPills"><button class="pill on" data-b="" type="button">Todos</button><button class="pill" data-b="46-60" type="button">Resgatar 46–60</button><button class="pill" data-b="61-90" type="button">Urgente 61–90</button><button class="pill" data-b="90+" type="button">Reativar 90+</button><button class="pill" data-b="racao" type="button">Só ração</button></div>
-    <button class="btn claro" id="btnResgCSV" type="button">⬇ CSV para a loja</button></h3>
-    <div class="tw" id="rgBox"></div></div>`;
-  return h;
-}
-function resumoEstoqueHTML(est) {
-  let h = '';
-  if (est.par) { const r = est.par.resumo; h += `<div class="lin"><span>Estoque parado (${dBR(est.par.enviado_em)}) · ${br(r.nCritico || 0)} críticos, ${br(r.nMuitoLento || 0)} muito lentos</span><b>${kmil(r.totalParadoValor || 0)} empatados</b></div>`; }
-  if (est.abc) { const r = est.abc.resumo; h += `<div class="lin"><span>Ruptura classe A (${dBR(est.abc.enviado_em)}) · ${br(r.nZer || 0)} de ${br(r.totalA || 0)} zerados${r.nNeg ? ', ' + br(r.nNeg) + ' negativos' : ''}</span><b>${kmil(r.valZer || 0)} vendidos</b></div>`; }
-  if (est.atu) { const r = est.atu.resumo; h += `<div class="lin"><span>Posição de estoque (${dBR(est.atu.enviado_em)}) · ${br(r.nItens || 0)} itens${r.nAbaixoCusto ? ' · ' + br(r.nAbaixoCusto) + ' abaixo do custo' : ''}</span><b>${kmil(r.valorEstoque || 0)}</b></div>`; }
-  return h || '<div class="vazio">Nenhum arquivo de estoque enviado para esta loja. Use a aba Arquivos de estoque.</div>';
-}
-function ligarFicha(f, s, R, resg) {
-  let banda = '';
-  const desenharResg = () => {
-    const lista = resg.filter(c => banda === '' ? true : banda === 'racao' ? c.racao : c.banda === banda);
-    $('rgBox').innerHTML = lista.length ? `<table class="lista"><tr><th>Código</th><th>Telefone</th><th class="r">Dias</th><th>Faixa</th><th class="r">Compras</th><th class="r">Gasto/mês</th><th>Ração</th><th>B&T</th><th>Última</th></tr>` +
-      lista.slice(0, 150).map(c => `<tr><td class="num">${esc(c.cliente_cod)}</td><td class="num">${esc(c.telefone || '—')}</td><td class="r num">${c.dias}</td><td><span class="banda b${c.banda.replace('+', '').slice(0, 2)}">${c.banda}</span></td><td class="r">${c.compras}</td><td class="r">${money(c.gasto_mes)}</td><td>${c.racao ? '●' : ''}</td><td>${c.bt ? '●' : ''}</td><td>${dBR(c.ultima)}</td></tr>`).join('') + '</table>' + (lista.length > 150 ? `<p class="aviso">Mostrando 150 de ${lista.length}. O CSV leva todos.</p>` : '') : '<div class="vazio">Ninguém nessa faixa.</div>';
-  };
-  $('rgPills').querySelectorAll('.pill').forEach(b => b.onclick = () => { banda = b.dataset.b; $('rgPills').querySelectorAll('.pill').forEach(x => x.classList.toggle('on', x === b)); desenharResg(); });
-  desenharResg();
-  $('btnResgCSV').onclick = () => {
-    const linhas = ['codigo_cliente;telefone;dias_sem_comprar;faixa;compras;gasto_total;gasto_mes;racao;banho_tosa;ultima_compra'];
-    const seg = v => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t : t; };
-    resg.forEach(c => linhas.push([seg(c.cliente_cod), seg(c.telefone), c.dias, c.banda, c.compras, String(c.gasto).replace('.', ','), String(c.gasto_mes).replace('.', ','), c.racao ? 'sim' : '', c.bt ? 'sim' : '', dBR(c.ultima)].join(';')));
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = `resgate_FR${f.fra}_${s.mes_ref}.csv`; a.click();
-  };
+function ligarFicha(f, s, R) {
   const bi = $('btnIniciarCons'); if (bi) bi.onclick = () => abrirModalConsultoria(f, s, R);
   const br_ = $('btnRecalc'); if (br_) br_.onclick = async () => { const { error } = await sb.from('raiox_fila').insert({ fra: f.fra, pedido_por: usuario.id }); if (error) return erro(error); FILA.add(f.fra); br_.disabled = true; br_.textContent = '↻ na fila'; toast('pedido registrado — a rotina atende em até 2 h'); };
-  const bp = $('btnImprimir'); if (bp) bp.onclick = () => window.print();
-  // ao trocar de loja, a aba "Loja" volta ao topo
+  const bp = $('btnImprimir'); if (bp) bp.onclick = () => { const fr = $('ljFrame'); if (fr && fr.contentWindow) fr.contentWindow.print(); else window.print(); };
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -406,15 +303,40 @@ async function criarConsultoria(f, s, R, itens) {
     await recarregar('cons'); desenharRede(); desenharConsultorias(); abrirLoja(f.fra);
   } catch (e) { erro(e); $('csOk').disabled = false; }
 }
+/* andamento de uma consultoria a partir dos itens da agenda */
+function andamento(c) {
+  const hj = hojeISO(), its = ITENS.filter(i => i.consultoria_id === c.id);
+  const tarefas = its.filter(i => i.tipo === 'tarefa'), reunioes = its.filter(i => i.tipo !== 'tarefa');
+  const tFeitas = tarefas.filter(t => t.concluida), tVenc = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hj);
+  const rPass = reunioes.filter(r => r.data < hj), rFeitas = rPass.filter(r => r.concluida), rPend = rPass.filter(r => !r.concluida), rProx = reunioes.filter(r => r.data >= hj);
+  const total = Math.max(1, Math.round((new Date(c.fim_previsto || c.inicio) - new Date(c.inicio)) / 864e5));
+  const decorrido = Math.max(0, Math.min(total, Math.round((new Date(hj) - new Date(c.inicio)) / 864e5)));
+  const pctTempo = 100 * decorrido / total, pctTarefas = tarefas.length ? 100 * tFeitas.length / tarefas.length : 0;
+  const s = SNAPS[c.fra]; const dScore = (s && s.score != null && c.score_inicial != null) ? s.score - c.score_inicial : null;
+  let ritmo = c.status !== 'ativa' ? { l: c.status, cls: 'cinza' } : pctTarefas >= pctTempo - 10 ? { l: 'no ritmo', cls: 'q1' } : pctTarefas >= pctTempo - 30 ? { l: 'atrasando', cls: 'lar' } : { l: 'travada', cls: 'q4' };
+  if (c.status === 'ativa' && rPend.length >= 2) ritmo = { l: 'sem reunião', cls: 'q4' };
+  const dias = Math.round((new Date(c.fim_previsto) - new Date(hj)) / 864e5);
+  return { its, tarefas, reunioes, tFeitas, tVenc, rPass, rFeitas, rPend, rProx, total, decorrido, pctTempo, pctTarefas, dScore, ritmo, dias, semEvolucao: c.status === 'ativa' && decorrido >= 45 && dScore != null && dScore <= 0 };
+}
 function desenharConsultorias() {
   const ativas = CONS.filter(c => c.status === 'ativa'), concl = CONS.filter(c => c.status === 'concluida').length, canc = CONS.filter(c => c.status === 'cancelada').length;
   $('cntCons').textContent = ativas.length; $('cntCons').style.display = ativas.length ? '' : 'none';
-  $('csResumo').innerHTML = `<div class="kpi ok"><div class="n">${ativas.length}</div><div class="l">Ativas</div></div><div class="kpi"><div class="n">${concl}</div><div class="l">Concluídas</div></div><div class="kpi"><div class="n">${canc}</div><div class="l">Canceladas</div></div>`;
+  const AND = {}; CONS.forEach(c => { AND[c.id] = andamento(c); });
+  const travadas = ativas.filter(c => AND[c.id].ritmo.cls === 'q4').length, vencidas = ativas.reduce((n, c) => n + AND[c.id].tVenc.length, 0), reunPend = ativas.reduce((n, c) => n + AND[c.id].rPend.length, 0);
+  const subiram = ativas.filter(c => AND[c.id].dScore != null && AND[c.id].dScore > 0).length, comNota = ativas.filter(c => AND[c.id].dScore != null).length;
+  $('csResumo').innerHTML = `<div class="kpi ok"><div class="n">${ativas.length}</div><div class="l">Ativas</div></div><div class="kpi${travadas ? ' alerta' : ''}"><div class="n">${travadas}</div><div class="l">Travadas / sem reunião</div></div><div class="kpi${vencidas ? ' atencao' : ''}"><div class="n">${vencidas}</div><div class="l">Tarefas vencidas</div></div><div class="kpi${reunPend ? ' atencao' : ''}"><div class="n">${reunPend}</div><div class="l">Reuniões sem confirmação</div></div><div class="kpi"><div class="n">${comNota ? subiram + '/' + comNota : '—'}</div><div class="l">Lojas com nota subindo</div></div><div class="kpi"><div class="n">${concl}</div><div class="l">Concluídas · ${canc} canceladas</div></div>`;
   const box = $('csLista');
-  if (!CONS.length) { box.innerHTML = '<div class="vazio">Nenhuma consultoria ainda. Abra a ficha de uma loja e use "Iniciar consultoria de faturamento".</div>'; return; }
-  box.innerHTML = `<div class="tw"><table class="rede"><thead><tr><th>Loja</th><th>Consultor</th><th>Início</th><th>Fim previsto</th><th class="r">Nota inicial</th><th class="r">Nota atual</th><th>Status</th><th></th></tr></thead><tbody>` +
-    CONS.map(c => { const f = frqDe(c.fra), s = SNAPS[c.fra]; const dias = Math.round((new Date(c.fim_previsto) - new Date()) / 864e5);
-      return `<tr data-fra="${c.fra}"><td><div class="t">${esc(f.nome)}</div><div class="s">FRA ${c.fra}</div></td><td>${esc(primeiro(nomeDe(c.consultor_id)))}</td><td>${dBR(c.inicio)}</td><td>${dBR(c.fim_previsto)}${c.status === 'ativa' ? ` <span class="s">(${dias >= 0 ? dias + ' d' : 'venceu'})</span>` : ''}</td><td class="r num">${c.score_inicial ?? '—'}</td><td class="r num">${s && s.score != null ? s.score : '—'}</td><td><span class="st ${c.status === 'ativa' ? 'roxo' : c.status === 'concluida' ? 'q1' : 'cinza'}">${c.status}</span></td>
+  if (!CONS.length) { box.innerHTML = '<div class="vazio">Nenhuma consultoria ainda. Abra a ficha de uma loja e use "Iniciar consultoria de faturamento".</div>'; $('csGargalos').innerHTML = '<div class="vazio">Sem consultorias, sem gargalos.</div>'; return; }
+  const barra = (p, cls) => `<span class="mini ${cls || ''}"><i style="width:${Math.max(0, Math.min(100, p))}%"></i></span>${br(p, 0)}%`;
+  box.innerHTML = `<div class="tw"><table class="rede"><thead><tr><th>Loja</th><th>Consultor</th><th>Período</th><th>Ritmo</th><th>Tarefas</th><th>Reuniões</th><th class="r">Nota</th><th>Próximo passo</th><th></th></tr></thead><tbody>` +
+    CONS.map(c => { const f = frqDe(c.fra), a = AND[c.id];
+      const prox = a.rProx[0] ? '📅 ' + dBR(a.rProx[0].data) + ' ' + esc(a.rProx[0].titulo) : (a.tarefas.filter(t => !t.concluida).sort((x, y) => String(x.prazo).localeCompare(String(y.prazo)))[0] ? '☐ ' + dBR(a.tarefas.filter(t => !t.concluida).sort((x, y) => String(x.prazo).localeCompare(String(y.prazo)))[0].prazo) + ' ' + esc(a.tarefas.filter(t => !t.concluida).sort((x, y) => String(x.prazo).localeCompare(String(y.prazo)))[0].titulo) : '—');
+      return `<tr data-fra="${c.fra}"><td><div class="t">${esc(f.nome)}</div><div class="s">FRA ${c.fra}</div></td><td>${esc(primeiro(nomeDe(c.consultor_id)))}</td><td><div class="t">${dBR(c.inicio)} → ${dBR(c.fim_previsto)}</div><div class="s">${c.status === 'ativa' ? 'dia ' + a.decorrido + ' de ' + a.total + (a.dias < 0 ? ' · venceu' : '') : c.status}</div></td>
+        <td><span class="st ${a.ritmo.cls}">${a.ritmo.l}</span>${a.semEvolucao ? '<div class="s" style="color:var(--verm)">nota não subiu</div>' : ''}</td>
+        <td><div class="t">${barra(a.pctTarefas, a.tVenc.length ? 'r' : '')}</div><div class="s">${a.tFeitas.length}/${a.tarefas.length} feitas${a.tVenc.length ? ' · <b style="color:var(--verm)">' + a.tVenc.length + ' vencida(s)</b>' : ''}</div></td>
+        <td><div class="t">${a.rFeitas.length}/${a.reunioes.length}</div><div class="s">${a.rPend.length ? '<b style="color:#a34608">' + a.rPend.length + ' passada(s) sem confirmação</b>' : a.rProx.length + ' agendada(s)'}</div></td>
+        <td class="r num">${c.score_inicial ?? '—'} → ${SNAPS[c.fra] && SNAPS[c.fra].score != null ? SNAPS[c.fra].score : '—'}${a.dScore != null ? `<div class="s" style="color:${a.dScore > 0 ? 'var(--verde)' : a.dScore < 0 ? 'var(--verm)' : 'inherit'}">${a.dScore > 0 ? '+' : ''}${a.dScore}</div>` : ''}</td>
+        <td style="font-size:12px;max-width:220px">${prox}</td>
         <td>${ehAdmin() && c.status === 'ativa' ? `<button class="btn claro" data-enc="${c.id}" type="button" style="padding:4px 10px;font-size:12px">Encerrar</button> <button class="btn verm" data-canc="${c.id}" type="button" style="padding:4px 10px;font-size:12px">Cancelar</button>` : ''}</td></tr>`; }).join('') + '</tbody></table></div>';
   box.querySelectorAll('tr[data-fra]').forEach(tr => tr.onclick = ev => { if (ev.target.closest('button')) return; abrirLoja(+tr.dataset.fra); });
   box.querySelectorAll('[data-enc],[data-canc]').forEach(b => b.onclick = async () => {
@@ -423,6 +345,26 @@ function desenharConsultorias() {
     const { error } = await sb.from('raiox_consultorias').update({ status, encerrada_em: new Date().toISOString(), encerrada_por: usuario.id }).eq('id', id);
     if (error) return erro(error); await recarregar('cons'); desenharConsultorias(); desenharRede(); toast();
   });
+  // ---- gargalos da rede: quais tarefas mais vencem, quais consultores acumulam atraso, lojas sem evolução
+  const porTarefa = {}, porCons = {};
+  ativas.forEach(c => { const a = AND[c.id];
+    a.tVenc.forEach(t => { const k = t.titulo; porTarefa[k] = porTarefa[k] || { n: 0, lojas: new Set() }; porTarefa[k].n++; porTarefa[k].lojas.add(c.fra); });
+    const pc_ = porCons[c.consultor_id] = porCons[c.consultor_id] || { n: 0, venc: 0, reun: 0, trav: 0 }; pc_.n++; pc_.venc += a.tVenc.length; pc_.reun += a.rPend.length; if (a.ritmo.cls === 'q4') pc_.trav++; });
+  const topT = Object.entries(porTarefa).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+  const topC = Object.entries(porCons).sort((a, b) => (b[1].venc + b[1].reun) - (a[1].venc + a[1].reun));
+  const semEvo = ativas.filter(c => AND[c.id].semEvolucao), semBI = ativas.filter(c => SNAPS[c.fra] && SNAPS[c.fra].mes_ref === c.mes_ref_base && AND[c.id].decorrido >= 40);
+  $('csGargalos').innerHTML = !ativas.length ? '<div class="vazio">Nenhuma consultoria ativa.</div>' : `<div class="grid2">
+    <div><h3 style="font-size:14px;margin:0 0 6px">Tarefas que mais vencem</h3>${topT.length ? `<table class="lista"><tr><th>Tarefa</th><th class="r">Vencidas</th><th class="r">Lojas</th></tr>${topT.map(([t, v]) => `<tr><td>${esc(t)}</td><td class="r num">${v.n}</td><td class="r num">${v.lojas.size}</td></tr>`).join('')}</table>` : '<div class="vazio">Nenhuma tarefa vencida.</div>'}</div>
+    <div><h3 style="font-size:14px;margin:0 0 6px">Por consultor</h3><table class="lista"><tr><th>Consultor</th><th class="r">Ativas</th><th class="r">Tarefas vencidas</th><th class="r">Reuniões sem conf.</th><th class="r">Travadas</th></tr>${topC.map(([id, v]) => `<tr><td>${esc(nomeDe(id))}</td><td class="r num">${v.n}</td><td class="r num">${v.venc}</td><td class="r num">${v.reun}</td><td class="r num">${v.trav}</td></tr>`).join('')}</table></div></div>
+    ${semEvo.length ? `<div class="lin" style="margin-top:10px"><span>Lojas com 45+ dias de consultoria e nota que não subiu</span><b>${semEvo.map(c => 'FRA ' + c.fra).join(', ')}</b></div>` : ''}
+    ${semBI.length ? `<div class="lin"><span>Consultorias com 40+ dias e raio-x ainda do mês inicial (falta carregar o BI novo)</span><b>${semBI.map(c => 'FRA ' + c.fra).join(', ')}</b></div>` : ''}
+    <p class="aviso" style="margin-top:10px">Ritmo = % de tarefas feitas contra % do prazo decorrido (no ritmo: até 10 pontos abaixo · atrasando: até 30 · travada: mais que isso). "Sem reunião" = 2 ou mais reuniões passadas sem marcação de realizada na agenda.</p>`;
+  $('btnConsCSV').onclick = () => {
+    const seg = v => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t : t; };
+    const l = ['fra;loja;consultor;inicio;fim_previsto;status;dia;ritmo;tarefas_total;tarefas_feitas;tarefas_vencidas;reunioes_total;reunioes_feitas;reunioes_sem_confirmacao;nota_inicial;nota_atual;proxima_reuniao'];
+    CONS.forEach(c => { const a = AND[c.id], f = frqDe(c.fra), s = SNAPS[c.fra]; l.push([c.fra, seg(f.nome), seg(nomeDe(c.consultor_id)), c.inicio, c.fim_previsto, c.status, a.decorrido, a.ritmo.l, a.tarefas.length, a.tFeitas.length, a.tVenc.length, a.reunioes.length, a.rFeitas.length, a.rPend.length, c.score_inicial ?? '', s && s.score != null ? s.score : '', a.rProx[0] ? a.rProx[0].data : ''].join(';')); });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + l.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = 'consultorias_' + hojeISO() + '.csv'; a.click();
+  };
 }
 
 /* ================= ARQUIVOS DE ESTOQUE ================= */
@@ -448,14 +390,15 @@ async function processarArquivos(files) {
     try {
       const txt = await f.text(); const rows = MOTOR.parseCSV(txt); const tipo = MOTOR.detectType(rows);
       let resumo = null, t = null;
-      if (tipo === 'estoqueparado') { const r = MOTOR.analisaEstoqueParadoNativo(rows); t = 'estoqueparado'; resumo = r && { nCritico: r.nCritico, nMuitoLento: r.nMuitoLento, totalParadoValor: r.totalParadoValor, granelTotal: r.granelTotal, granelNeg: r.granelNeg, top: (r.top || []).slice(0, 15) }; }
+      if (tipo === 'estoqueparado') { t = 'estoqueparado'; resumo = MOTOR.analisaEstoqueParadoNativo(rows); }
       else if (tipo === 'abcprod') {
         const A = rows.filter(r => (r['Classe'] || '').trim() === 'A').map(r => ({ desc: r['Descrição'] || r['Descricao'], est: MOTOR.n0(r['Estoque']), vv: MOTOR.n0(r['Valor Vendido']), qv: MOTOR.n0(r['Qtd.Vendida'] || r['Qtd Vendida']) }));
         const zer = A.filter(r => r.est <= 0).sort((a, b) => b.vv - a.vv);
         const par = MOTOR.analisaEstoqueParado(rows, periodoDias);
-        t = 'abcprod'; resumo = { totalA: A.length, nZer: zer.length, valZer: zer.reduce((x, r) => x + r.vv, 0), nNeg: zer.filter(r => r.est < 0).length, top: zer.slice(0, 15), parado: par && { nCritico: par.nCritico, nMuitoLento: par.nMuitoLento, totalParadoValor: par.totalParadoValor } };
+        const valZer = zer.reduce((x, r) => x + r.vv, 0);
+        t = 'abcprod'; resumo = { totalA: A.length, nZer: zer.length, valZer, nNeg: zer.filter(r => r.est < 0).length, top: zer.slice(0, 15), ruptura: { totalA: A.length, nZer: zer.length, valZer, nNeg: zer.filter(r => r.est < 0).length, top: zer.slice(0, 8) }, parado: par };
       }
-      else if (tipo === 'estoqueatual') { const r = MOTOR.analisaEstoqueAtual(rows, 'FR ' + fra); t = 'estoqueatual'; resumo = r && { nItens: r.nItens, valorEstoque: r.valorEstoque, nAbaixoCusto: r.nAbaixoCusto, valorAbaixoCusto: r.valorAbaixoCusto, topAbaixoCusto: (r.topAbaixoCusto || []).slice(0, 15), filialArquivo: r.filialArquivo, filialDivergente: r.filialDivergente }; }
+      else if (tipo === 'estoqueatual') { const r = MOTOR.analisaEstoqueAtual(rows, 'FR ' + fra); t = 'estoqueatual'; resumo = r && Object.assign({ nItens: r.nSKUs, valorEstoque: r.valorCusto }, r); }
       else { st.className = 'status err'; st.textContent = f.name + ': não reconheci como estoque parado, posição de estoque ou ABC de produtos (é um BI de vendas? esse vai pelo painel de Inteligência Comercial).'; continue; }
       if (!resumo) { st.className = 'status err'; st.textContent = f.name + ': arquivo vazio ou sem as colunas esperadas.'; continue; }
       const { error } = await sb.from('raiox_estoque').insert({ fra, tipo: t, arquivo: f.name, enviado_por: usuario.id, resumo });

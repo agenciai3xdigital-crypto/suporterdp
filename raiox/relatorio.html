@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raio-X · Central POP</title>
+<!-- Relatório completo da Máquina de Análise de Lojas, alimentado pelo banco da Central POP (raiox/relatorio.js). Gerado a partir do index.html original da máquina: NÃO editar à mão o miolo, só o relatorio.js. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --verde-900:#00573F; --verde-600:#009150; --verde-200:#A8D3C4;
+  --amarelo:#FDAE25; --azul:#71C5E8; --alerta:#C0392B; --laranja:#E67E22;
+  --bg:#F6FAF7; --card:#FFFFFF; --ink:#10231C; --ink-2:#4A6157; --linha:#DCE8E1;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Avenir Next','Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+h1,h2,h3,.big,.val,.rs,.qt{font-family:'Avenir Next Demi Bold','Segoe UI',system-ui,sans-serif}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--amarelo);outline-offset:2px}
+
+/* ===== PAINEL DE ENTRADA ===== */
+.painel{background:var(--verde-900);color:#fff;padding:34px 0 40px}
+.painel .eyebrow{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:99px;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.painel h1{font-weight:800;font-size:clamp(1.6rem,4.4vw,2.6rem);line-height:1.08;margin:14px 0 6px}
+.painel h1 em{font-style:normal;color:var(--amarelo)}
+.painel .sub{color:#CDE4DA;font-size:.95rem;max-width:700px}
+.entrada{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-top:22px}
+.drop{background:rgba(255,255,255,.06);border:2px dashed rgba(255,255,255,.4);border-radius:16px;padding:22px;text-align:center;transition:border-color .15s, background .15s}
+.drop.over{border-color:var(--amarelo);background:rgba(253,174,37,.12)}
+.drop p{font-size:.86rem;color:#CDE4DA;margin-top:6px}
+.drop .btn-file{display:inline-block;background:var(--amarelo);color:var(--ink);font-weight:800;border:none;border-radius:10px;padding:11px 20px;font-size:.9rem;cursor:pointer}
+.drop small{display:block;margin-top:10px;font-size:.72rem;color:#9FC5B4}
+#fileList{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.fchip{background:#fff;color:var(--ink);border-radius:99px;padding:5px 12px;font-size:.72rem;font-weight:600;display:flex;gap:6px;align-items:center}
+.fchip .tipo{font-weight:800;padding:1px 8px;border-radius:99px;font-size:.64rem;text-transform:uppercase;letter-spacing:.03em}
+.t-bi{background:#DCF3E6;color:var(--verde-900)} .t-prod{background:#FFF0D2;color:#8A5A00} .t-cli{background:#E3F2FB;color:#155E86} .t-estoque{background:#FDE1CC;color:#9A4A00} .t-entrada{background:#E7E0F7;color:#5B3FA8} .t-compras{background:#F3E0F5;color:#8A3B96} .t-x{background:#FBE4E1;color:var(--alerta)}
+.lado{background:#fff;color:var(--ink);border-radius:16px;padding:18px}
+.lado h3{font-size:.95rem;color:var(--verde-900);margin-bottom:8px}
+.lado ul{margin:0 0 12px 16px;font-size:.78rem;color:var(--ink-2)}
+.lado li{margin-bottom:5px}
+.lado li b{color:var(--ink)}
+.btn-go{width:100%;background:var(--verde-600);color:#fff;font-weight:800;border:none;border-radius:11px;padding:13px;font-size:1rem}
+.btn-go:hover{background:#007943}
+#status{margin-top:10px;font-size:.8rem;font-weight:600;border-radius:9px;padding:9px 12px;display:none}
+#status.err{display:block;background:#FBECEA;color:var(--alerta)}
+#status.ok{display:block;background:#E4F5EB;color:var(--verde-900)}
+
+/* ===== BARRA DE AÇÕES ===== */
+.toolbar{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--linha);box-shadow:0 3px 12px rgba(16,35,28,.06);display:none}
+.toolbar .wrap{display:flex;gap:10px;align-items:center;padding:10px 20px;flex-wrap:wrap}
+.toolbar .tit{font-weight:800;color:var(--verde-900);font-size:.9rem;margin-right:auto}
+.btn{border:none;border-radius:9px;padding:9px 16px;font-weight:700;font-size:.84rem}
+.btn-pdf{background:var(--verde-900);color:#fff}
+.btn-pdf:hover{background:#007a58}
+.btn-sec{background:#EDF4F0;color:var(--verde-900)}
+.btn-sec:hover{background:#DFEDE6}
+
+/* ===== RELATÓRIO ===== */
+.hero{background:var(--verde-900);color:#fff;padding:30px 0 88px;position:relative}
+.hero .eyebrow{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:4px 12px;border-radius:99px;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-weight:800;font-size:clamp(1.6rem,4.4vw,2.7rem);line-height:1.05;margin:12px 0 6px}
+.hero h1 em{font-style:normal;color:var(--amarelo)}
+.hero .sub{color:#CDE4DA;font-size:.92rem;max-width:640px}
+.hero-flex{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.score{background:#fff;color:var(--ink);border-radius:16px;padding:16px 20px;min-width:210px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.score .big{font-weight:800;font-size:2.6rem;line-height:1;color:var(--verde-900)}
+.score .big span{font-size:1.1rem;color:var(--ink-2);font-weight:700}
+.score .lab{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.score .barra{height:8px;background:#EAF2ED;border-radius:99px;margin-top:10px;overflow:hidden}
+.score .barra i{display:block;height:100%;background:linear-gradient(90deg,var(--verde-600),var(--amarelo));border-radius:99px}
+.subscores{margin-top:10px;font-size:.73rem;color:var(--ink-2)}
+.subscores b{color:var(--ink)}
+.kpis{margin-top:-58px;position:relative;z-index:2}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.kpi{background:var(--card);border:1px solid var(--linha);border-radius:14px;padding:14px 14px 12px;box-shadow:0 4px 14px rgba(16,35,28,.05)}
+.kpi .lab{font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+.kpi .val{font-weight:800;font-size:clamp(1.05rem,2vw,1.45rem);margin-top:4px;color:var(--verde-900)}
+.kpi .delta{font-size:.72rem;font-weight:600;margin-top:2px}
+.up{color:var(--verde-600)}.down{color:var(--alerta)}.neutro{color:var(--ink-2)}
+section{padding:38px 0 8px}
+.sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sec-head h2{font-weight:800;font-size:clamp(1.2rem,3vw,1.65rem);color:var(--verde-900)}
+.sec-head .hint{font-size:.8rem;color:var(--ink-2)}
+.vaza{background:#0B3A2C;border-radius:22px;padding:26px 22px 30px;color:#fff}
+.vaza h2{color:#fff}
+.vaza .hint{color:#BFDCCF}
+.total-tag{background:var(--amarelo);color:var(--ink);border-radius:14px;padding:14px 18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px;box-shadow:0 8px 22px rgba(0,0,0,.25)}
+.total-tag .big{font-weight:800;font-size:clamp(1.4rem,4vw,2.1rem);line-height:1}
+.total-tag .desc{font-size:.82rem;font-weight:600;max-width:440px}
+.tags{display:grid;gap:14px}
+.tag{position:relative;background:#fff;color:var(--ink);border-radius:12px;padding:16px 14px 14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.tag::before{content:"";position:absolute;left:10px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:#0B3A2C;box-shadow:0 0 0 3px rgba(11,58,44,.12)}
+.tag:nth-child(odd){transform:rotate(-.7deg)}.tag:nth-child(even){transform:rotate(.6deg)}
+.tag .rs{font-weight:800;font-size:1.3rem;color:var(--verde-900);line-height:1.05}
+.tag .rs small{font-size:.68rem;font-weight:700;color:var(--ink-2);display:block;letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
+.tag h3{font-size:.86rem;font-weight:700;margin:8px 0 4px}
+.tag p{font-size:.75rem;color:var(--ink-2)}
+.tag .chip{position:absolute;top:-9px;right:10px;background:var(--amarelo);color:var(--ink);font-size:.62rem;font-weight:800;letter-spacing:.05em;padding:3px 8px;border-radius:99px;text-transform:uppercase}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:18px}
+.card-full{width:100%}
+.chart-wrap{position:relative;cursor:crosshair}
+.chart-wrap svg{display:block}
+.hl-bar{fill:rgba(0,87,63,.10);opacity:0;pointer-events:none;transition:opacity .06s}
+.hl-line{stroke:#00573F;stroke-width:1.5;stroke-dasharray:3,3;opacity:0;pointer-events:none;transition:opacity .06s}
+.hl-pt{fill:#00573F;stroke:#fff;stroke-width:2;opacity:0;pointer-events:none;transition:opacity .06s}
+.chart-tooltip{position:fixed;pointer-events:none;background:#10231C;color:#fff;padding:6px 11px;border-radius:8px;font-size:.74rem;font-weight:600;line-height:1.3;z-index:999;display:none;box-shadow:0 8px 20px rgba(0,0,0,.28);white-space:nowrap}
+.chart-tooltip b{color:var(--verde-200);font-weight:700}
+.task-row{display:flex;gap:12px;align-items:flex-start;border-left:4px solid;background:#FAFCFA;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.task-row input[type=checkbox]{margin-top:3px;width:17px;height:17px;flex:0 0 auto;accent-color:var(--verde-600)}
+.task-body{flex:1}
+.task-sev{display:inline-block;font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:99px;margin-bottom:5px}
+.task-body b{display:block;font-size:.86rem;color:var(--ink);margin-bottom:3px}
+.task-body p{font-size:.78rem;color:var(--ink-2)}
+.task-row.done{opacity:.5}
+.task-row.done .task-body b{text-decoration:line-through}
+.compare-block{background:rgba(255,255,255,.06);border:2px dashed rgba(255,255,255,.4);border-radius:16px;padding:20px 22px;margin-top:16px}
+.compare-block h3{color:#fff;font-size:1rem;margin-bottom:6px}
+.compare-block p{color:#CDE4DA;font-size:.82rem;margin-bottom:14px}
+.compare-inputs{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.compare-inputs > div{flex:1;min-width:180px}
+.compare-inputs label{display:block;color:#CDE4DA;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.compare-inputs input[type=file]{width:100%;background:#fff;border-radius:9px;padding:8px;font-size:.78rem;color:var(--ink)}
+.btn-cmp{background:var(--amarelo);color:var(--ink);font-weight:800}
+.btn-cmp:hover{background:#F5A000}
+#cmpStatus{margin-top:10px;font-size:.8rem;font-weight:600;border-radius:9px;padding:9px 12px;display:none}
+#cmpStatus.err{display:block;background:#FBECEA;color:var(--alerta)}
+#cmpStatus.ok{display:block;background:rgba(255,255,255,.15);color:#fff}
+.chart-hint{font-size:.7rem;color:var(--ink-2);margin-top:4px;text-align:center}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(16,35,28,.55);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#fff;border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:82vh;overflow:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-box h3{color:var(--verde-900);font-size:1.1rem;padding-right:24px}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.5rem;line-height:1;color:var(--ink-2);cursor:pointer;padding:2px 6px}
+.modal-close:hover{color:var(--ink)}
+.alerta-filial{background:#C0392B;color:#fff;border-radius:12px;padding:14px 18px;margin:16px auto 0;max-width:1080px;font-size:.85rem;font-weight:600;box-shadow:0 8px 20px rgba(192,57,43,.3)}
+.card h3{font-weight:700;font-size:1rem;color:var(--verde-900)}
+.card .note{font-size:.75rem;color:var(--ink-2);margin:2px 0 12px}
+.callout{margin-top:12px;background:#FFF6E3;border:1px solid #F5DDA6;border-radius:10px;padding:10px 12px;font-size:.77rem}
+.callout b{color:#8A5A00}
+.callout.red{background:#FBECEA;border-color:#EFC4BE}
+.callout.red b{color:var(--alerta)}
+.mix-row{display:grid;grid-template-columns:150px 1fr 74px;gap:10px;align-items:center;margin-bottom:9px;font-size:.79rem}
+.mix-row .nome{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mix-bar{height:20px;background:#EDF4F0;border-radius:6px;overflow:hidden;position:relative}
+.mix-bar i{position:absolute;inset:0;width:var(--w);background:var(--verde-600);border-radius:6px}
+.mix-bar span{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.69rem;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.mix-row .mg{font-weight:700;text-align:right}
+.mg.alta{color:var(--verde-600)}.mg.media{color:#8A5A00}.mg.baixa{color:var(--alerta)}
+.rec-row{display:grid;grid-template-columns:96px 1fr 66px;gap:10px;align-items:center;margin-bottom:10px;font-size:.79rem}
+.rec-bar{height:24px;border-radius:7px;background:#EDF4F0;overflow:hidden;position:relative}
+.rec-bar i{position:absolute;inset:0;width:var(--w);background:var(--c);border-radius:7px}
+.rec-row .qt{font-weight:800;text-align:right}
+.legenda-ciclo{display:inline-flex;gap:6px;align-items:center;background:#EAF4EE;border-radius:99px;padding:4px 12px;font-size:.73rem;font-weight:600;color:var(--verde-900);margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:.79rem}
+th{text-align:left;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border-bottom:2px solid var(--linha);padding:6px 8px}
+td{padding:8px;border-bottom:1px solid var(--linha)}
+td.num,th.num{text-align:right}
+.badge-zero{background:#FBECEA;color:var(--alerta);font-weight:800;padding:2px 8px;border-radius:99px;font-size:.7rem}
+.badge-neg{background:var(--alerta);color:#fff;font-weight:800;padding:2px 8px;border-radius:99px;font-size:.7rem}
+.badge-um{background:#FFF3D6;color:#8A5A00;font-weight:800;padding:2px 8px;border-radius:99px;font-size:.7rem}
+
+/* ===== LISTA DE RESGATE ===== */
+.filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.fchipf{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:6px 12px;font-size:.73rem;font-weight:700;color:var(--ink-2)}
+.fchipf b{color:var(--verde-900)}
+.fchipf.ativo{background:var(--verde-900);border-color:var(--verde-900);color:#fff}
+.fchipf.ativo b{color:var(--amarelo)}
+#buscaCli{flex:1;min-width:170px;border:1.5px solid var(--linha);border-radius:99px;padding:7px 14px;font-size:.8rem}
+.legenda-cores{display:flex;flex-wrap:wrap;gap:12px;font-size:.7rem;color:var(--ink-2);margin-bottom:10px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.stbadge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:.64rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+.tbl-scroll{max-height:520px;overflow:auto;border:1px solid var(--linha);border-radius:10px}
+.tbl-scroll table{font-size:.76rem}
+.tbl-scroll thead th{position:sticky;top:0;background:#fff;z-index:1}
+.print-note{display:none;font-size:.7rem;color:var(--ink-2);margin-top:8px}
+
+.gate{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.check{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;font-size:.79rem;cursor:pointer;transition:box-shadow .12s,border-color .12s}
+.check:hover,.check:focus-visible{box-shadow:0 6px 16px rgba(16,35,28,.12);border-color:var(--verde-600)}
+.check-mais{display:block;font-size:.68rem;font-weight:700;color:var(--verde-600);margin-top:4px}
+.check .ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;color:#fff}
+.ok .ic{background:var(--verde-600)}.warn .ic{background:var(--amarelo);color:var(--ink)}.bad .ic{background:var(--alerta)}
+.check b{display:block;font-size:.79rem}
+.check span{color:var(--ink-2);font-size:.73rem}
+.plano{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.fase{background:var(--card);border:1px solid var(--linha);border-radius:16px;padding:16px;border-top:5px solid var(--verde-600)}
+.fase:nth-child(2){border-top-color:var(--amarelo)}
+.fase:nth-child(3){border-top-color:var(--verde-900)}
+.fase h3{font-weight:800;font-size:1rem;color:var(--verde-900)}
+.fase ul{margin:10px 0 0 16px;font-size:.79rem;color:var(--ink-2)}
+.fase li{margin-bottom:7px}
+.fase li b{color:var(--ink)}
+footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);font-size:.71rem;color:var(--ink-2)}
+
+@media (max-width:900px){
+  .entrada{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .tags{grid-template-columns:repeat(2,1fr)!important}
+  .grid-2{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .tags{grid-template-columns:1fr!important}
+  .gate{grid-template-columns:1fr}
+  .plano{grid-template-columns:1fr}
+  .mix-row{grid-template-columns:112px 1fr 60px}
+}
+
+/* ===== IMPRESSÃO / PDF ===== */
+@media print{
+  @page{size:A4;margin:10mm}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff}
+  .no-print{display:none!important}
+  .hero{padding:16px 0 64px}
+  .kpis{margin-top:-46px}
+  section{padding:16px 0 4px}
+  .card,.vaza,.fase,.check,.kpi,.total-tag,.tag{break-inside:avoid;box-shadow:none}
+  .grid-2{grid-template-columns:1fr 1fr}
+  .tag:nth-child(odd),.tag:nth-child(even){transform:none}
+  .toolbar{display:none!important}
+  .modal-overlay{display:none!important}
+  .print-note{display:block}
+  .chart-tooltip,.hl-bar,.hl-line,.hl-pt{display:none!important}
+  .extra{display:none}
+  .tbl-scroll{max-height:none;overflow:visible;border:none}
+  tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ PAINEL DE ENTRADA ============ -->
+<div class="painel no-print" id="painelEntrada" style="display:none">
+  <div class="wrap">
+    <span class="eyebrow">Máquina de Análise de Lojas · Rede POP Pet Center</span>
+    <h1>Raio-X de Lucro <em>— envie os relatórios, receba o diagnóstico</em></h1>
+    <p class="sub">Exporte do One Pet: <b>BI de vendas</b> (um arquivo por mês — pode enviar vários de uma vez) e, se tiver, o <b>ABC de produtos</b>, o <b>relatório de estoque parado</b>, o <b>relatório de entrada/compra</b> (exporte como CSV) ou o <b>ABC de compras</b>. Tudo roda aqui no seu navegador, sem internet — nenhum dado sai desta página.</p>
+
+    <div class="entrada">
+      <div class="drop" id="drop">
+        <label class="btn-file" for="fileInput">Selecionar arquivos CSV</label>
+        <input type="file" id="fileInput" accept=".csv,text/csv" multiple style="display:none">
+        <p>ou arraste e solte os arquivos aqui</p>
+        <small>Aceita: BI global (mensal, vários arquivos) · abc-produtos · relatório de estoque parado · relatório de entrada/compra (exportar como CSV) · abc-compras · abc-clientes · separador ";" ou "," no padrão One Pet</small>
+        <div id="fileList"></div>
+      </div>
+      <div class="lado">
+        <h3>Tudo é calculado dos seus dados</h3>
+        <ul>
+          <li><b>Score e vazamentos em R$/mês</b> — sem nenhum parâmetro manual;</li>
+          <li><b>Lista de resgate nominal</b> — todos os clientes por cor de recência, com telefone, valor e exportação em CSV;</li>
+          <li><b>Metas reais</b> — B&T calculada dos avulsos e pacotes atuais da própria loja;</li>
+          <li><b>Ruptura, Gate 0 e plano 30/60/90</b> com métricas do baseline.</li>
+        </ul>
+        <button class="btn-go" id="btnGo">Gerar diagnóstico</button>
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <div class="compare-block no-print">
+      <h3>Já rodou essa loja antes? Compare dois períodos</h3>
+      <p>Depois de gerar um diagnóstico, baixe o "Instantâneo" pela barra de ações. Quando tiver dois — um mais antigo e um mais recente — suba os dois aqui embaixo.</p>
+      <div class="compare-inputs">
+        <div><label>Mais antigo (A)</label><input type="file" id="snapA" accept=".json"></div>
+        <div><label>Mais recente (B)</label><input type="file" id="snapB" accept=".json"></div>
+        <button class="btn btn-cmp" id="btnComparar">Comparar</button>
+      </div>
+      <div id="cmpStatus"></div>
+    </div>
+
+    <div class="compare-block no-print">
+      <h3>Benchmark entre lojas</h3>
+      <p>Suba vários Instantâneos (de lojas diferentes, do mesmo período) e receba um ranking com quartil de cada uma — útil pra decidir qual loja visitar primeiro.</p>
+      <div class="compare-inputs">
+        <div style="flex:2"><label>Instantâneos (2 ou mais)</label><input type="file" id="snapBench" accept=".json" multiple></div>
+        <button class="btn btn-cmp" id="btnBenchmark">Gerar ranking</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BARRA DE AÇÕES ============ -->
+<div class="toolbar no-print" id="toolbar">
+  <div class="wrap">
+    <span class="tit" id="tbTitulo">Diagnóstico</span>
+    <button class="btn btn-sec" id="btnTarefas">Tarefas</button>
+    <button class="btn btn-sec" id="btnTarefasCSV">⬇ Tarefas (CSV)</button>
+    <button class="btn btn-sec" id="btnSnapshot">⬇ Instantâneo (JSON)</button>
+    <button class="btn btn-sec" id="btnCSV">⬇ Lista de resgate (CSV)</button>
+    <button class="btn btn-sec" id="btnNova" style="display:none">Nova análise</button>
+    <button class="btn btn-sec" id="btnEvolucao">Evolução</button>
+    <button class="btn btn-sec" id="btnConsultoria">Consultoria</button>
+    <button class="btn btn-sec" id="btnEvolucaoCSV">⬇ Evolução (CSV)</button>
+    <button class="btn btn-sec" id="btnPlanoCSV">⬇ Plano (CSV)</button>
+    <button class="btn btn-pdf" id="btnPDF">⬇ Exportar PDF</button>
+  </div>
+</div>
+
+<div id="report"></div>
+
+<div class="modal-overlay no-print" id="mixModal" onclick="if(event.target===this) fecharMixMes()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="fecharMixMes()" aria-label="Fechar">×</button>
+    <h3 id="mixModalTitle">Mix por categoria</h3>
+    <div class="note num" id="mixModalSub"></div>
+    <div class="num" id="mixModalBody" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<script>
+/* ============ MÁQUINA DE ANÁLISE DE LOJAS — MOTOR v2 (offline, sem parâmetros manuais) ============ */
+'use strict';
+
+/* ---------- Parser CSV (sep ;, aspas, BOM, CRLF) ---------- */
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const primeirasLinhas = text.split('\n').slice(0, 5).join('\n'); /* não só a 1ª linha: alguns exports têm uma linha de título antes do cabeçalho, sem separador nenhum */
+  const sep = primeirasLinhas.includes(';') ? ';' : ','; /* alguns exports do One Pet usam vírgula em vez de ; */
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+    } else {
+      if (c === '"') q = true;
+      else if (c === sep) { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); field = ''; if (row.length > 1 || row[0] !== '') rows.push(row); row = []; }
+      else if (c !== '\r') field += c;
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); if (row.length > 1 || row[0] !== '') rows.push(row); }
+  if (!rows.length) return [];
+  /* Alguns exports do One Pet (ex.: relatório de entrada/compra) têm uma linha de
+     título sozinha ("ONEPET") antes do cabeçalho de verdade. O cabeçalho real é a
+     primeira linha com mais de 3 campos — uma linha de título não passa disso. */
+  let headerIdx = rows.findIndex(r => r.length > 3);
+  if (headerIdx < 0) headerIdx = 0;
+  const head = rows[headerIdx].map(h => h.trim());
+  return rows.slice(headerIdx + 1).map(r => { const o = {}; head.forEach((h, j) => o[h] = (r[j] !== undefined ? r[j].trim() : '')); return o; });
+}
+
+/* ---------- Conversores BR ---------- */
+function num(s) {
+  if (s === undefined || s === null || s === '') return NaN;
+  let t = String(s).replace(/R\$|\s|%/g, '');
+  /* Formato BR (ponto=milhar, vírgula=decimal) só quando há vírgula.
+     Sem vírgula, o ponto já É o separador decimal — corrige o caso dos
+     "itens a granel" (peso em kg), que o ABC exporta em formato "72.44"
+     em vez de "72,44". Tratar sempre o ponto como milhar nesse caso
+     inflava a quantidade vendida em milhões de vezes. */
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  const v = parseFloat(t); return isNaN(v) ? NaN : v;
+}
+function n0(s) { const v = num(s); return isNaN(v) ? 0 : v; }
+function pDate(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+}
+const mesKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+const MES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const mesLabel = k => MES_PT[+k.slice(5) - 1] + '/' + k.slice(2, 4);
+const median = a => { if (!a.length) return NaN; const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const sum = a => a.reduce((x, y) => x + y, 0);
+const fmtData = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+
+/* ---------- Estoque parado (produtos com muito tempo sem vender) ---------- */
+/* Classificação 100% derivada dos dados: o "prazo razoável" de giro é o próprio
+   período analisado (ex.: se a loja mandou 7 meses de BI, um item cujo estoque
+   demoraria mais de 7 meses para vender no ritmo atual está com giro muito lento —
+   não é um número arbitrário, é o próprio histórico da loja). */
+function analisaEstoqueParado(abcProd, periodoDias) {
+  if (!abcProd || !abcProd.length) return null;
+  const todosGranel = abcProd.filter(r => (r['Grupo Linha'] || '').toUpperCase().trim() === 'ITENS A GRANEL');
+  const granelNeg = todosGranel.filter(r => n0(r['Estoque']) < 0).length;
+  const itensRaw = abcProd.map(r => ({
+    desc: r['Descrição'] || r['Descricao'] || '(sem descrição)',
+    grupo: (r['Grupo Linha'] || '').toUpperCase().trim(),
+    classe: (r['Classe'] || '').trim(),
+    estoque: n0(r['Estoque']), qtd: n0(r['Qtd.Vendida'] || r['Qtd Vendida']), valor: n0(r['Valor Vendido'])
+  })).filter(r => r.estoque > 0);
+  if (!itensRaw.length) return null;
+
+  const grpPreco = {};
+  itensRaw.forEach(r => { if (r.qtd > 0) { const g = grpPreco[r.grupo] = grpPreco[r.grupo] || { v: 0, q: 0 }; g.v += r.valor; g.q += r.qtd; } });
+  const precoGrupo = g => grpPreco[g] && grpPreco[g].q ? grpPreco[g].v / grpPreco[g].q : 0;
+
+  const itens = itensRaw.map(r => {
+    const precoUnit = r.qtd > 0 ? r.valor / r.qtd : precoGrupo(r.grupo);
+    const valorParado = r.estoque * precoUnit;
+    const meses = r.qtd > 0 ? (r.estoque / (r.qtd / periodoDias)) / 30 : Infinity;
+    let status;
+    if (r.qtd === 0) status = 'sem_giro';
+    else if (meses > 60) status = 'suspeito'; /* +5 anos de estoque é implausível — provável erro de unidade/lançamento, não vira número confiável */
+    else if (meses * 30 > periodoDias) status = 'muito_lento';
+    else if (meses * 30 > periodoDias / 2) status = 'lento';
+    else status = 'normal';
+    return Object.assign({}, r, { precoUnit, valorParado, meses, status, critico: status === 'sem_giro' });
+  });
+  const parado = itens.filter(i => i.status === 'sem_giro' || i.status === 'muito_lento').sort((a, b) => b.valorParado - a.valorParado);
+  const lento = itens.filter(i => i.status === 'lento');
+  const suspeitos = itens.filter(i => i.status === 'suspeito').sort((a, b) => b.estoque - a.estoque);
+  const mais60 = itens.filter(i => i.status !== 'normal' && i.status !== 'suspeito' && (i.status === 'sem_giro' || i.meses * 30 > 60));
+  return {
+    fonte: 'derivado', periodoDias, nCritico: parado.filter(i => i.status === 'sem_giro').length,
+    nMuitoLento: parado.filter(i => i.status === 'muito_lento').length, nLento: lento.length,
+    totalParadoValor: sum(parado.map(i => i.valorParado)), totalLentoValor: sum(lento.map(i => i.valorParado)),
+    top: parado.slice(0, 10), granelTotal: todosGranel.length, granelNeg,
+    nSuspeitos: suspeitos.length, topSuspeitos: suspeitos.slice(0, 6),
+    n60Mais: mais60.length, valor60Mais: sum(mais60.map(i => i.valorParado))
+  };
+}
+
+/* Estoque parado a partir do relatório nativo do One Pet (mais preciso: dias reais sem
+   venda e custo real, em vez de estimativa). Nenhuma loja física guarda milhares de
+   unidades (ou kg) de um único produto numa prateleira — acima disso é praticamente
+   sempre erro de unidade/lançamento na exportação, não estoque real. */
+function analisaEstoqueParadoNativo(rows) {
+  if (!rows || !rows.length) return null;
+  const LIMITE_FISICO = 5000;
+  const todos = rows.map(r => ({
+    desc: r['Produto'] || '(sem descrição)', grupo: (r['Grupo Linha'] || '').toUpperCase().trim(),
+    fornecedor: r['Fornecedor'] || '', dias: n0(r['Dias no estoque sem venda']),
+    estoque: n0(r['Estoque atual']), custoTotal: n0(r['Total Preço de Custo'])
+  })).filter(r => r.estoque > 0);
+  if (!todos.length) return null;
+
+  const suspeitos = todos.filter(r => r.estoque > LIMITE_FISICO).sort((a, b) => b.estoque - a.estoque);
+  const itens = todos.filter(r => r.estoque <= LIMITE_FISICO && r.custoTotal > 0).map(r => {
+    const status = r.dias >= 365 ? 'estagnado' : r.dias >= 180 ? 'muito_lento' : 'lento';
+    return Object.assign({}, r, { valorParado: r.custoTotal, status, critico: status === 'estagnado' });
+  });
+  const parado = itens.filter(i => i.status === 'estagnado' || i.status === 'muito_lento').sort((a, b) => b.valorParado - a.valorParado);
+  const lento = itens.filter(i => i.status === 'lento');
+  const mais60 = itens.filter(i => i.dias > 60);
+  return {
+    fonte: 'nativo', nCritico: parado.filter(i => i.status === 'estagnado').length,
+    nMuitoLento: parado.filter(i => i.status === 'muito_lento').length, nLento: lento.length,
+    totalParadoValor: sum(parado.map(i => i.valorParado)), totalLentoValor: sum(lento.map(i => i.valorParado)),
+    top: parado.slice(0, 10), granelTotal: 0, granelNeg: 0,
+    nSuspeitos: suspeitos.length, topSuspeitos: suspeitos.slice(0, 6),
+    diasMin: Math.min(...todos.map(r => r.dias)), diasMax: Math.max(...todos.map(r => r.dias)),
+    n60Mais: mais60.length, valor60Mais: sum(mais60.map(i => i.valorParado))
+  };
+}
+
+/* ---------- Constantes da metodologia (fixas, não editáveis) ---------- */
+const K = { RESGATE: 0.15, JANELA_BT_ATIVO: 60 };
+
+/* ---------- Bandas de recência (fixas) ---------- */
+const BANDAS = [
+  { id: '0-30',  rot: 'Em dia',     max: 30,       cor: '#009150' },
+  { id: '31-45', rot: 'No limite',  max: 45,       cor: '#A8D3C4' },
+  { id: '46-60', rot: 'Resgatar',   max: 60,       cor: '#FDAE25' },
+  { id: '61-90', rot: 'Urgente',    max: 90,       cor: '#E67E22' },
+  { id: '90+',   rot: 'Reativar',   max: Infinity, cor: '#C0392B' }
+];
+const bandaDe = dias => BANDAS.find(b => dias <= b.max);
+function pDataHora(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
+}
+const VAZIO = v => !v || !v.trim() || /^N[ÃA]O INFORMADO$/i.test(v.trim());
+
+/* Classificação por faixa (%): usada no card de clientes identificados e para gerar tarefas.
+   <30% vermelho (cobre o "<20% crítico") · 30–60% laranja · 61–80% amarelo · 81–100% verde */
+function nivelPct(pct) {
+  if (pct < 30) return { nivel: 'vermelho', cor: '#C0392B', bg: '#FBECEA', label: 'Crítico' };
+  if (pct <= 60) return { nivel: 'laranja', cor: '#E67E22', bg: '#FDEEE1', label: 'Atenção' };
+  if (pct <= 80) return { nivel: 'amarelo', cor: '#8A5A00', bg: '#FFF3D6', label: 'Regular' };
+  return { nivel: 'verde', cor: '#009150', bg: '#E4F5EB', label: 'Bom' };
+}
+
+/* ---------- Detecção de tipo de arquivo ---------- */
+function detectType(rows) {
+  if (!rows.length) return 'vazio';
+  const h = Object.keys(rows[0]);
+  if (h.includes('N. Pedido') && h.includes('Total Item')) return 'bi';
+  if (h.includes('Dias no estoque sem venda') && h.includes('Estoque atual')) return 'estoqueparado';
+  if (h.some(k => k.startsWith('Estoque ATUAL FILIAL')) && h.includes('TOTAL PREÇO DE CUSTO')) return 'estoqueatual';
+  if (h.includes('Nº Entradas') && h.includes('Total Produto')) return 'abccompras';
+  if (h.includes('Número da NF') && h.includes('Custo final')) return 'entrada';
+  if (h.includes('Estoque') && (h.includes('Qtd.Vendida') || h.includes('Qtd Vendida'))) return 'abcprod';
+  if (h.includes('Última Compra') || h.includes('Ultima Compra')) return 'abccli';
+  return 'desconhecido';
+}
+function explicaDesconhecido(rows) {
+  if (!rows.length) return 'o arquivo está vazio.';
+  const h = new Set(Object.keys(rows[0]));
+  const falta = need => need.filter(c => !h.has(c));
+  const fBi = falta(['N. Pedido', 'Total Item']), fProd = falta(['Estoque', 'Qtd.Vendida']), fCli = falta(['Última Compra']);
+  if (fBi.length <= 1) return `parece um export de BI, mas falta a coluna "${fBi[0]}".`;
+  if (fProd.length <= 1) return `parece um ABC de produtos, mas falta a coluna "${fProd[0]}".`;
+  if (fCli.length === 0) return 'parece um ABC de clientes — confira se o nome do arquivo bate.';
+  return 'não reconheço nenhuma das colunas esperadas (BI: "N. Pedido"/"Total Item" · ABC produtos: "Estoque"/"Qtd.Vendida"). Confira se é mesmo um export do One Pet.';
+}
+
+/* ---------- Motor principal ---------- */
+/* ---------- Compras e fornecedores (relatório de entrada + ABC de compras) ---------- */
+function analisaCompras(entradaRowsArr, abcCompras, estoqueParado) {
+  const linhas = [];
+  (entradaRowsArr || []).forEach(rows => rows.forEach(r => {
+    const d = pDate(r['Data']); if (!d) return;
+    const custo = n0(r['Custo final']), qtd = n0(r['Quantidade']);
+    linhas.push({ d, nf: r['Número da NF'], fornecedor: (r['Fornecedor'] || '(sem fornecedor)').trim(), produto: (r['Produto'] || '').trim(), qtd, custo, total: custo * qtd });
+  }));
+  if (!linhas.length && !(abcCompras && abcCompras.length)) return null;
+
+  let porFornecedor = null, periodoIni = null, periodoFim = null, totalComprado = 0;
+  if (linhas.length) {
+    linhas.sort((a, b) => a.d - b.d);
+    periodoIni = linhas[0].d; periodoFim = linhas[linhas.length - 1].d;
+    const fMap = {};
+    linhas.forEach(l => { const f = fMap[l.fornecedor] = fMap[l.fornecedor] || { total: 0, nfs: new Set(), produtos: new Set() }; f.total += l.total; f.nfs.add(l.nf); f.produtos.add(l.produto); });
+    totalComprado = sum(Object.values(fMap).map(f => f.total));
+    porFornecedor = Object.entries(fMap).map(([nome, f]) => ({ nome, total: f.total, nNotas: f.nfs.size, nProdutos: f.produtos.size, share: totalComprado ? 100 * f.total / totalComprado : 0 })).sort((a, b) => b.total - a.total);
+  } else {
+    const fMap = {};
+    abcCompras.forEach(r => { const f = (r['Fornecedor'] || '(sem fornecedor)').trim(); fMap[f] = (fMap[f] || 0) + n0(r['Total Produto']); });
+    totalComprado = sum(Object.values(fMap));
+    porFornecedor = Object.entries(fMap).map(([nome, total]) => ({ nome, total, nNotas: null, nProdutos: null, share: totalComprado ? 100 * total / totalComprado : 0 })).sort((a, b) => b.total - a.total);
+  }
+  const top3Share = porFornecedor ? sum(porFornecedor.slice(0, 3).map(f => f.share)) : 0;
+
+  const custoSubindo = [];
+  if (linhas.length) {
+    const porProduto = {};
+    linhas.forEach(l => { (porProduto[l.produto] = porProduto[l.produto] || []).push(l); });
+    Object.entries(porProduto).forEach(([produto, ls]) => {
+      if (ls.length < 2 || !produto) return;
+      ls.sort((a, b) => a.d - b.d);
+      const primeiro = ls[0], ultimo = ls[ls.length - 1];
+      if (primeiro.custo > 0 && ultimo.d > primeiro.d) {
+        const variacao = 100 * (ultimo.custo / primeiro.custo - 1);
+        if (variacao > 15) custoSubindo.push({ produto, fornecedor: ultimo.fornecedor, custoIni: primeiro.custo, custoFim: ultimo.custo, variacao, dataIni: primeiro.d, dataFim: ultimo.d });
+      }
+    });
+    custoSubindo.sort((a, b) => b.variacao - a.variacao);
+  }
+
+  const recompraParado = [];
+  if (linhas.length && estoqueParado && estoqueParado.top && estoqueParado.top.length) {
+    const refData = linhas[linhas.length - 1].d, janela90 = 90 * 864e5;
+    const nomesParados = {};
+    estoqueParado.top.forEach(i => { nomesParados[i.desc.toUpperCase().trim()] = i; });
+    const vistos = new Set();
+    linhas.forEach(l => {
+      const key = l.produto.toUpperCase();
+      if (nomesParados[key] && (refData - l.d) < janela90 && !vistos.has(key)) { vistos.add(key); recompraParado.push({ produto: l.produto, fornecedor: l.fornecedor, dataCompra: l.d, qtd: l.qtd }); }
+    });
+  }
+
+  return { periodoIni, periodoFim, totalComprado, porFornecedor, top3Share, nFornecedores: porFornecedor.length, temDetalhe: linhas.length > 0, custoSubindo: custoSubindo.slice(0, 8), recompraParado: recompraParado.slice(0, 8) };
+}
+
+/* ---------- Posição de estoque atual (foto completa do catálogo, não só o parado) ---------- */
+function analisaEstoqueAtual(rows, filialBI) {
+  if (!rows || !rows.length) return null;
+  const colEstoque = Object.keys(rows[0]).find(k => k.startsWith('Estoque ATUAL FILIAL'));
+  if (!colEstoque) return null;
+  const filialArquivo = colEstoque.replace('Estoque ATUAL FILIAL:', '').trim();
+  const itens = rows.filter(r => (r['Cód'] || '').trim() !== '' && (r['Nome'] || '').toUpperCase().trim() !== 'TOTAL GERAL').map(r => ({
+    nome: r['Nome'] || '(sem nome)', grupo: (r['Grupo Linha'] || '').toUpperCase().trim(), fornecedor: r['Fornecedor'] || '',
+    estoque: n0(r[colEstoque]), custo: n0(r['Custo']), precoTabela: n0(r['Preço Tabela']),
+    totalCusto: n0(r['TOTAL PREÇO DE CUSTO']), totalVenda: n0(r['TOTAL PREÇO DE VENDA'])
+  }));
+  if (!itens.length) return null;
+
+  const negativos = itens.filter(i => i.estoque < 0);
+  const positivos = itens.filter(i => i.estoque > 0);
+  const semPreco = positivos.filter(i => i.precoTabela <= 0);
+  const abaixoCusto = positivos.filter(i => i.precoTabela > 0 && i.custo > 0 && i.precoTabela < i.custo)
+    .map(i => Object.assign({}, i, { prejuizoUnit: i.custo - i.precoTabela, prejuizoTotal: (i.custo - i.precoTabela) * i.estoque }))
+    .sort((a, b) => b.prejuizoTotal - a.prejuizoTotal);
+
+  const valorCusto = sum(positivos.map(i => i.totalCusto));
+  const valorVenda = sum(positivos.map(i => i.totalVenda));
+
+  const gMap = {};
+  positivos.forEach(i => { gMap[i.grupo] = (gMap[i.grupo] || 0) + i.totalCusto; });
+  const porCategoria = Object.entries(gMap).map(([grupo, total]) => ({ grupo, total, share: valorCusto ? 100 * total / valorCusto : 0 })).sort((a, b) => b.total - a.total).slice(0, 8);
+
+  const fMap = {};
+  positivos.forEach(i => { const f = i.fornecedor || '(sem fornecedor)'; fMap[f] = (fMap[f] || 0) + i.totalCusto; });
+  const porFornecedor = Object.entries(fMap).map(([nome, total]) => ({ nome, total, share: valorCusto ? 100 * total / valorCusto : 0 })).sort((a, b) => b.total - a.total).slice(0, 6);
+
+  const filialDivergente = filialBI && filialArquivo && !filialBI.toUpperCase().includes(filialArquivo.toUpperCase().split(' - ')[0]) ? filialArquivo : null;
+
+  return {
+    filialArquivo, filialDivergente, nSKUs: positivos.length, valorCusto, valorVenda,
+    margemPotencial: valorVenda ? 100 * (valorVenda - valorCusto) / valorVenda : 0,
+    nNegativos: negativos.length, valorNegativos: sum(negativos.map(i => i.totalCusto)), topNegativos: negativos.sort((a, b) => a.estoque - b.estoque).slice(0, 6),
+    nSemPreco: semPreco.length, topSemPreco: semPreco.slice(0, 6),
+    nAbaixoCusto: abaixoCusto.length, valorAbaixoCusto: sum(abaixoCusto.map(i => i.prejuizoTotal)), topAbaixoCusto: abaixoCusto.slice(0, 8),
+    porCategoria, porFornecedor
+  };
+}
+
+function analyze(biRowsArr, abcProd, estoqueNativo, entradaRowsArr, abcCompras, estoqueAtualRows) {
+  const rows = [];
+  biRowsArr.forEach(rs => rs.forEach(r => {
+    const d = pDate(r['Data']); if (!d) return;
+    rows.push({
+      ped: r['N. Pedido'], d, mk: mesKey(d),
+      qtd: n0(r['Qtd']), pb: n0(r['Preço Bruto']), desc: n0(r['Deconto Produto %']),
+      tot: n0(r['Total Item']), custo: num(r['Custo Total']), lucro: n0(r['Lucro Total']),
+      grupo: (r['Grupo Linha'] || '').toUpperCase().trim(),
+      tipo: r['Tipo'] || '', cli: r['Cod. Cliente.'] || r['Cod. Cliente'] || '',
+      cliNome: r['Cliente'] || '', cel: r['Celular'] || '', fone: r['Fone'] || '',
+      vend: (r['Vendedor'] || '').trim(), esp: (r['Especie'] || '').trim(),
+      prod: r['Produto'] || '', filial: r['Filial'] || '',
+      dataPag: pDataHora(r['Data Pagamento']), canal: r['Canal venda'] || '', bairro: r['Bairro'] || '',
+      aval: r['Avaliação'] || r['Feedback'] || '', opBT: (r['Entrada'] || r['Saida'] || r['Escovação'] || ''),
+      vetNome: r['Veterinário'] || '', delivery: r['Delivery'] || ''
+    });
+  }));
+  if (!rows.length) throw new Error('Nenhuma linha válida encontrada no BI.');
+  rows.sort((a, b) => a.d - b.d);
+  const ref = rows[rows.length - 1].d;
+  const semCad = r => !r.cliNome || /SEM CADASTRO/i.test(r.cliNome);
+  const ident = rows.filter(r => !semCad(r));
+  const filial = (rows.find(r => r.filial) || {}).filial || '';
+  const filiaisSet = new Set(rows.map(r => r.filial).filter(Boolean));
+  const filialAlerta = filiaisSet.size > 1 ? { lista: [...filiaisSet] } : null;
+
+  /* --- mensal --- */
+  const meses = [...new Set(rows.map(r => r.mk))].sort();
+  const mensal = meses.map(mk => {
+    const rs = rows.filter(r => r.mk === mk);
+    const receita = sum(rs.map(r => r.tot)), lucro = sum(rs.map(r => r.lucro));
+    const cupons = new Set(rs.map(r => r.ped)).size, itens = sum(rs.map(r => r.qtd));
+    return { mk, label: mesLabel(mk), receita, lucro, margem: 100 * lucro / receita, cupons, ticket: receita / cupons, itensCupom: itens / cupons };
+  });
+  const nM = mensal.length;
+  const totReceita = sum(mensal.map(m => m.receita)), totLucro = sum(mensal.map(m => m.lucro));
+  const totCupons = sum(mensal.map(m => m.cupons));
+
+  /* --- margem ajustada --- */
+  const prodRows = rows.filter(r => r.tipo === 'Produto');
+  const cz = prodRows.filter(r => !(r.custo > 0));
+  const czRec = sum(cz.map(r => r.tot));
+  const okRows = rows.filter(r => !(r.tipo === 'Produto' && !(r.custo > 0)));
+  const margemAdj = 100 * sum(okRows.map(r => r.lucro)) / sum(okRows.map(r => r.tot));
+  const margemRep = 100 * totLucro / totReceita;
+
+  /* --- mix por grupo --- */
+  const gAll = {};
+  rows.forEach(r => { (gAll[r.grupo] = gAll[r.grupo] || { rec: 0, lucro: 0, qtd: 0 }); gAll[r.grupo].rec += r.tot; gAll[r.grupo].lucro += r.lucro; gAll[r.grupo].qtd += r.qtd; });
+  const mixTop = Object.entries(gAll).map(([g, v]) => ({ grupo: g, rec: v.rec, share: 100 * v.rec / totReceita, margem: 100 * v.lucro / v.rec, qtd: v.qtd })).sort((a, b) => b.rec - a.rec);
+  const mix9 = mixTop.slice(0, 9);
+  const demais = mixTop.slice(9);
+  if (demais.length) mix9.push({ grupo: 'DEMAIS', rec: sum(demais.map(x => x.rec)), share: sum(demais.map(x => x.share)), margem: 100 * sum(demais.map(x => x.rec * x.margem / 100)) / Math.max(1, sum(demais.map(x => x.rec))) });
+  const GS = ['BANHO E TOSA','PACOTES DE SERVICOS','CONSULTORIO VETERINARIO','SERVICOS DE TRANSPORTE'];
+  const servShare = 100 * sum(rows.filter(r => GS.includes(r.grupo)).map(r => r.tot)) / totReceita;
+
+  /* --- mix por grupo, mês a mês (usado no popup ao clicar numa barra do gráfico) --- */
+  const gPorMes = {};
+  rows.forEach(r => {
+    const gm = gPorMes[r.mk] = gPorMes[r.mk] || {};
+    (gm[r.grupo] = gm[r.grupo] || { rec: 0, lucro: 0, qtd: 0 });
+    gm[r.grupo].rec += r.tot; gm[r.grupo].lucro += r.lucro; gm[r.grupo].qtd += r.qtd;
+  });
+  const mixPorMes = meses.map(mk => {
+    const gm = gPorMes[mk] || {};
+    const receitaMes = (mensal.find(m => m.mk === mk) || {}).receita || 0;
+    const arr = Object.entries(gm).map(([g, v]) => ({ grupo: g, rec: v.rec, share: receitaMes ? 100 * v.rec / receitaMes : 0, margem: v.rec ? 100 * v.lucro / v.rec : 0 })).sort((a, b) => b.rec - a.rec);
+    const top = arr.slice(0, 9), demais = arr.slice(9);
+    if (demais.length) top.push({ grupo: 'DEMAIS', rec: sum(demais.map(x => x.rec)), share: sum(demais.map(x => x.share)), margem: 100 * sum(demais.map(x => x.rec * x.margem / 100)) / Math.max(1, sum(demais.map(x => x.rec))) });
+    return { mk, label: mesLabel(mk), receita: receitaMes, itens: top };
+  });
+
+  /* --- farmácia --- */
+  const GF = ['MEDICAMENTOS','ANTIPARASITARIOS'];
+  const farmaM = meses.map(mk => sum(rows.filter(r => r.mk === mk && GF.includes(r.grupo)).map(r => r.tot)));
+  const farmaRows = rows.filter(r => GF.includes(r.grupo));
+  const farmaMg = farmaRows.length ? sum(farmaRows.map(r => r.lucro)) / Math.max(1, sum(farmaRows.map(r => r.tot))) : 0.4;
+
+  /* --- FICHA POR CLIENTE (base de tudo: lista de resgate, B&T, churn) --- */
+  const GR = ['RACAO','ALIMENTOS'];
+  const d60 = new Date(ref.getTime() - K.JANELA_BT_ATIVO * 864e5);
+  const cliMap = {};
+  ident.forEach(r => {
+    const c = cliMap[r.cli] = cliMap[r.cli] || { cli: r.cli, nome: r.cliNome, tel: '', peds: new Set(), ultima: r.d, primeiro: r.mk, ultimaRac: null, ultimaBT: null, gasto: 0, gastoBT: 0, mks: new Set(), racao: false, bt: false, pacote: false, temProd: false };
+    if (r.d > c.ultima) c.ultima = r.d;
+    if (r.mk < c.primeiro) c.primeiro = r.mk;
+    c.peds.add(r.ped); c.gasto += r.tot; c.mks.add(r.mk);
+    if (!c.tel) { const t = (r.cel || r.fone).split('/')[0].trim(); if (t && t !== '-') c.tel = t; }
+    if (GR.includes(r.grupo)) { c.racao = true; if (!c.ultimaRac || r.d > c.ultimaRac) c.ultimaRac = r.d; }
+    if (r.grupo === 'BANHO E TOSA') { c.bt = true; c.gastoBT += r.tot; if (!c.ultimaBT || r.d > c.ultimaBT) c.ultimaBT = r.d; }
+    if (r.grupo === 'PACOTES DE SERVICOS') c.pacote = true;
+    if (r.tipo === 'Produto') c.temProd = true;
+  });
+  const clientes = Object.values(cliMap).map(c => {
+    const dias = Math.floor((ref - c.ultima) / 864e5);
+    return { nome: c.nome, tel: c.tel, ultima: c.ultima, primeiro: c.primeiro, dias, banda: bandaDe(dias).id,
+      compras: c.peds.size, gasto: c.gasto, gastoMes: c.gasto / c.mks.size,
+      racao: c.racao, bt: c.bt, pacote: c.pacote,
+      gastoBTmes: c.gastoBT / c.mks.size, btAtivo: c.ultimaBT ? c.ultimaBT >= d60 : false,
+      diasRac: c.ultimaRac ? Math.floor((ref - c.ultimaRac) / 864e5) : null, temProd: c.temProd };
+  });
+  const cliTot = clientes.length;
+  const bucketsGeral = {}; BANDAS.forEach(b => bucketsGeral[b.id] = 0);
+  clientes.forEach(c => bucketsGeral[c.banda]++);
+
+  /* --- recorrência de ração (para o gráfico e o plano) --- */
+  const cliRacArr = clientes.filter(c => c.racao);
+  const buckets = {}; BANDAS.forEach(b => buckets[b.id] = 0);
+  cliRacArr.forEach(c => buckets[bandaDe(c.diasRac).id]++);
+  const inativosRac = cliRacArr.filter(c => c.diasRac > 60);
+  const gastoMensalHist = inativosRac.length ? sum(inativosRac.map(c => c.gastoMes)) / inativosRac.length : 0;
+  const datasCli = {};
+  ident.filter(r => GR.includes(r.grupo)).forEach(r => { (datasCli[r.cli] = datasCli[r.cli] || new Set()).add(r.d.toDateString()); });
+  const gaps = [];
+  Object.values(datasCli).forEach(s => { if (s.size >= 3) { const ds = [...s].map(x => +new Date(x)).sort((a, b) => a - b); for (let i = 1; i < ds.length; i++) gaps.push((ds[i] - ds[i - 1]) / 864e5); } });
+  const ciclo = Math.round(median(gaps) || 0);
+  const lastMk = meses[nM - 1];
+  const ativosUlt = new Set(ident.filter(r => r.mk === lastMk).map(r => r.cli)).size;
+  const identPct = 100 * sum(ident.map(r => r.tot)) / totReceita;
+
+  /* --- B&T: números reais da loja --- */
+  const btRows = rows.filter(r => r.grupo === 'BANHO E TOSA');
+  const btM = meses.map(mk => ({ rec: sum(btRows.filter(r => r.mk === mk).map(r => r.tot)), serv: sum(btRows.filter(r => r.mk === mk).map(r => r.qtd)) }));
+  const btCli = clientes.filter(c => c.bt).length;
+  const spendBT = clientes.filter(c => c.bt).map(c => c.gasto);
+  const spendN = clientes.filter(c => !c.bt).map(c => c.gasto);
+  const gastoBT = spendBT.length ? sum(spendBT) / spendBT.length : 0;
+  const gastoN = spendN.length ? sum(spendN) / spendN.length : 0;
+  const crossBT = btCli ? 100 * clientes.filter(c => c.bt && c.temProd).length / btCli : 0;
+  const pacRows = rows.filter(r => r.grupo === 'PACOTES DE SERVICOS');
+  const valorPacote = pacRows.length ? sum(pacRows.map(r => r.tot)) / Math.max(1, sum(pacRows.map(r => r.qtd))) : (btRows.length ? 4 * sum(btRows.map(r => r.tot)) / Math.max(1, sum(btRows.map(r => r.qtd))) : 0);
+  const pacotesMesAtual = pacRows.length ? sum(pacRows.map(r => r.qtd)) / nM : 0;
+  /* meta real: clientes com banho avulso nos últimos 60 dias que NÃO têm pacote */
+  const avulsos = clientes.filter(c => c.btAtivo && !c.pacote);
+  const metaPacotes = avulsos.length;
+  const v3 = sum(avulsos.map(c => Math.max(0, valorPacote - c.gastoBTmes)));
+
+  /* --- vendedores --- */
+  const vd = {};
+  rows.forEach(r => {
+    if (!r.vend) return;
+    (vd[r.vend] = vd[r.vend] || { rec: 0, lucro: 0, ped: new Set(), n: 0, descN: 0, descRS: 0 });
+    const v = vd[r.vend];
+    v.rec += r.tot; v.lucro += r.lucro; v.ped.add(r.ped); v.n++;
+    if (r.desc > 0) v.descN++;
+    v.descRS += Math.max(0, r.pb * r.qtd - r.tot);
+  });
+  const vend = Object.entries(vd).map(([n, v]) => ({ nome: n, rec: v.rec, cupons: v.ped.size, ticket: v.rec / v.ped.size, margem: 100 * v.lucro / v.rec, descPct: v.n ? 100 * v.descN / v.n : 0, descRS: v.descRS, n: v.n })).filter(v => v.cupons >= 0.1 * totCupons).sort((a, b) => b.rec - a.rec);
+  let vazBalcao = 0, balcaoAchado = null, maiorGap = 0;
+  vend.forEach(v => {
+    const outros = vend.filter(o => o !== v);
+    if (!outros.length) return;
+    const mOut = 100 * sum(outros.map(o => o.rec * o.margem / 100)) / sum(outros.map(o => o.rec));
+    const gap = mOut - v.margem;
+    if (gap > 3) {
+      vazBalcao += gap / 100 * (v.rec / nM);
+      if (gap > maiorGap) {
+        maiorGap = gap;
+        const nOutros = sum(outros.map(o => o.n));
+        const descOutrosPct = nOutros ? 100 * sum(outros.map(o => o.descPct * o.n / 100)) / nOutros : 0;
+        balcaoAchado = { vendedor: v.nome, margemVend: v.margem, margemOutros: mOut, descPctVend: v.descPct, descPctOutros: descOutrosPct, gapMargem: gap, gapDesc: v.descPct - descOutrosPct };
+      }
+    }
+  });
+
+  /* --- gate 0 extras --- */
+  const descItens = 100 * rows.filter(r => r.desc > 0).length / rows.length;
+  const descRS = sum(rows.map(r => Math.max(0, r.pb * r.qtd - r.tot)));
+  const negG = {};
+  rows.filter(r => r.lucro < 0).forEach(r => negG[r.grupo] = (negG[r.grupo] || 0) + r.lucro);
+  const piorGrupoNeg = Object.entries(negG).sort((a, b) => a[1] - b[1])[0] || null;
+  const espT = {}; ident.forEach(r => { if (r.esp) espT[r.esp] = (espT[r.esp] || 0) + r.tot; });
+  const espSum = sum(Object.values(espT));
+  const felinos = espSum ? 100 * (espT['Felina'] || 0) / espSum : 0;
+  const czPct = prodRows.length ? 100 * cz.length / prodRows.length : 0;
+  const semTel = clientes.filter(c => !c.tel).length;
+
+  /* --- ruptura (abc-produtos) --- */
+  let ruptura = null;
+  if (abcProd && abcProd.length) {
+    const A = abcProd.filter(r => (r['Classe'] || '').trim() === 'A')
+      .map(r => ({ desc: r['Descrição'] || r['Descricao'], est: n0(r['Estoque']), vv: n0(r['Valor Vendido']), qv: n0(r['Qtd.Vendida'] || r['Qtd Vendida']) }));
+    const zer = A.filter(r => r.est <= 0).sort((a, b) => b.vv - a.vv);
+    ruptura = { totalA: A.length, nZer: zer.length, valZer: sum(zer.map(r => r.vv)), nNeg: zer.filter(r => r.est < 0).length, top: zer.slice(0, 8), pctRec: 0 };
+    ruptura.pctRec = 100 * ruptura.valZer / totReceita;
+  }
+  const periodoDias = Math.round((ref - rows[0].d) / 864e5) + 1;
+  const estoqueParado = analisaEstoqueParadoNativo(estoqueNativo) || analisaEstoqueParado(abcProd, periodoDias);
+  const compras = analisaCompras(entradaRowsArr, abcCompras, estoqueParado);
+  const estoqueAtual = analisaEstoqueAtual(estoqueAtualRows, filial);
+
+  /* --- horário e dia de pico (escala de equipe) --- */
+  const pedHora = {};
+  rows.forEach(r => { if (r.dataPag && !pedHora[r.ped]) pedHora[r.ped] = r.dataPag; });
+  const comHorario = Object.values(pedHora);
+  const coberturaHorario = 100 * comHorario.length / totCupons;
+  let horaSemana = null;
+  if (coberturaHorario >= 30) {
+    const HORAS = Array.from({ length: 15 }, (_, i) => i + 7); // 7h–21h
+    const DIAS_LBL = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+    const horaCount = HORAS.map(h => comHorario.filter(d => d.getHours() === h).length);
+    const diaCount = DIAS_LBL.map((_, i) => comHorario.filter(d => (d.getDay() + 6) % 7 === i).length);
+    horaSemana = { cobertura: coberturaHorario, horas: HORAS.map(h => h + 'h'), horaCount, dias: DIAS_LBL, diaCount };
+  }
+
+  /* --- delivery vs loja --- */
+  const dGrp = { SIM: { rec: 0, ped: new Set() }, NAO: { rec: 0, ped: new Set() } };
+  rows.forEach(r => { const k = /SIM/i.test(r.delivery) ? 'SIM' : 'NAO'; dGrp[k].rec += r.tot; dGrp[k].ped.add(r.ped); });
+  const ticketDeliv = dGrp.SIM.ped.size ? dGrp.SIM.rec / dGrp.SIM.ped.size : 0;
+  const ticketLojaD = dGrp.NAO.ped.size ? dGrp.NAO.rec / dGrp.NAO.ped.size : 0;
+  const entrega = { receita: dGrp.SIM.rec, peds: dGrp.SIM.ped.size, ticket: ticketDeliv, share: 100 * dGrp.SIM.rec / totReceita, ticketLoja: ticketLojaD, premio: ticketLojaD ? 100 * (ticketDeliv / ticketLojaD - 1) : 0 };
+
+  /* --- novos clientes por mês (qualidade do crescimento) --- */
+  const primeiroMesCli = {};
+  Object.values(cliMap).forEach(c => { primeiroMesCli[c.cli] = c.primeiro; });
+  const novosPorMes = meses.map(mk => ({ mk, label: mesLabel(mk), n: Object.values(primeiroMesCli).filter(p => p === mk).length }));
+  const receitaPorMesSplit = meses.map(mk => {
+    let rNova = 0, rRec = 0;
+    ident.filter(r => r.mk === mk).forEach(r => { if (primeiroMesCli[r.cli] === mk) rNova += r.tot; else rRec += r.tot; });
+    return { mk, label: mesLabel(mk), novos: rNova, recorrentes: rRec };
+  });
+
+  /* --- churn total (qualquer categoria, não só ração) --- */
+  const naoRacaoInativo = clientes.filter(c => !c.racao && c.dias > 60).length;
+  const churnGeral = { bucketsGeral, naoRacaoInativo, inativos90: bucketsGeral['90+'], inativos6190: bucketsGeral['61-90'] };
+
+  /* --- governança de dado (campos que existem no One Pet e a loja não preenche) --- */
+  const btRowsG = rows.filter(r => r.grupo === 'BANHO E TOSA');
+  const vetRowsG = rows.filter(r => r.grupo === 'CONSULTORIO VETERINARIO');
+  const canalPct = 100 * rows.filter(r => !VAZIO(r.canal)).length / rows.length;
+  const bairroPct = 100 * rows.filter(r => !VAZIO(r.bairro)).length / rows.length;
+  const avalPct = btRowsG.length ? 100 * btRowsG.filter(r => !VAZIO(r.aval)).length / btRowsG.length : null;
+  const opBTPct = btRowsG.length ? 100 * btRowsG.filter(r => !VAZIO(r.opBT)).length / btRowsG.length : null;
+  const vetPct = vetRowsG.length ? 100 * vetRowsG.filter(r => !VAZIO(r.vetNome)).length / vetRowsG.length : null;
+  const nomesVend = new Set(rows.map(r => r.vend.toUpperCase()).filter(Boolean));
+  const nomesVet = new Set(vetRowsG.map(r => r.vetNome.toUpperCase().trim()).filter(x => x && !VAZIO(x)));
+  let vetSuspeito = false;
+  if (nomesVet.size) { let inter = 0; nomesVet.forEach(n => { if (nomesVend.has(n)) inter++; }); vetSuspeito = inter / nomesVet.size > 0.5; }
+  const governanca = { canalPct, bairroPct, avalPct, opBTPct, vetPct, vetSuspeito, temVet: vetRowsG.length > 0 };
+
+  /* --- vazamentos (todos automáticos) --- */
+  const peakF = Math.max(...farmaM), lastF = farmaM[farmaM.length - 1];
+  const v1 = Math.max(0, (peakF - lastF)) * (farmaMg || 0.4);
+  const v2 = inativosRac.length * gastoMensalHist * K.RESGATE * (margemAdj / 100);
+  const v4 = vazBalcao;
+  const vazTotal = v1 + v2 + v3 + v4;
+  const lucroMes = totLucro / nM;
+
+  /* --- score --- */
+  const g1 = mensal[0], gN = mensal[nM - 1];
+  const growR = nM > 1 ? 100 * (gN.receita / g1.receita - 1) : 0;
+  const growC = nM > 1 ? 100 * (gN.cupons / g1.cupons - 1) : 0;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const sReceita = clamp(5 + growR / 3 + growC / 8, 0, 10);
+  const sMargem = clamp((margemAdj - 20) / 3.2, 0, 10);
+  const sMix = clamp(servShare / 3.3, 0, 10);
+  const ret45 = cliRacArr.length ? 100 * (buckets['0-30'] + buckets['31-45']) / cliRacArr.length : 0;
+  const sRet = clamp(ret45 / 10, 0, 10);
+  const sDado = clamp(10 - czPct * 0.2 - (100 - identPct) * 0.3 - (ruptura && ruptura.nNeg ? 0.5 : 0), 0, 10);
+  const score = Math.round(2.5 * sReceita + 2.0 * sMargem + 1.5 * sMix + 2.5 * sRet + 1.5 * sDado);
+
+  /* --- metas / previsão (100% derivadas do histórico da própria loja) --- */
+  const tendencia = (serie) => {
+    const dl = [];
+    for (let i = 1; i < serie.length; i++) if (serie[i - 1] > 0) dl.push(serie[i] / serie[i - 1] - 1);
+    return clamp(dl.length ? median(dl) : 0, -0.05, 0.10); // limitado a -5%/+10% ao mês p/ não extrapolar com poucos meses de dado
+  };
+  const last3 = mensal.slice(-Math.min(3, nM));
+  const baseReceita = sum(last3.map(m => m.receita)) / last3.length;
+  const baseLucro = sum(last3.map(m => m.lucro)) / last3.length;
+  const trendReceita = tendencia(mensal.map(m => m.receita));
+  const trendLucro = tendencia(mensal.map(m => m.lucro));
+  const baseCupons = sum(last3.map(m => m.cupons)) / last3.length;
+  const trendCupons = tendencia(mensal.map(m => m.cupons));
+  const metas = {
+    baseReceita, baseLucro, trendReceita, trendLucro,
+    receita: {
+      piso: baseReceita,
+      meta: baseReceita * (1 + Math.max(0, trendReceita)) + 0.5 * vazTotal / (margemAdj / 100),
+      ouro: baseReceita * (1 + Math.max(0, trendReceita)) + vazTotal / (margemAdj / 100)
+    },
+    lucro: {
+      piso: baseLucro,
+      meta: baseLucro * (1 + Math.max(0, trendLucro)) + 0.5 * vazTotal,
+      ouro: baseLucro * (1 + Math.max(0, trendLucro)) + vazTotal
+    },
+    cupons: { piso: baseCupons, meta: baseCupons * (1 + Math.max(0, trendCupons)) },
+    resgateAlvo: Math.round(inativosRac.length * K.RESGATE),
+    btAlvo30: Math.ceil(metaPacotes / 3), btAlvoTotal: metaPacotes,
+    farmaAlvo: peakF, atualReceita: gN.receita, atualLucro: gN.lucro
+  };
+
+  /* --- tarefas (geradas a partir dos alertas do próprio diagnóstico) --- */
+  const tarefas = [];
+  const identSev = identPct < 30 ? 'alta' : identPct <= 60 ? 'media' : identPct <= 80 ? 'baixa' : null;
+  if (filialAlerta) tarefas.push({ sev: 'alta', chave: 'filialMista', dados: { lista: filialAlerta.lista } });
+  if (identSev) tarefas.push({ sev: identSev, chave: 'identificacao', dados: { identPct } });
+  if (ruptura && ruptura.nZer > 0) tarefas.push({ sev: 'alta', chave: 'ruptura', dados: { n: ruptura.nZer, valor: ruptura.valZer } });
+  if (v1 > 200) tarefas.push({ sev: 'media', chave: 'farmacia', dados: { peak: peakF, last: lastF } });
+  if (v2 > 200) tarefas.push({ sev: 'media', chave: 'churn', dados: { n: inativosRac.length, resgateAlvo: Math.round(inativosRac.length * K.RESGATE) } });
+  if (v3 > 200) tarefas.push({ sev: 'baixa', chave: 'bt', dados: { n: metaPacotes, valorPacote } });
+  if (v4 > 200) tarefas.push({ sev: 'baixa', chave: 'balcao', dados: balcaoAchado || {} });
+  if (estoqueParado && estoqueParado.totalParadoValor > 0.03 * totReceita) tarefas.push({ sev: 'media', chave: 'estoqueParado', dados: { n: estoqueParado.nCritico + estoqueParado.nMuitoLento, valor: estoqueParado.totalParadoValor } });
+  if (governanca.canalPct < 20) tarefas.push({ sev: 'media', chave: 'canal', dados: { pct: governanca.canalPct } });
+  if (governanca.bairroPct < 50) tarefas.push({ sev: 'baixa', chave: 'bairro', dados: { pct: governanca.bairroPct } });
+  if (governanca.avalPct !== null && governanca.avalPct < 10) tarefas.push({ sev: 'baixa', chave: 'avaliacao', dados: { pct: governanca.avalPct } });
+  if (governanca.opBTPct !== null && governanca.opBTPct < 20) tarefas.push({ sev: 'baixa', chave: 'opBT', dados: { pct: governanca.opBTPct } });
+  if (governanca.temVet && governanca.vetSuspeito) tarefas.push({ sev: 'baixa', chave: 'vet', dados: {} });
+  if (compras && compras.recompraParado.length) tarefas.push({ sev: 'media', chave: 'recompraParado', dados: { n: compras.recompraParado.length, itens: compras.recompraParado } });
+  if (compras && compras.custoSubindo.length) tarefas.push({ sev: 'baixa', chave: 'custoSubindo', dados: { n: compras.custoSubindo.length, pior: compras.custoSubindo[0] } });
+  if (estoqueAtual && estoqueAtual.nAbaixoCusto > 0) tarefas.push({ sev: 'alta', chave: 'precoAbaixoCusto', dados: { n: estoqueAtual.nAbaixoCusto, valor: estoqueAtual.valorAbaixoCusto, pior: estoqueAtual.topAbaixoCusto[0] } });
+  if (estoqueAtual && estoqueAtual.filialDivergente) tarefas.push({ sev: 'alta', chave: 'filialEstoqueDivergente', dados: { filialArquivo: estoqueAtual.filialArquivo } });
+  if (felinos > 0 && felinos < 8) tarefas.push({ sev: 'baixa', chave: 'felinos', dados: { pct: felinos } });
+  if (estoqueParado && estoqueParado.granelTotal > 0 && estoqueParado.granelNeg / estoqueParado.granelTotal > 0.3) tarefas.push({ sev: 'baixa', chave: 'granel', dados: { n: estoqueParado.granelNeg, total: estoqueParado.granelTotal } });
+  const ordemSev = { alta: 0, media: 1, baixa: 2 };
+  tarefas.sort((a, b) => ordemSev[a.sev] - ordemSev[b.sev]);
+
+  return {
+    filial, filialAlerta, ref, nM, meses, mensal, totReceita, totLucro, totCupons, lucroMes,
+    margemRep, margemAdj, czPct, czRec, mix9, mixPorMes, servShare, farmaM, farmaMg, peakF, lastF,
+    clientes, bucketsGeral, cliTot, ativosUlt, identPct, semTel,
+    buckets, cliRac: cliRacArr.length, inativos: inativosRac.length, gastoMensalHist, ciclo,
+    btM, btCli, crossBT, gastoBT, gastoN, valorPacote, pacotesMesAtual, metaPacotes,
+    vend, descItens, descRS, piorGrupoNeg, felinos, ruptura, estoqueParado, metas, balcaoAchado, compras, estoqueAtual,
+    horaSemana, entrega, novosPorMes, receitaPorMesSplit, churnGeral, governanca, tarefas,
+    v1, v2, v3, v4, vazTotal, K,
+    score, sub: { receita: sReceita, margem: sMargem, mix: sMix, ret: sRet, dado: sDado }
+  };
+}
+
+/* ---------- Snapshot para comparação entre diagnósticos (sem dado de cliente) ---------- */
+function buildSnapshot(R, cfg) {
+  return {
+    versao: 1, geradoEm: new Date().toISOString(), loja: (cfg && cfg.lojaLabel) || R.filial,
+    periodo: { inicio: R.mensal[0].label, fim: R.mensal[R.nM - 1].label, nMeses: R.nM },
+    score: R.score, sub: R.sub,
+    kpis: {
+      receitaMes: R.totReceita / R.nM, lucroMes: R.lucroMes, margemRep: R.margemRep, margemAdj: R.margemAdj,
+      ticketMedio: R.totReceita / R.totCupons, cuponsMes: R.totCupons / R.nM, ativosUlt: R.ativosUlt, identPct: R.identPct
+    },
+    vazamentos: { v1: R.v1, v2: R.v2, v3: R.v3, v4: R.v4, total: R.vazTotal },
+    metas: { receita: R.metas.receita, lucro: R.metas.lucro },
+    churn: { inativos90: R.churnGeral.inativos90, naoRacaoInativo: R.churnGeral.naoRacaoInativo },
+    tarefas: { total: R.tarefas.length, alta: R.tarefas.filter(t => t.sev === 'alta').length, media: R.tarefas.filter(t => t.sev === 'media').length, baixa: R.tarefas.filter(t => t.sev === 'baixa').length },
+    governanca: R.governanca
+  };
+}
+
+
+
+/* ============ RENDERIZADOR DO DIAGNÓSTICO v2 (SVG puro, offline) ============ */
+'use strict';
+
+
+
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const br = (n, d = 0) => (isFinite(n) ? n : 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const money = n => 'R$ ' + br(Math.round(n));
+const kmil = n => n >= 995000 ? 'R$ ' + br(n / 1e6, 2) + ' mi' : n >= 1000 ? 'R$ ' + br(n / 1000, 1) + ' mil' : money(n);
+const pc = (n, d = 1) => br(n, d) + '%';
+
+const NOME_GRUPO = { 'RACAO':'Ração','CONSULTORIO VETERINARIO':'Consultório vet','MEDICAMENTOS':'Medicamentos','BANHO E TOSA':'Banho e tosa','ANTIPARASITARIOS':'Antiparasitários','ALIMENTOS':'Alimentos','HIGIENE E COSMETICOS PET':'Higiene & cosméticos','ACESSORIOS':'Acessórios','PACOTES DE SERVICOS':'Pacotes de serviços','ITENS A GRANEL':'Itens a granel','SERVICOS DE TRANSPORTE':'Entrega (taxa)','VERMIFUGOS':'Vermífugos','AQUARISMO':'Aquarismo','DEMAIS':'Demais' };
+const gNome = g => NOME_GRUPO[g] || (g.charAt(0) + g.slice(1).toLowerCase());
+const PRIO = { '46-60': 0, '61-90': 1, '90+': 2, '31-45': 3, '0-30': 4 };
+const BADGE_TXT = { '0-30': '#fff', '31-45': '#10231C', '46-60': '#10231C', '61-90': '#fff', '90+': '#fff' };
+
+/* ---------- Tarefas: severidade + textos ---------- */
+const SEV = { alta: { cor: '#C0392B', bg: '#FBECEA', label: 'Alta' }, media: { cor: '#E67E22', bg: '#FDEEE1', label: 'Média' }, baixa: { cor: '#8A5A00', bg: '#FFF3D6', label: 'Baixa' } };
+const TASK_TEXT = {
+  identificacao: d => ({ titulo: 'Cadastrar cliente em toda venda', desc: `Só ${pc(d.identPct)} da receita está com cliente identificado. Esse nível de cadastro inviabiliza medir recorrência com precisão e tem consequência direta na loja: a régua de recompra perde alcance e o valor real de cada cliente (LTV) fica invisível para a gestão. Treinar o caixa para nunca fechar a venda sem telefone ou CPF do cliente.` }),
+  ruptura: d => ({ titulo: `Repor ${br(d.n)} produtos zerados da curva A`, desc: `Juntos, esses itens já venderam ${kmil(d.valor)} no período — toda venda perdida por prateleira vazia é receita que não volta.` }),
+  farmacia: d => ({ titulo: 'Recuperar a farmácia', desc: `Medicamentos + antiparasitários caíram de ${kmil(d.peak)} para ${kmil(d.last)}/mês — reveja compra e exposição da categoria.` }),
+  churn: d => ({ titulo: `Rodar régua de resgate em ${br(d.n)} clientes de ração`, desc: `Estão há 60+ dias sem comprar. Meta realista: resgatar ${br(d.resgateAlvo)} deles via WhatsApp — lista completa, com telefone, na seção de resgate.` }),
+  bt: d => ({ titulo: `Oferecer pacote de banho e tosa a ${br(d.n)} clientes avulsos`, desc: `Já fazem banho avulso nos últimos 60 dias e não têm o pacote mensal de ${money(d.valorPacote)} — oferta simples no caixa.` }),
+  balcao: d => d.vendedor ? (
+    Math.abs(d.gapDesc) > 5
+      ? { titulo: `Investigar margem de ${d.vendedor}`, desc: `Concede desconto em ${pc(d.descPctVend, 0)} das vendas contra ${pc(d.descPctOutros, 0)} dos demais — isso explica boa parte do gap de margem (${pc(d.margemVend, 0)} vs ${pc(d.margemOutros, 0)} dos outros). Rever alçada de desconto com essa pessoa.` }
+      : { titulo: `Revisar mix de ${d.vendedor}`, desc: `A taxa de desconto é parecida com a dos demais (${pc(d.descPctVend, 0)} vs ${pc(d.descPctOutros, 0)}) — a diferença de margem (${pc(d.margemVend, 0)} vs ${pc(d.margemOutros, 0)}) não vem de desconto, provavelmente é o mix de produtos vendidos. Confira se essa pessoa está concentrada no caixa de ração (margem menor).` }
+  ) : { titulo: 'Investigar diferença de margem entre vendedores', desc: 'Pode ser mix de produto ou desconto sem controle — apurar antes de cobrar da equipe.' },
+  filialMista: d => ({ titulo: 'Confirmar se os arquivos são todos da mesma loja', desc: `Os arquivos enviados têm ${br(d.lista.length)} filiais diferentes: ${d.lista.map(x => esc(x)).join(', ')}. Se não foi intencional, todo o diagnóstico está somando lojas diferentes e os números não servem para decisão até isso ser corrigido.` }),
+  estoqueParado: d => ({ titulo: `Negociar ${br(d.n)} produtos parados no estoque`, desc: `${kmil(d.valor)} de capital empatado — ações sugeridas na seção "Sobrando parado".` }),
+  canal: d => ({ titulo: 'Ativar o campo Canal de venda no PDV', desc: `Só ${pc(d.pct, 0)} das vendas registram de onde vieram — sem isso não dá pra saber se o cliente veio de WhatsApp, indicação ou balcão.` }),
+  bairro: d => ({ titulo: 'Completar bairro no cadastro do cliente', desc: `Só ${pc(d.pct, 0)} dos clientes têm bairro cadastrado — sem isso não dá pra mirar campanha localizada.` }),
+  avaliacao: d => ({ titulo: 'Ativar avaliação pós banho e tosa', desc: `O sistema tem esse campo pronto e ele quase nunca é usado (${pc(d.pct, 0)}) — é o jeito mais barato de antecipar insatisfação antes do cliente sumir.` }),
+  opBT: d => ({ titulo: 'Preencher entrada/saída do banho e tosa', desc: `Só ${pc(d.pct, 0)} dos atendimentos registram horário — sem isso não dá pra medir tempo de atendimento nem gargalo de agenda.` }),
+  vet: () => ({ titulo: 'Corrigir o preenchimento do campo Veterinário', desc: `Hoje ele parece registrar quem passou no caixa, não quem atendeu — sem isso não dá pra medir desempenho por médico.` }),
+  felinos: d => ({ titulo: 'Abrir frente de felinos', desc: `Só ${pc(d.pct, 0)} da receita identificada vem de gatos — é o segmento que mais cresce no país e o sortimento/comunicação da loja ainda ignora esse público. Meta: sortimento mínimo + campanha local para chegar a 5% da receita.` }),
+  granel: d => ({ titulo: 'Recontar a balança dos itens a granel', desc: `${br(d.n)} dos ${br(d.total)} produtos vendidos a peso estão com estoque negativo no sistema — sinal de que a pesagem na loja não bate com o que sai no caixa, e o erro vai acumulando mês a mês. Fazer contagem física e reajustar o estoque desses itens.` }),
+  recompraParado: d => ({ titulo: `Rever compra de ${br(d.n)} produto(s) já parado(s)`, desc: `Nos últimos 90 dias a loja comprou de novo produtos que já estavam com giro parado ou muito lento: ${d.itens.slice(0, 3).map(i => esc(i.produto)).join(', ')}${d.itens.length > 3 ? '...' : ''}. Alinhar com quem compra antes da próxima reposição desses itens.` }),
+  custoSubindo: d => ({ titulo: `Renegociar ${br(d.n)} produto(s) com custo em alta`, desc: `O pior caso é ${esc(d.pior.produto)}: custo subiu de ${money(d.pior.custoIni)} para ${money(d.pior.custoFim)} (${pc(d.pior.variacao, 0)}) com o fornecedor ${esc(d.pior.fornecedor)} — conferir se o preço de venda já foi reajustado, senão a margem desse item está encolhendo silenciosamente.` }),
+  precoAbaixoCusto: d => ({ titulo: `Corrigir preço de ${br(d.n)} produto(s) abaixo do custo`, desc: `Pior caso: ${esc(d.pior.nome)} custa ${money(d.pior.custo)} e está tabelado pra vender por ${money(d.pior.precoTabela)} — um prejuízo de ${money(d.pior.prejuizoUnit)} em cada unidade vendida. Juntos, esses ${br(d.n)} produtos, se vendidos ao preço atual, dariam ${money(d.valor)} de prejuízo. Corrigir a tabela de preço antes da próxima venda desses itens.` }),
+  filialEstoqueDivergente: d => ({ titulo: 'Conferir a filial do relatório de estoque atual', desc: `O arquivo de posição de estoque enviado está identificado como "${esc(d.filialArquivo)}", diferente da filial que aparece no BI de vendas. Confira se são a mesma loja antes de confiar nos números de estoque deste diagnóstico.` })
+};
+function buildTarefasHTML(R) {
+  if (!R.tarefas.length) return `<div class="card"><div class="callout" style="background:#E4F5EB;border-color:#BFE3CC"><b>Nenhuma tarefa crítica no momento.</b> Os indicadores que a máquina monitora estão dentro do esperado.</div></div>`;
+  const rows = R.tarefas.map((t, i) => {
+    const s = SEV[t.sev], txt = TASK_TEXT[t.chave](t.dados);
+    return `<label class="task-row" style="border-left-color:${s.cor}"><input type="checkbox" class="task-check"><div class="task-body"><span class="task-sev" style="background:${s.bg};color:${s.cor}">${s.label}</span><b>${esc(txt.titulo)}</b><p>${esc(txt.desc)}</p></div></label>`;
+  }).join('');
+  return `<div class="card"><div id="tarefasList">${rows}</div><div class="note" style="margin-top:10px">Marque conforme resolve — fica salvo neste navegador entre aberturas do mesmo arquivo (pode não funcionar em todos os navegadores quando o arquivo é aberto localmente).</div></div>`;
+}
+function buildTarefasCSV(R) {
+  const linhas = ['severidade;titulo;descricao'];
+  R.tarefas.forEach(t => {
+    const s = SEV[t.sev], txt = TASK_TEXT[t.chave](t.dados);
+    linhas.push([s.label, '"' + txt.titulo.replace(/"/g, '""') + '"', '"' + txt.desc.replace(/"/g, '""') + '"'].join(';'));
+  });
+  return '\ufeff' + linhas.join('\r\n');
+}
+
+/* ---------- Registro de gráficos (tooltip que segue o mouse) ---------- */
+let __chartSeq = 0, __chartRegistry = {};
+function __resetCharts() { __chartSeq = 0; __chartRegistry = {}; }
+function __regChart(meta) { const id = 'ch' + (__chartSeq++); __chartRegistry[id] = meta; return id; }
+function __fmtTip(fmt, v) { return fmt === 'pct' ? pc(v) : fmt === 'int' ? br(Math.round(v)) : kmil(v); }
+
+/* ---------- Gráficos SVG ---------- */
+function ejeY(min, max, n) { const st = (max - min) / n; return Array.from({ length: n + 1 }, (_, i) => min + i * st); }
+
+function svgBarraPct(labels, vals, fill) {
+  const W = 720, H = 240, L = 40, R = 14, T = 14, B = 30, iw = W - L - R, ih = H - T - B;
+  const mn = Math.max(0, Math.floor(Math.min(...vals) - 4)), mx = Math.ceil(Math.max(...vals) + 4);
+  const gap = iw / labels.length, bw = gap * 0.6;
+  const id = __regChart({ type: 'bar', labels, vals, fmt: 'pct', L, T, ih, gap, bw, mn, mx });
+  let s = `<div class="chart-wrap" id="wrap-${id}"><svg id="${id}" viewBox="0 0 ${W} ${H}" role="img" style="width:100%;height:auto">`;
+  ejeY(mn, mx, 3).forEach(v => { const y = T + ih - (v - mn) / (mx - mn) * ih; s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#E8F0EB"/><text x="${L - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4A6157">${br(v, 0)}%</text>`; });
+  vals.forEach((v, i) => { const x = L + i * gap + (gap - bw) / 2, h = (v - mn) / (mx - mn) * ih; s += `<rect x="${x}" y="${T + ih - h}" width="${bw}" height="${h}" rx="4" fill="${fill}"/>`; });
+  labels.forEach((l, i) => s += `<text x="${L + i * gap + gap / 2}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="#4A6157">${l}</text>`);
+  s += `<rect id="hl-${id}" class="hl-bar" x="0" y="${T}" width="${bw}" height="${ih}" rx="4"/>`;
+  return s + '</svg></div>';
+}
+
+function svgLinha(labels, vals, cor, fill) {
+  const W = 720, H = 240, L = 40, R = 14, T = 14, B = 30, iw = W - L - R, ih = H - T - B;
+  const mx = Math.max(...vals) * 1.15, gap = iw / labels.length;
+  const pts = vals.map((v, i) => [L + i * gap + gap / 2, T + ih - v / mx * ih]);
+  const id = __regChart({ type: 'line', labels, vals, fmt: 'money', L, T, ih, gap, bw: gap, mn: 0, mx });
+  let s = `<div class="chart-wrap" id="wrap-${id}"><svg id="${id}" viewBox="0 0 ${W} ${H}" role="img" style="width:100%;height:auto">`;
+  ejeY(0, mx, 3).forEach(v => { const y = T + ih - v / mx * ih; s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#E8F0EB"/><text x="${L - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4A6157">${br(v / 1000, 0)}k</text>`; });
+  s += `<path d="M${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L')} L${(L + iw - gap / 2).toFixed(1)},${T + ih} L${(L + gap / 2).toFixed(1)},${T + ih} Z" fill="${fill}"/>`;
+  s += `<path d="M${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L')}" fill="none" stroke="${cor}" stroke-width="2.5"/>`;
+  pts.forEach(p => s += `<circle cx="${p[0]}" cy="${p[1]}" r="3.4" fill="${cor}"/>`);
+  labels.forEach((l, i) => s += `<text x="${L + i * gap + gap / 2}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="#4A6157">${l}</text>`);
+  s += `<line id="hl-${id}" class="hl-line" x1="0" x2="0" y1="${T}" y2="${T + ih}"/><circle id="pt-${id}" class="hl-pt" r="5" cx="0" cy="0"/>`;
+  return s + '</svg></div>';
+}
+
+function svgCombo(labels, bars, line) {
+  const W = 720, H = 260, L = 46, R = 40, T = 14, B = 30, iw = W - L - R, ih = H - T - B;
+  const bMax = Math.max(...bars) * 1.12, lMin = Math.floor(Math.min(...line) - 3), lMax = Math.ceil(Math.max(...line) + 3);
+  const bw = iw / labels.length * 0.58, gap = iw / labels.length;
+  const id = __regChart({ type: 'combo', labels, bars, line, L, T, ih, gap, bw, bMax, lMin, lMax });
+  let s = `<div class="chart-wrap" id="wrap-${id}"><svg id="${id}" viewBox="0 0 ${W} ${H}" role="img" style="width:100%;height:auto">`;
+  ejeY(0, bMax, 4).forEach(v => { const y = T + ih - v / bMax * ih; s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#E8F0EB"/><text x="${L - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4A6157">${br(v / 1000, 0)}k</text>`; });
+  bars.forEach((v, i) => { const x = L + i * gap + (gap - bw) / 2, h = v / bMax * ih; s += `<rect x="${x}" y="${T + ih - h}" width="${bw}" height="${h}" rx="4" fill="#009150" style="cursor:pointer" onclick="abrirMixMes(${i})"><title>Clique para ver o mix de ${labels[i]}</title></rect>`; });
+  const pts = line.map((v, i) => [L + i * gap + gap / 2, T + ih - (v - lMin) / (lMax - lMin) * ih]);
+  s += `<path d="M${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L')}" fill="none" stroke="#00573F" stroke-width="2.5"/>`;
+  pts.forEach((p, i) => s += `<circle cx="${p[0]}" cy="${p[1]}" r="3.4" fill="#00573F" style="cursor:pointer" onclick="abrirMixMes(${i})"/>`);
+  [lMin, (lMin + lMax) / 2, lMax].forEach(v => { const y = T + ih - (v - lMin) / (lMax - lMin) * ih; s += `<text x="${W - R + 6}" y="${y + 3}" font-size="9" fill="#00573F">${br(v, 0)}%</text>`; });
+  labels.forEach((l, i) => s += `<text x="${L + i * gap + gap / 2}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="#4A6157" style="cursor:pointer" onclick="abrirMixMes(${i})">${l}</text>`);
+  s += `<rect id="hlbar-${id}" class="hl-bar" x="0" y="${T}" width="${bw}" height="${ih}" rx="4" style="pointer-events:none"/>`;
+  s += `<line id="hlline-${id}" class="hl-line" x1="0" x2="0" y1="${T}" y2="${T + ih}" style="pointer-events:none"/><circle id="pt-${id}" class="hl-pt" r="5" cx="0" cy="0" style="pointer-events:none"/>`;
+  return s + '</svg></div><div class="chart-hint no-print">Clique num mês para ver o mix de categorias daquele mês</div>';
+}
+
+function svgBarra(labels, vals, fill, borda) {
+  const W = 720, H = 240, L = 40, R = 14, T = 14, B = 30, iw = W - L - R, ih = H - T - B;
+  const mx = Math.max(...vals) * 1.15, gap = iw / labels.length, bw = gap * 0.6;
+  const id = __regChart({ type: 'bar', labels, vals, fmt: 'money', L, T, ih, gap, bw, mn: 0, mx });
+  let s = `<div class="chart-wrap" id="wrap-${id}"><svg id="${id}" viewBox="0 0 ${W} ${H}" role="img" style="width:100%;height:auto">`;
+  ejeY(0, mx, 3).forEach(v => { const y = T + ih - v / mx * ih; s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#E8F0EB"/><text x="${L - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4A6157">${br(v / 1000, 0)}k</text>`; });
+  vals.forEach((v, i) => { const x = L + i * gap + (gap - bw) / 2, h = v / mx * ih; s += `<rect x="${x}" y="${T + ih - h}" width="${bw}" height="${h}" rx="4" fill="${fill}" stroke="${borda}" stroke-width="1.2"/>`; });
+  labels.forEach((l, i) => s += `<text x="${L + i * gap + gap / 2}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="#4A6157">${l}</text>`);
+  s += `<rect id="hl-${id}" class="hl-bar" x="0" y="${T}" width="${bw}" height="${ih}" rx="4"/>`;
+  return s + '</svg></div>';
+}
+
+function svgBarraInt(labels, vals, fill, borda) {
+  const W = 720, H = 200, L = 32, R = 14, T = 14, B = 26, iw = W - L - R, ih = H - T - B;
+  const mx = Math.max(...vals) * 1.18, gap = iw / labels.length, bw = gap * 0.62;
+  const id = __regChart({ type: 'bar', labels, vals, fmt: 'int', L, T, ih, gap, bw, mn: 0, mx });
+  let s = `<div class="chart-wrap" id="wrap-${id}"><svg id="${id}" viewBox="0 0 ${W} ${H}" role="img" style="width:100%;height:auto">`;
+  ejeY(0, mx, 3).forEach(v => { const y = T + ih - v / mx * ih; s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="#E8F0EB"/><text x="${L - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#4A6157">${br(v, 0)}</text>`; });
+  vals.forEach((v, i) => { const x = L + i * gap + (gap - bw) / 2, h = v / mx * ih; s += `<rect x="${x}" y="${T + ih - h}" width="${bw}" height="${h}" rx="4" fill="${fill}" stroke="${borda}" stroke-width="1.2"/>`; });
+  labels.forEach((l, i) => s += `<text x="${L + i * gap + gap / 2}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#4A6157">${l}</text>`);
+  s += `<rect id="hl-${id}" class="hl-bar" x="0" y="${T}" width="${bw}" height="${ih}" rx="4"/>`;
+  return s + '</svg></div>';
+}
+
+/* Termômetro de metas: piso / meta / ouro com marcador do mês atual */
+function svgTermometro(atual, tiers, fmt) {
+  fmt = fmt || 'money';
+  const W = 720, H = 150, L = 18, R = 18, barY = 78, barH = 28;
+  const scaleMax = Math.max(atual, tiers[tiers.length - 1].value) * 1.08;
+  const X = v => L + (v / scaleMax) * (W - L - R);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" style="width:100%;height:auto">`;
+  s += `<rect x="${L}" y="${barY}" width="${W - L - R}" height="${barH}" rx="8" fill="#EDF4F0"/>`;
+  const wFill = Math.max(0, Math.min(X(atual) - L, W - L - R));
+  s += `<rect x="${L}" y="${barY}" width="${wFill}" height="${barH}" rx="8" fill="#009150"/>`;
+  const offsets = [-14, -34, -54];
+  tiers.forEach((t, i) => {
+    const x = X(t.value);
+    s += `<line x1="${x}" x2="${x}" y1="${barY - 8}" y2="${barY + barH + 8}" stroke="${t.cor}" stroke-width="2" stroke-dasharray="3,3"/>`;
+    const anchor = x > W - 90 ? 'end' : x < 60 ? 'start' : 'middle';
+    s += `<text x="${x}" y="${barY + offsets[i]}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="${t.cor}">${esc(t.label)}</text>`;
+    s += `<text x="${x}" y="${barY + offsets[i] + 13}" text-anchor="${anchor}" font-size="10" fill="#4A6157">${__fmtTip(fmt, t.value)}</text>`;
+  });
+  const xa = X(atual);
+  s += `<polygon points="${xa - 6},${barY + barH + 12} ${xa + 6},${barY + barH + 12} ${xa},${barY + barH + 4}" fill="#10231C"/>`;
+  s += `<text x="${xa}" y="${barY + barH + 30}" text-anchor="${xa > W - 100 ? 'end' : xa < 100 ? 'start' : 'middle'}" font-size="11" font-weight="700" fill="#10231C">Último mês: ${__fmtTip(fmt, atual)}</text>`;
+  return s + '</svg>';
+}
+
+/* Liga o tooltip que segue o mouse a todos os gráficos registrados nesta renderização */
+function initChartHovers() {
+  if (typeof document === 'undefined') return;
+  let tip = document.getElementById('chartTooltip');
+  if (!tip) { tip = document.createElement('div'); tip.id = 'chartTooltip'; tip.className = 'chart-tooltip'; document.body.appendChild(tip); }
+  Object.keys(__chartRegistry).forEach(id => {
+    const m = __chartRegistry[id];
+    const wrap = document.getElementById('wrap-' + id), svgEl = document.getElementById(id);
+    if (!wrap || !svgEl) return;
+    const hl = document.getElementById('hl-' + id), pt = document.getElementById('pt-' + id);
+    const hlbar = document.getElementById('hlbar-' + id), hlline = document.getElementById('hlline-' + id);
+    const move = (clientX, clientY) => {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = 720 / rect.width;
+      const xSvg = (clientX - rect.left) * scaleX;
+      let idx = Math.floor((xSvg - m.L) / m.gap);
+      idx = Math.max(0, Math.min(m.labels.length - 1, idx));
+      if (m.type === 'bar' && hl) { hl.setAttribute('x', m.L + idx * m.gap + (m.gap - m.bw) / 2); hl.style.opacity = 1; }
+      if (m.type === 'line' && hl && pt) {
+        const x = m.L + idx * m.gap + m.gap / 2, y = m.T + m.ih - (m.vals[idx] - m.mn) / (m.mx - m.mn) * m.ih;
+        hl.setAttribute('x1', x); hl.setAttribute('x2', x); hl.style.opacity = 1;
+        pt.setAttribute('cx', x); pt.setAttribute('cy', y); pt.style.opacity = 1;
+      }
+      if (m.type === 'combo' && hlbar && hlline && pt) {
+        hlbar.setAttribute('x', m.L + idx * m.gap + (m.gap - m.bw) / 2); hlbar.style.opacity = 1;
+        const x = m.L + idx * m.gap + m.gap / 2, y = m.T + m.ih - (m.line[idx] - m.lMin) / (m.lMax - m.lMin) * m.ih;
+        hlline.setAttribute('x1', x); hlline.setAttribute('x2', x); hlline.style.opacity = 1;
+        pt.setAttribute('cx', x); pt.setAttribute('cy', y); pt.style.opacity = 1;
+      }
+      tip.innerHTML = m.type === 'combo'
+        ? '<b>' + esc(m.labels[idx]) + '</b><br>Receita: ' + kmil(m.bars[idx]) + '<br>Margem: ' + pc(m.line[idx]) + '<br><span style="opacity:.7;font-weight:400">clique para ver o mix</span>'
+        : '<b>' + esc(m.labels[idx]) + '</b><br>' + __fmtTip(m.fmt, m.vals[idx]);
+      tip.style.left = (clientX + 14) + 'px'; tip.style.top = (clientY - 12) + 'px'; tip.style.display = 'block';
+    };
+    const hide = () => { [hl, pt, hlbar, hlline].forEach(el => { if (el) el.style.opacity = 0; }); tip.style.display = 'none'; };
+    wrap.addEventListener('pointermove', e => move(e.clientX, e.clientY));
+    wrap.addEventListener('pointerleave', hide);
+  });
+}
+
+/* ---------- Popup de mix por mês (clique numa barra/mês do gráfico Receita x Margem) ---------- */
+if (typeof window !== 'undefined') {
+window.abrirMixMes = function (idx) {
+  const R = window.__diagR;
+  if (!R || !R.mixPorMes || !R.mixPorMes[idx]) return;
+  const m = R.mixPorMes[idx];
+  const maxV = Math.max(1, ...m.itens.map(x => x.rec));
+  const rows = m.itens.map(it => {
+    const cls = it.margem >= 55 ? 'alta' : it.margem >= 35 ? 'media' : 'baixa';
+    return `<div class="mix-row"><div class="nome">${esc(gNome(it.grupo))}</div><div class="mix-bar"><i style="--w:${(100 * it.rec / maxV).toFixed(1)}%"></i><span>${pc(it.share)}</span></div><div class="mg ${cls}">${pc(it.margem, 0)} margem</div></div>`;
+  }).join('');
+  const titEl = document.getElementById('mixModalTitle'), subEl = document.getElementById('mixModalSub'), bodyEl = document.getElementById('mixModalBody'), ov = document.getElementById('mixModal');
+  if (!titEl || !ov) return;
+  titEl.textContent = 'Mix por categoria — ' + m.label;
+  subEl.textContent = 'Receita do mês: ' + kmil(m.receita);
+  bodyEl.innerHTML = rows || '<p class="note">Sem vendas registradas neste mês.</p>';
+  ov.style.display = 'flex';
+};
+window.fecharMixMes = function () { const ov = document.getElementById('mixModal'); if (ov) ov.style.display = 'none'; };
+
+window.abrirGateInfo = function (idx) {
+  const R = window.__diagR;
+  if (!R || !R.__gateInfo || !R.__gateInfo[idx]) return;
+  const info = R.__gateInfo[idx];
+  const titEl = document.getElementById('mixModalTitle'), subEl = document.getElementById('mixModalSub'), bodyEl = document.getElementById('mixModalBody'), ov = document.getElementById('mixModal');
+  if (!titEl || !ov) return;
+  const rotulo = { ok: 'Tudo certo', warn: 'Atenção', bad: 'Crítico' }[info.tipo] || '';
+  titEl.textContent = info.tit;
+  subEl.innerHTML = `<span class="stbadge" style="background:${info.tipo === 'ok' ? '#009150' : info.tipo === 'warn' ? '#FDAE25' : '#C0392B'};color:${info.tipo === 'warn' ? '#10231C' : '#fff'}">${rotulo}</span>`;
+  bodyEl.innerHTML = `<p style="font-size:.86rem;line-height:1.6;color:var(--ink)">${info.detalhe}</p>`;
+  ov.style.display = 'flex';
+};
+}
+
+/* ---------- Lista de resgate ---------- */
+function ordenaResgate(clientes) {
+  return [...clientes].sort((a, b) => (PRIO[a.banda] - PRIO[b.banda]) || (b.gastoMes - a.gastoMes));
+}
+function buildResgateRows(clientes, filtro, busca) {
+  let lista = ordenaResgate(clientes);
+  if (filtro && filtro !== 'todos') lista = lista.filter(c => c.banda === filtro);
+  if (busca) { const q = busca.toLowerCase(); lista = lista.filter(c => (c.nome + ' ' + c.tel).toLowerCase().includes(q)); }
+  const html = lista.map((c, i) => {
+    const b = BANDAS.find(x => x.id === c.banda);
+    return `<tr class="${i >= 30 ? 'extra' : ''}">
+<td><span class="stbadge" style="background:${b.cor};color:${BADGE_TXT[c.banda]}">${b.rot}</span></td>
+<td>${esc(c.nome)}</td><td class="num">${esc(c.tel || '—')}</td>
+<td class="num">${fmtData(c.ultima)}</td><td class="num"><b>${br(c.dias)}</b></td>
+<td class="num">${br(c.compras)}</td><td class="num">${money(c.gastoMes)}</td>
+<td style="text-align:center">${c.racao ? '✓' : '—'}</td></tr>`;
+  }).join('');
+  return { html, n: lista.length };
+}
+function buildClientesCSV(R) {
+  const linhas = ['status;cliente;telefone;ultima_compra;dias_sem_comprar;compras;gasto_total;gasto_mensal;compra_racao;usa_banho_tosa;tem_pacote'];
+  ordenaResgate(R.clientes).forEach(c => {
+    const b = BANDAS.find(x => x.id === c.banda);
+    linhas.push([b.rot + ' (' + c.banda + 'd)', '"' + c.nome.replace(/"/g, '""') + '"', c.tel,
+      fmtData(c.ultima), c.dias, c.compras, br(c.gasto, 2), br(c.gastoMes, 2),
+      c.racao ? 'SIM' : 'NAO', c.bt ? 'SIM' : 'NAO', c.pacote ? 'SIM' : 'NAO'].join(';'));
+  });
+  return '\ufeff' + linhas.join('\r\n');
+}
+
+/* ---------- Relatório ---------- */
+function buildPlanoHTML(R, lucroAlvo, ret45) {
+  const porSev = { alta: R.tarefas.filter(t => t.sev === 'alta'), media: R.tarefas.filter(t => t.sev === 'media'), baixa: R.tarefas.filter(t => t.sev === 'baixa') };
+  const itemLi = t => { const txt = TASK_TEXT[t.chave](t.dados); return `<li><b>${esc(txt.titulo)}.</b> ${esc(txt.desc)}</li>`; };
+  const bloco = (lista, max, vazioMsg) => {
+    if (!lista.length) return vazioMsg ? `<li style="color:var(--verde-600)"><b>${esc(vazioMsg)}</b></li>` : '';
+    const show = lista.slice(0, max), resto = lista.length - show.length;
+    return show.map(itemLi).join('') + (resto > 0 ? `<li><a href="#tarefas" style="color:var(--verde-600);font-weight:700">+${resto} tarefa${resto > 1 ? 's' : ''} — ver aba Tarefas</a></li>` : '');
+  };
+  return `<div class="plano">
+    <div class="fase"><h3>30 dias</h3><ul>${bloco(porSev.alta, 4, 'Nenhuma pendência urgente neste diagnóstico — mantenha o que está funcionando.')}</ul></div>
+    <div class="fase"><h3>60 dias</h3><ul>${bloco(porSev.media, 4, 'Nenhuma pendência de prioridade média neste diagnóstico.')}</ul></div>
+    <div class="fase"><h3>90 dias</h3><ul>${bloco(porSev.baixa, 3, '')}
+      <li><b>Medir vs. baseline:</b> meta de lucro bruto ≥ ${kmil(lucroAlvo)}/mês (hoje ${kmil(R.lucroMes)}).</li>
+      <li><b>Recompra dentro de 45 dias ≥ 60%</b> dos clientes de ração (hoje ${pc(ret45, 0)}).</li>
+    </ul></div>
+  </div>`;
+}
+
+function buildReportHTML(R, cfg) {
+  __resetCharts();
+  const loja = esc(cfg.lojaLabel || R.filial || 'Loja');
+  const labels = R.mensal.map(m => m.label);
+  const periodo = labels[0] + '–' + labels[labels.length - 1];
+  const g1 = R.mensal[0], gN = R.mensal[R.nM - 1];
+  const growC = R.nM > 1 ? 100 * (gN.cupons / g1.cupons - 1) : 0;
+  const growT = R.nM > 1 ? 100 * (gN.ticket / g1.ticket - 1) : 0;
+  const b = R.buckets, bg = R.bucketsGeral;
+  const zonaResgate = b['46-60'] + b['61-90'];
+  const ret45 = R.cliRac ? 100 * (b['0-30'] + b['31-45']) / R.cliRac : 0;
+  const ticketMed = R.totReceita / R.totCupons;
+  const servBT = R.btM.length ? R.btM[R.btM.length - 1].serv : 0;
+  const identInfo = nivelPct(R.identPct);
+
+  /* vazamentos (todos calculados dos dados) */
+  const tags = [];
+  if (R.v1 > 200) tags.push({ v: R.v1, t: 'Farmácia em queda', p: `Medicamentos + antiparasitários caíram de ${kmil(R.peakF)} para ${kmil(R.lastF)}/mês (−${pc(100 * (1 - R.lastF / R.peakF), 0)}). Recuperar o próprio pico devolve isso em lucro (margem ${pc(100 * R.farmaMg, 0)}).` });
+  if (R.v2 > 200) tags.push({ v: R.v2, t: 'Churn de ração', p: `${br(R.inativos)} clientes de ração (${pc(100 * R.inativos / Math.max(1, R.cliRac), 0)}) há 60+ dias sem comprar, ${money(R.gastoMensalHist)}/mês cada. Cálculo: resgate de 15% deles (constante da metodologia) via lista abaixo.` });
+  if (R.v3 > 200) tags.push({ v: R.v3, t: 'Avulsos sem pacote B&T', p: `${br(R.metaPacotes)} clientes fizeram banho avulso nos últimos 60 dias e não têm o pacote mensal de ${money(R.valorPacote)} (hoje só ${br(R.pacotesMesAtual, 0)} pacotes/mês). Migrá-los vale isso de incremento — já descontado o que gastam avulso.` });
+  if (R.v4 > 200) tags.push({ v: R.v4, t: 'Balcão desigual', p: `Diferença de margem entre vendedores de volume parecido. Investigar mix e desconto antes de cobrar — equalizar vale isso por mês.` });
+
+  const mixMax = Math.max(...R.mix9.map(m => m.rec));
+  const mixHTML = R.mix9.map(m => {
+    const cls = m.margem >= 55 ? 'alta' : m.margem >= 35 ? 'media' : 'baixa';
+    return `<div class="mix-row"><div class="nome">${esc(gNome(m.grupo))}</div><div class="mix-bar"><i style="--w:${(100 * m.rec / mixMax).toFixed(1)}%"></i><span>${pc(m.share)}</span></div><div class="mg ${cls}">${pc(m.margem, 0)} margem</div></div>`;
+  }).join('');
+
+  const novosRecHTML = R.receitaPorMesSplit.map(m => {
+    const tot = m.novos + m.recorrentes, pN = tot ? 100 * m.novos / tot : 0;
+    return `<div class="mix-row"><div class="nome">${m.label}</div><div class="mix-bar"><div style="position:absolute;inset:0;width:${pN.toFixed(1)}%;background:#FDAE25;border-radius:6px 0 0 6px"></div><div style="position:absolute;inset:0;left:${pN.toFixed(1)}%;width:${(100 - pN).toFixed(1)}%;background:#00573F;border-radius:0 6px 6px 0"></div><span>${pc(pN, 0)} novos</span></div><div class="mg">${kmil(tot)}</div></div>`;
+  }).join('');
+
+  const recMax = Math.max(1, ...BANDAS.map(x => b[x.id]));
+  const rotRec = { '0-30': '0–30 dias', '31-45': '31–45 dias', '46-60': '46–60 dias', '61-90': '61–90 dias', '90+': '90+ dias' };
+  const recHTML = BANDAS.map(x => `<div class="rec-row"><div>${rotRec[x.id]}</div><div class="rec-bar"><i style="--w:${(100 * b[x.id] / recMax).toFixed(1)}%;--c:${x.cor}"></i></div><div class="qt">${br(b[x.id])}</div></div>`).join('')
+    + `<div style="font-size:.72rem;color:#4A6157;margin-top:6px" class="num">${br(R.cliRac)} compradores de ração no período · ${br(R.inativos)} além de 60 dias (${pc(100 * R.inativos / Math.max(1, R.cliRac), 0)})</div>`;
+
+  const mOutros = v => { const o = R.vend.filter(x => x !== v); return o.length ? 100 * o.reduce((a, x) => a + x.rec * x.margem / 100, 0) / o.reduce((a, x) => a + x.rec, 0) : v.margem; };
+  const vendHTML = R.vend.slice(0, 5).map(v => {
+    const low = mOutros(v) - v.margem > 3;
+    return `<tr><td>${esc(v.nome)}</td><td class="num">${kmil(v.rec)}</td><td class="num">${br(v.cupons)}</td><td class="num">R$ ${br(v.ticket, 1)}</td><td class="num">${pc(v.descPct, 0)}</td><td class="num"><b style="color:${low ? 'var(--alerta)' : 'var(--verde-600)'}">${pc(v.margem)}</b></td></tr>`;
+  }).join('');
+  const balcaoCallout = R.balcaoAchado
+    ? (Math.abs(R.balcaoAchado.gapDesc) > 5
+        ? `<b>Achado, não hipótese:</b> ${esc(R.balcaoAchado.vendedor)} concede desconto em ${pc(R.balcaoAchado.descPctVend, 0)} das vendas contra ${pc(R.balcaoAchado.descPctOutros, 0)} dos demais — isso explica boa parte do gap de margem.`
+        : `<b>Achado, não hipótese:</b> a taxa de desconto de ${esc(R.balcaoAchado.vendedor)} é parecida com a dos demais (${pc(R.balcaoAchado.descPctVend, 0)} vs ${pc(R.balcaoAchado.descPctOutros, 0)}) — a margem menor provavelmente vem do mix de produtos, não de desconto.`)
+    : 'Margem parecida entre a equipe — nenhum vendedor destoando o suficiente para investigar.';
+
+  let rupturaHTML;
+  if (R.ruptura) {
+    const rp = R.ruptura;
+    rupturaHTML = `<div class="sec-head"><h2>Alerta de ruptura — curva A</h2><span class="hint num">${br(rp.nZer)} SKUs classe A com estoque ≤ 0 · juntos somam ${kmil(rp.valZer)} de venda (${pc(rp.pctRec, 0)} da receita do período)</span></div>
+    <div class="card"><table class="num"><thead><tr><th>Produto (classe A)</th><th class="num">Venda no período</th><th class="num">Estoque hoje</th></tr></thead><tbody>`
+      + rp.top.map(t => `<tr><td>${esc(t.desc)}</td><td class="num">${money(t.vv)}</td><td class="num"><span class="${t.est < 0 ? 'badge-neg' : t.est === 0 ? 'badge-zero' : 'badge-um'}">${br(t.est)}</span></td></tr>`).join('')
+      + `</tbody></table>${rp.nNeg ? `<div class="callout red"><b>Estoque negativo = entrada não lançada no sistema.</b> Além da venda perdida, o número de estoque deixa de ser confiável para compra.</div>` : ''}</div>`;
+  } else {
+    rupturaHTML = `<div class="sec-head"><h2>Faltando na prateleira — curva A zerada</h2></div><div class="card"><div class="callout"><b>Envie o relatório ABC de produtos</b> (com colunas Classe, Estoque e Qtd.Vendida) para ativar o alerta de produtos zerados.</div></div>`;
+  }
+
+  /* estoque parado */
+  let paradoHTML;
+  if (R.estoqueParado) {
+    const EP = R.estoqueParado;
+    const nativo = EP.fonte === 'nativo';
+    const hint = nativo
+      ? `Fonte: relatório de estoque parado do próprio One Pet — dias reais sem venda, custo real (${br(EP.diasMin)} a ${br(EP.diasMax)} dias sem vender no arquivo enviado)`
+      : `Estimado a partir do ABC de produtos, comparado com o ritmo de venda dos últimos ${br(Math.round(EP.periodoDias / 30))} meses da própria loja — sem número inventado`;
+    const rowsEP = EP.top.map(i => {
+      const tempoTxt = nativo ? br(i.dias) + ' dias sem vender' : (i.status === 'sem_giro' ? 'Não vendeu no período' : br(Math.round(i.meses)) + ' meses de estoque no ritmo atual');
+      return `<tr><td>${esc(i.desc)}</td><td>${esc(gNome(i.grupo))}</td><td class="num">${br(i.estoque)}</td><td class="num">${i.critico ? '<span class="badge-neg">' + tempoTxt + '</span>' : tempoTxt}</td><td class="num">${money(i.valorParado)}</td></tr>`;
+    }).join('');
+    const totalRotulo = nativo
+      ? `${br(EP.nCritico)} produto(s) parados há 1 ano ou mais e ${br(EP.nMuitoLento)} entre 6 meses e 1 ano sem vender.`
+      : `${br(EP.nCritico)} produto(s) sem nenhuma venda no período e ${br(EP.nMuitoLento)} com giro muito lento (levariam mais de ${br(Math.round(EP.periodoDias / 30))} meses para vender no ritmo atual).`;
+    paradoHTML = `<div class="sec-head"><h2>Sobrando parado — estoque que não gira</h2><span class="hint num">${hint}</span></div>
+    <div class="card">
+      <div class="total-tag num" style="background:var(--laranja);color:#fff;margin-bottom:16px"><div class="big">${kmil(EP.totalParadoValor)}</div><div class="desc" style="color:#fff">parados em estoque: ${totalRotulo}</div></div>
+      ${EP.n60Mais ? `<div class="callout num" style="margin-bottom:14px"><b>${br(EP.n60Mais)} produtos (${kmil(EP.valor60Mais)})</b> estão há mais de 60 dias sem vender — inclui os críticos acima e parte do giro lento, é o corte que costuma servir de gatilho pra ação comercial.</div>` : ''}
+      <table class="num"><thead><tr><th>Produto</th><th>Categoria</th><th class="num">Estoque</th><th class="num">Tempo parado</th><th class="num">Valor parado</th></tr></thead><tbody>${rowsEP}</tbody></table>
+      ${EP.nLento ? `<div class="callout">+${br(EP.nLento)} produto(s) em giro lento (${kmil(EP.totalLentoValor)}) — vale observar antes de virarem estoque parado.</div>` : ''}
+      ${EP.granelTotal > 0 && EP.granelNeg / EP.granelTotal > 0.3 ? `<div class="callout red num"><b>${br(EP.granelNeg)} dos ${br(EP.granelTotal)} itens vendidos a peso (a granel) estão com estoque negativo</b> — a pesagem na balança da loja não está batendo com o que sai no caixa. Isso não afeta os números acima (já corrigidos), mas indica que vale recontar fisicamente esses itens.</div>` : ''}
+      ${EP.nSuspeitos ? `<div class="callout red num"><b>${br(EP.nSuspeitos)} produto(s) com estoque implausível</b> — provável erro de unidade/lançamento na exportação, não erro da máquina. Ficaram de fora da conta de estoque parado acima até serem conferidos: ${EP.topSuspeitos.map(i => esc(i.desc) + ' (estoque ' + br(i.estoque, 1) + ')').join(', ')}.</div>` : ''}
+      <div class="callout"><b>O que fazer:</b> 1) negociar troca ou devolução com o fornecedor, quando o contrato permitir; 2) montar kit ou promoção casando com um produto de giro alto da mesma categoria; 3) desconto agressivo com prazo curto para o que não vendeu nada no período; 4) avaliar transferir para outra loja da rede com mais saída daquele item; 5) parar de repor até o giro normalizar.</div>
+    </div>`;
+  } else {
+    paradoHTML = `<div class="sec-head"><h2>Sobrando parado — estoque que não gira</h2></div><div class="card"><div class="callout"><b>Envie o relatório de estoque parado do One Pet (ou o ABC de produtos)</b> para ativar esta análise.</div></div>`;
+  }
+
+  /* lista de resgate */
+  const chipsFiltro = [['todos', 'Todos', R.cliTot]].concat(BANDAS.map(x => [x.id, x.rot + ' ' + x.id + 'd', bg[x.id]]))
+    .map(([id, rot, n]) => `<button class="fchipf" data-f="${id}">${rot} <b>${br(n)}</b></button>`).join('');
+  const legenda = BANDAS.map(x => `<span class="leg"><i style="background:${x.cor}"></i>${x.rot} (${x.id} dias)</span>`).join('');
+  const resgateHTML = `<section><div class="wrap">
+    <div class="sec-head"><h2>Lista de resgate de clientes</h2><span class="hint num">${br(R.cliTot)} clientes identificados · cor conforme o tempo sem comprar (qualquer item) · ordenada por prioridade de resgate e valor do cliente${R.semTel ? ' · ' + br(R.semTel) + ' sem telefone no cadastro' : ''}</span></div>
+    <div class="total-tag num" style="background:var(--alerta);color:#fff"><div class="big">${br(R.churnGeral.inativos90)}</div><div class="desc" style="color:#fff">clientes sem comprar nada há 90+ dias, de qualquer categoria — ${br(R.churnGeral.naoRacaoInativo)} deles nunca compraram ração e por isso não apareceriam em nenhuma régua pensada só pra ração.</div></div>
+    <div class="card">
+      <div class="filtros no-print">${chipsFiltro}<input type="search" id="buscaCli" placeholder="Buscar nome ou telefone…" aria-label="Buscar cliente"><button class="btn btn-sec" id="btnCSV2">⬇ Baixar CSV</button></div>
+      <div class="legenda-cores">${legenda}</div>
+      <div class="tbl-scroll"><table class="num" id="tbResgate"><thead><tr><th>Status</th><th>Cliente</th><th class="num">Telefone</th><th class="num">Últ. compra</th><th class="num">Dias</th><th class="num">Compras</th><th class="num">Gasto/mês</th><th style="text-align:center">Ração</th></tr></thead><tbody id="resgateBody"></tbody></table></div>
+      <div id="resgateInfo" class="note num" style="margin-top:8px"></div>
+      <div class="print-note">No PDF são impressos os 30 primeiros por prioridade — a lista completa sai no botão "Baixar CSV".</div>
+    </div>
+  </div></section>`;
+
+  /* gate 0 dinâmico — cada card guarda um detalhe expandido, aberto ao clicar */
+  const checks = [], gateInfo = [];
+  const ck = (tipo, tit, sub, detalhe) => {
+    const idx = gateInfo.length;
+    gateInfo.push({ tipo, tit, sub, detalhe: detalhe || sub });
+    checks.push(`<div class="check ${tipo}" onclick="abrirGateInfo(${idx})" onkeydown="if(event.key==='Enter')abrirGateInfo(${idx})" role="button" tabindex="0"><div class="ic">${tipo === 'ok' ? '✓' : tipo === 'warn' ? '!' : '✗'}</div><div><b>${tit}</b><span>${sub}</span><span class="check-mais">Ver detalhes →</span></div></div>`);
+  };
+  const vendDescRank = R.vend.slice().sort((a, b) => b.descPct - a.descPct);
+  const vendDescTxt = vendDescRank.length ? vendDescRank.map(v => esc(v.nome) + ': ' + pc(v.descPct, 0)).join(' · ') : 'sem dado de vendedor suficiente.';
+
+  if (R.filialAlerta) ck('bad', br(R.filialAlerta.lista.length) + ' filiais diferentes nos arquivos enviados', 'Confira se todos os CSVs são da mesma loja antes de usar este diagnóstico para decisão.',
+    `Filiais encontradas nos arquivos: <b>${R.filialAlerta.lista.map(esc).join(', ')}</b>.<br><br>Isso significa que <b>todos os números deste relatório</b> — receita, margem, clientes, estoque — estão somando lojas diferentes como se fossem uma só. Antes de tomar qualquer decisão com este diagnóstico, refaça o upload garantindo que todos os CSVs sejam da mesma unidade.`);
+
+  if (R.identPct >= 95) ck('ok', pc(R.identPct) + ' da receita com cliente identificado', 'É o que permite medir recompra e LTV com precisão.',
+    `${pc(R.identPct)} da receita (${br(R.totCupons)} vendas no total) veio com cliente identificado no cupom. Isso é o que sustenta toda a lista de resgate, o cálculo de recompra de ração e o LTV por cliente neste diagnóstico — sem esse nível de cadastro, nada disso seria confiável.`);
+  else ck(R.identPct >= 80 ? 'warn' : 'bad', 'Só ' + pc(R.identPct) + ' da receita com cliente identificado', 'Sem cadastro na venda, recompra e LTV ficam cegos. Prioridade máxima.',
+    `Apenas ${pc(R.identPct)} da receita tem cliente identificado — o resto (${pc(100 - R.identPct)}) é venda anônima, invisível pra régua de recompra, lista de resgate e cálculo de LTV. Treinar o caixa pra nunca fechar venda sem telefone ou CPF é a correção mais barata e de maior impacto que existe neste diagnóstico.`);
+
+  if (R.semTel > 0.15 * R.cliTot) ck('warn', br(R.semTel) + ' clientes sem telefone no cadastro', 'A régua de WhatsApp não alcança quem não tem número — completar cadastro no caixa.',
+    `${br(R.semTel)} de ${br(R.cliTot)} clientes identificados (${pc(100 * R.semTel / R.cliTot, 0)}) não têm telefone cadastrado. Esses clientes aparecem na lista de resgate mas não recebem a régua de WhatsApp — na prática, ficam fora de qualquer campanha de reativação até o cadastro ser completado.`);
+
+  if (R.descItens < 5) ck('ok', 'Desconto sob controle', pc(R.descItens) + ' dos itens com desconto · ' + kmil(R.descRS) + ' no período.',
+    `${pc(R.descItens)} dos itens vendidos tiveram desconto, somando ${kmil(R.descRS)} no período — nível saudável, sem sinal de desconto usado como muleta de venda.`);
+  else ck('warn', 'Desconto alto: ' + pc(R.descItens) + ' dos itens', kmil(R.descRS) + ' concedidos no período — auditar alçadas de desconto.',
+    `${kmil(R.descRS)} concedidos em desconto no período, em ${pc(R.descItens)} dos itens vendidos. Por vendedor: ${vendDescTxt}. Se algum nome estiver bem acima dos demais, vale rever a alçada de desconto dessa pessoa especificamente — a tabela de Balcão mais abaixo detalha o impacto na margem.`);
+
+  if (R.czPct > 3) ck(R.czPct > 20 ? 'bad' : 'warn', pc(R.czPct) + ' dos itens sem custo cadastrado', kmil(R.czRec) + ' de venda "sem margem real" — margem ajustada: ' + pc(R.margemAdj) + ' (vs ' + pc(R.margemRep) + ' reportada).',
+    `${kmil(R.czRec)} em vendas (${pc(R.czPct)} dos itens) não têm custo cadastrado no sistema — essas linhas entram como 100% de margem no cálculo bruto, inflando o número. Por isso a margem <b>reportada</b> (${pc(R.margemRep)}) é diferente da margem <b>ajustada</b> (${pc(R.margemAdj)}, excluindo esses itens) que a máquina usa nas metas e vazamentos. Corrigir o custo desses SKUs é o que fecha essa diferença.`);
+  else ck('ok', 'Custos bem cadastrados', 'Apenas ' + pc(R.czPct) + ' dos itens sem custo — margem confiável.',
+    `Só ${pc(R.czPct)} dos itens vendidos estão sem custo cadastrado (${kmil(R.czRec)} em receita) — baixo o suficiente pra margem reportada (${pc(R.margemRep)}) e a ajustada (${pc(R.margemAdj)}) ficarem praticamente iguais. Dado confiável pra decisão.`);
+
+  if (R.piorGrupoNeg && R.piorGrupoNeg[1] < -800) ck('warn', gNome(R.piorGrupoNeg[0]) + ': ' + kmil(-R.piorGrupoNeg[1]) + ' de prejuízo em itens', 'Provável erro de custo ou de preço — revisar tabela da categoria.',
+    `A categoria <b>${esc(gNome(R.piorGrupoNeg[0]))}</b> tem ${kmil(-R.piorGrupoNeg[1])} de prejuízo acumulado em itens com lucro negativo no período — ou seja, vendidos abaixo do custo cadastrado. Isso costuma ser erro de tabela de preço ou de custo lançado errado, não uma promoção intencional. Vale revisar item a item antes do próximo reajuste de preço.`);
+
+  if (R.felinos > 0 && R.felinos < 8) ck('warn', 'Felinos = só ' + pc(R.felinos) + ' da receita identificada', 'Gato é o segmento que mais cresce no país. Sortimento e comunicação ignoram esse público.',
+    `Produtos e serviços para gato somam só ${pc(R.felinos)} da receita identificada da loja. É um segmento em expansão no mercado pet nacional — vale testar um sortimento mínimo dedicado e uma campanha local antes de assumir que "aqui não tem demanda de gato".`);
+
+  if (R.ruptura && R.ruptura.nNeg) ck('warn', br(R.ruptura.nNeg) + ' SKUs curva A com estoque negativo', 'Entradas não lançadas — o estoque do sistema não é confiável para compra.',
+    `${br(R.ruptura.nNeg)} produtos classe A estão com estoque negativo no sistema — sinal de entrada de mercadoria não lançada. Exemplos: ${R.ruptura.top.filter(t => t.est < 0).slice(0, 4).map(t => esc(t.desc) + ' (' + br(t.est) + ')').join(', ') || 'ver tabela de ruptura acima'}. Enquanto isso não for corrigido, o saldo de estoque do sistema não serve de referência pra decidir compra.`);
+
+  if (R.estoqueParado && R.estoqueParado.granelTotal > 0 && R.estoqueParado.granelNeg / R.estoqueParado.granelTotal > 0.3) ck('warn', br(R.estoqueParado.granelNeg) + ' de ' + br(R.estoqueParado.granelTotal) + ' itens a granel com estoque negativo', 'Pesagem na balança não bate com o caixa — recontar fisicamente esses itens.',
+    `${pc(100 * R.estoqueParado.granelNeg / R.estoqueParado.granelTotal, 0)} dos itens vendidos a peso estão com estoque negativo no sistema — a pesagem na balança da loja não está batendo com o que sai no caixa, e o erro se acumula mês a mês até alguém contar fisicamente e reajustar.`);
+
+  if (R.estoqueParado && R.estoqueParado.totalParadoValor > 0.03 * R.totReceita) ck('warn', kmil(R.estoqueParado.totalParadoValor) + ' parados em estoque sem giro', 'Capital empatado em produto que não vende — ver seção "Sobrando parado" para a lista e as ações.',
+    `${kmil(R.estoqueParado.totalParadoValor)} de capital parado em produto sem giro (${R.estoqueParado.fonte === 'nativo' ? br(R.estoqueParado.nCritico) + ' estagnados há 1 ano ou mais' : br(R.estoqueParado.nCritico) + ' sem nenhuma venda no período'} + ${br(R.estoqueParado.nMuitoLento)} de giro muito lento). Isso é ${pc(100 * R.estoqueParado.totalParadoValor / R.totReceita, 1)} da receita do período parado em prateleira — a seção "Sobrando parado" tem a lista completa e as 5 ações sugeridas.`);
+
+  if (R.ruptura) ck('warn', 'Relatórios ABC sem período explícito', 'Usados apenas para estoque. Fonte primária deste diagnóstico: BI transacional.',
+    `Os relatórios ABC (produtos/clientes) do One Pet não trazem a data de início e fim do período coberto — por isso a máquina usa o BI transacional como fonte primária de tudo, e o ABC só entra pra estoque, ruptura e curva de cliente. Se o ABC cobrir um período muito diferente do BI enviado, os números de estoque podem não estar perfeitamente sincronizados com os de venda.`);
+
+  const G = R.governanca;
+  if (G.canalPct < 20) ck('bad', 'Canal de venda quase nunca é registrado (' + pc(G.canalPct, 0) + ')', 'O campo existe no sistema mas não é preenchido — hoje é impossível saber se a venda veio de WhatsApp, indicação ou balcão.',
+    `Só ${pc(G.canalPct, 0)} das vendas registram o canal de origem. O campo já existe no One Pet e não custa nada preencher — sem ele, não dá pra saber se uma campanha de WhatsApp, uma indicação ou o Instagram estão de fato gerando venda, ou se é tudo balcão espontâneo.`);
+  if (G.bairroPct < 50) ck('warn', 'Só ' + pc(G.bairroPct, 0) + ' dos clientes têm bairro cadastrado', 'Sem isso não dá pra mirar campanha em bairro específico — pedir esse dado no cadastro de balcão.',
+    `Apenas ${pc(G.bairroPct, 0)} dos clientes têm bairro preenchido no cadastro. Sem esse dado, qualquer campanha geolocalizada (panfletagem, anúncio por raio de CEP, abertura de nova unidade próxima) fica no chute — vale pedir esse campo toda vez que um cliente novo é cadastrado no caixa.`);
+  if (G.avalPct !== null && G.avalPct < 10) ck('warn', 'Avaliação do banho e tosa não é coletada (' + pc(G.avalPct, 0) + ')', 'O sistema tem campo de feedback pronto — ativar após cada atendimento mede satisfação e antecipa perda de cliente.',
+    `Só ${pc(G.avalPct, 0)} dos atendimentos de banho e tosa têm avaliação registrada. O campo já existe no sistema — ativar isso (mesmo que só com uma nota de 1 a 5 no caixa) é a forma mais barata de antecipar um cliente insatisfeito antes que ele simplesmente pare de voltar.`);
+  if (G.opBTPct !== null && G.opBTPct < 20) ck('warn', 'Check-in/check-out do banho e tosa quase nunca é preenchido (' + pc(G.opBTPct, 0) + ')', 'Sem isso não dá pra medir tempo de atendimento nem gargalo de agenda — ativa uma métrica de capacidade praticamente de graça.',
+    `Apenas ${pc(G.opBTPct, 0)} dos atendimentos de banho e tosa têm horário de entrada/saída registrado. Sem isso, não dá pra saber quanto tempo cada atendimento realmente leva nem identificar o horário de gargalo da agenda — é a métrica de capacidade operacional mais barata de ativar que existe, e hoje está desligada.`);
+  if (G.temVet && G.vetSuspeito) ck('warn', 'Campo "Veterinário" parece registrar quem passou no caixa', 'Os nomes se repetem com os do campo Vendedor — hoje não dá pra medir desempenho por médico de forma confiável.',
+    `Os nomes que aparecem no campo "Veterinário" das consultas se repetem com os nomes do campo "Vendedor" das vendas em geral — sinal de que o campo está registrando quem fechou o caixa, não necessariamente quem atendeu o animal. Enquanto isso não for corrigido na rotina de atendimento, não dá pra comparar desempenho entre médicos de forma confiável.`);
+
+  R.__gateInfo = gateInfo;
+  const gateHTML = checks.join('');
+
+  const lucroAlvo = R.lucroMes + R.vazTotal;
+
+  let comprasHTML = '';
+  if (R.compras) {
+    const C = R.compras;
+    const maxF = Math.max(...C.porFornecedor.slice(0, 8).map(f => f.total));
+    const fornHTML = C.porFornecedor.slice(0, 8).map(f => `<div class="mix-row"><div class="nome">${esc(f.nome)}</div><div class="mix-bar"><i style="--w:${(100 * f.total / maxF).toFixed(1)}%"></i><span>${pc(f.share, 1)}</span></div><div class="mg">${kmil(f.total)}</div></div>`).join('');
+    const custoHTML = C.custoSubindo.length ? C.custoSubindo.map(c => `<tr><td>${esc(c.produto)}</td><td>${esc(c.fornecedor)}</td><td class="num">${money(c.custoIni)}</td><td class="num">${money(c.custoFim)}</td><td class="num"><b style="color:var(--alerta)">+${pc(c.variacao, 0)}</b></td></tr>`).join('') : '';
+    const recompraHTML = C.recompraParado.length ? C.recompraParado.map(i => `<tr><td>${esc(i.produto)}</td><td>${esc(i.fornecedor)}</td><td class="num">${fmtData(i.dataCompra)}</td><td class="num">${br(i.qtd)}</td></tr>`).join('') : '';
+    comprasHTML = `<section><div class="wrap">
+      <div class="sec-head"><h2>Compras e fornecedores</h2><span class="hint num">${C.temDetalhe ? fmtData(C.periodoIni) + ' – ' + fmtData(C.periodoFim) : 'Baseado no ABC de compras'} · ${kmil(C.totalComprado)} comprados de ${br(C.nFornecedores)} fornecedores</span></div>
+      <div class="grid-2">
+        <div class="card card-full"><h3>Concentração de fornecedor</h3><div class="note num">Top 3 = ${pc(C.top3Share, 0)} de tudo que a loja compra</div><div class="num">${fornHTML}</div>
+          <div class="callout">${C.top3Share > 40 ? 'Concentração alta — bom ponto de partida pra negociar desconto por volume ou condição de pagamento com os maiores.' : 'Compra bem distribuída entre fornecedores — menos poder de barganha individual, mas menos risco de dependência.'}</div></div>
+        ${custoHTML ? `<div class="card card-full" style="margin-top:16px"><h3>Custo subindo</h3><div class="note">Produtos com 2+ compras no período e alta de custo acima de 15% do início pro fim</div>
+          <table class="num"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="num">Custo inicial</th><th class="num">Custo atual</th><th class="num">Variação</th></tr></thead><tbody>${custoHTML}</tbody></table></div>` : ''}
+        ${recompraHTML ? `<div class="card card-full" style="margin-top:16px"><h3>Recompra de item já parado</h3><div class="note">Comprado de novo nos últimos 90 dias apesar de já estar com giro parado ou muito lento</div>
+          <table class="num"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="num">Comprado em</th><th class="num">Quantidade</th></tr></thead><tbody>${recompraHTML}</tbody></table>
+          <div class="callout red">Vale confirmar com quem compra se foi decisão consciente (ex.: promoção do fornecedor) ou reposição automática sem checar o giro.</div></div>` : ''}
+      </div>
+    </div></section>`;
+  }
+
+  let estoqueAtualHTML = '';
+  if (R.estoqueAtual) {
+    const EA = R.estoqueAtual;
+    const maxCat = Math.max(...EA.porCategoria.map(c => c.total));
+    const catHTML = EA.porCategoria.map(c => `<div class="mix-row"><div class="nome">${esc(gNome(c.grupo) || '(sem categoria)')}</div><div class="mix-bar"><i style="--w:${(100 * c.total / maxCat).toFixed(1)}%"></i><span>${pc(c.share, 1)}</span></div><div class="mg">${kmil(c.total)}</div></div>`).join('');
+    const abaixoHTML = EA.topAbaixoCusto.map(i => `<tr><td>${esc(i.nome)}</td><td class="num">${br(i.estoque, 0)}</td><td class="num">${money(i.custo)}</td><td class="num">${money(i.precoTabela)}</td><td class="num"><b style="color:var(--alerta)">-${money(i.prejuizoUnit)}</b></td></tr>`).join('');
+    estoqueAtualHTML = `<section><div class="wrap">
+      <div class="sec-head"><h2>Posição de estoque atual</h2><span class="hint num">Foto do catálogo inteiro hoje${EA.filialArquivo ? ' · ' + esc(EA.filialArquivo) : ''} · ${br(EA.nSKUs)} SKUs com estoque</span></div>
+      ${EA.filialDivergente ? `<div class="alerta-filial" style="margin-bottom:16px">⚠ Este arquivo está identificado como <b>${esc(EA.filialDivergente)}</b>, diferente da filial do BI de vendas — confira se são a mesma loja.</div>` : ''}
+      <div class="kpi-grid num" style="margin-bottom:16px">
+        <div class="kpi"><div class="lab">Estoque hoje (custo)</div><div class="val">${kmil(EA.valorCusto)}</div></div>
+        <div class="kpi"><div class="lab">Estoque hoje (preço de venda)</div><div class="val">${kmil(EA.valorVenda)}</div></div>
+        <div class="kpi"><div class="lab">Margem potencial do estoque</div><div class="val">${pc(EA.margemPotencial)}</div></div>
+        <div class="kpi"><div class="lab">SKUs com estoque</div><div class="val">${br(EA.nSKUs)}</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card card-full"><h3>Onde está o capital, por categoria</h3><div class="note">Valor de estoque hoje, a custo</div><div class="num">${catHTML}</div></div>
+        ${EA.nAbaixoCusto ? `<div class="card card-full" style="margin-top:16px"><h3>Preço abaixo do custo — furo real</h3><div class="note num">${br(EA.nAbaixoCusto)} produtos venderiam no prejuízo se saíssem hoje pelo preço tabelado · prejuízo total estimado ${money(EA.valorAbaixoCusto)}</div>
+          <table class="num"><thead><tr><th>Produto</th><th class="num">Estoque</th><th class="num">Custo</th><th class="num">Preço tabela</th><th class="num">Prejuízo/un.</th></tr></thead><tbody>${abaixoHTML}</tbody></table>
+          <div class="callout red">Corrigir a tabela de preço desses itens antes da próxima venda — hoje cada unidade vendida dá prejuízo, não lucro baixo.</div></div>` : ''}
+        ${EA.nSemPreco ? `<div class="callout" style="margin-top:16px">${br(EA.nSemPreco)} produto(s) com estoque e sem preço de tabela cadastrado — não geram venda até isso ser corrigido.</div>` : ''}
+      </div>
+    </div></section>`;
+  }
+  const bannerFilial = R.filialAlerta ? `<div class="wrap"><div class="alerta-filial"><b>⚠ Atenção:</b> os arquivos enviados têm ${br(R.filialAlerta.lista.length)} filiais diferentes — <b>${R.filialAlerta.lista.map(esc).join(', ')}</b>. Se não foi intencional, este diagnóstico está somando lojas diferentes e os números abaixo não são confiáveis até isso ser corrigido.</div></div>` : '';
+
+  return `
+${bannerFilial}
+<header class="hero"><div class="wrap">
+  <span class="eyebrow">Máquina de Análise de Lojas · Raio-X de Lucro</span>
+  <div class="hero-flex"><div>
+    <h1><em>${loja}</em></h1>
+    <p class="sub num">Fonte: BI One Pet, ${periodo} · ${br(R.nM)} meses · ${br(R.totCupons)} vendas · gerado em ${new Date().toLocaleDateString('pt-BR')}.</p>
+  </div>
+  <div class="score"><div class="lab">Score de lucratividade</div><div class="big num">${R.score}<span>/100</span></div>
+    <div class="barra"><i style="width:${R.score}%"></i></div>
+    <div class="subscores num">Receita <b>${br(R.sub.receita, 1)}</b> · Margem <b>${br(R.sub.margem, 1)}</b> · Mix <b>${br(R.sub.mix, 1)}</b> · Retenção <b>${br(R.sub.ret, 1)}</b> · Dado <b>${br(R.sub.dado, 1)}</b></div>
+  </div></div>
+</div></header>
+
+<div class="wrap kpis"><div class="kpi-grid num">
+  <div class="kpi"><div class="lab">Receita ${R.nM}m</div><div class="val">${kmil(R.totReceita)}</div><div class="delta neutro">${kmil(R.totReceita / R.nM)}/mês</div></div>
+  <div class="kpi"><div class="lab">Lucro bruto</div><div class="val">${kmil(R.totLucro)}</div><div class="delta neutro">${kmil(R.lucroMes)}/mês</div></div>
+  <div class="kpi"><div class="lab">Margem bruta</div><div class="val">${pc(R.margemRep)}</div><div class="delta neutro">${pc(R.margemAdj)} ajustada*</div></div>
+  <div class="kpi"><div class="lab">Ticket médio</div><div class="val">R$ ${br(ticketMed, 0)}</div><div class="delta ${growT < -2 ? 'down' : growT > 2 ? 'up' : 'neutro'}">${growT >= 0 ? '+' : ''}${pc(growT, 0)} no período</div></div>
+  <div class="kpi"><div class="lab">Vendas / mês</div><div class="val">${br(R.totCupons / R.nM, 0)}</div><div class="delta ${growC > 2 ? 'up' : growC < -2 ? 'down' : 'neutro'}">${growC >= 0 ? '+' : ''}${pc(growC, 0)} no período</div></div>
+  <div class="kpi"><div class="lab">Clientes ativos / mês</div><div class="val">≈ ${br(R.ativosUlt)}</div><div class="delta num" style="color:${identInfo.cor};font-weight:800">${identInfo.nivel === 'vermelho' ? '⚠ ' : ''}${pc(R.identPct)} identificados${identInfo.nivel === 'vermelho' ? ' — crítico' : ''}</div></div>
+</div></div>
+
+<section><div class="wrap"><div class="vaza">
+  <div class="sec-head"><h2>Onde o dinheiro está vazando</h2><span class="hint">Calculado automaticamente sobre os dados da própria loja — sem parâmetros manuais</span></div>
+  <div class="total-tag num"><div class="big">≈ ${kmil(R.vazTotal)}/mês</div><div class="desc">de lucro bruto adicional recuperável — o equivalente a <b>+${pc(100 * R.vazTotal / Math.max(1, R.lucroMes), 0)}</b> sobre o lucro atual.</div></div>
+  <div class="tags num" style="grid-template-columns:repeat(${Math.min(4, Math.max(1, tags.length))},1fr)">
+  ${tags.map((t, i) => `<div class="tag"><span class="chip">Vazamento ${i + 1}</span><div class="rs">${kmil(t.v)}<small>lucro/mês</small></div><h3>${t.t}</h3><p>${t.p}</p></div>`).join('')}
+  </div>
+</div></div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>Motor de receita</h2><span class="hint">Evolução mensal e composição da venda</span></div>
+  <div class="card card-full"><h3>Receita × margem bruta</h3><div class="note num">Vendas ${growC >= 0 ? '+' : ''}${pc(growC, 0)} · ticket médio ${growT >= 0 ? '+' : ''}${pc(growT, 0)} no período</div>${svgCombo(labels, R.mensal.map(m => m.receita), R.mensal.map(m => m.margem))}</div>
+  <div class="card card-full" style="margin-top:16px"><h3>Mix por categoria · ${R.nM} meses</h3><div class="note num">Barra = receita · número à direita = margem bruta da categoria</div><div class="num">${mixHTML}</div>
+    <div class="callout num"><b>Serviços = ${pc(R.servShare)} da receita</b> (vet + B&T + pacotes + entrega) — é o bloco de margem alta a expandir.</div></div>
+  <div class="card card-full" style="margin-top:16px"><h3>Quem sustenta a receita: clientes novos ou recorrentes?</h3><div class="note num">Fatia clara = receita de clientes novos naquele mês · fatia escura = clientes que já compravam antes</div>
+    <div class="num">${novosRecHTML}</div>
+    <div class="callout">${R.nM > 1 ? 'Jan/26 aparece 100% "novo" porque é o primeiro mês do histórico enviado — todo mundo que comprou é novo pra máquina, não é aquisição real. Ignore esse mês na leitura.' : ''} Se a fatia clara está encolhendo mês a mês, o crescimento de vendas vem de gente que já é cliente comprando mais vezes — ótimo para retenção, mas mostra que o marketing de aquisição não está trazendo gente nova.</div></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>Horário, dia e canal — para montar a escala</h2><span class="hint">De onde vem o movimento da loja, hora a hora</span></div>
+  ${R.horaSemana ? `
+  <div class="grid-2">
+    <div class="card"><h3>Movimento por horário</h3><div class="note num">${br(R.horaSemana.cobertura, 0)}% das vendas com horário registrado</div>${svgBarraInt(R.horaSemana.horas, R.horaSemana.horaCount, '#009150', '#00573F')}
+      <div class="callout num"><b>Picos:</b> reforçar a equipe nos horários mais altos do gráfico acima; horários mais baixos servem para reposição e tarefas de retaguarda.</div></div>
+    <div class="card"><h3>Movimento por dia da semana</h3><div class="note">Vendas por dia, somando os ${R.nM} meses</div>${svgBarraInt(R.horaSemana.dias, R.horaSemana.diaCount, '#A8D3C4', '#009150')}
+      <div class="callout">Dia mais fraco é candidato natural a promoção pontual ou dia de folga da equipe.</div></div>
+  </div>` : `<div class="card"><div class="callout"><b>Cobertura de horário muito baixa</b> nos arquivos enviados — o campo "Data Pagamento" não está vindo preenchido o suficiente para montar este gráfico.</div></div>`}
+  <div class="card card-full" style="margin-top:16px"><h3>Delivery × loja física</h3><div class="note num">${br(R.entrega.peds)} entregas no período (${pc(R.entrega.share)} da receita)</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi" style="box-shadow:none"><div class="lab">Ticket delivery</div><div class="val num">${money(R.entrega.ticket)}</div></div>
+      <div class="kpi" style="box-shadow:none"><div class="lab">Ticket loja física</div><div class="val num">${money(R.entrega.ticketLoja)}</div></div>
+      <div class="kpi" style="box-shadow:none"><div class="lab">Diferença</div><div class="val num" style="color:${R.entrega.premio >= 0 ? 'var(--verde-600)' : 'var(--alerta)'}">${R.entrega.premio >= 0 ? '+' : ''}${pc(R.entrega.premio, 0)}</div></div>
+    </div>
+    <div class="callout">${R.entrega.premio > 5 ? `O cliente de delivery gasta mais por pedido e hoje é só ${pc(R.entrega.share, 0)} da receita — ampliar a capacidade de entrega (mais horários, divulgar o serviço) tende a subir o ticket médio geral.` : `Delivery e loja física têm ticket parecido — o ganho aqui está mais em aumentar o volume de entregas do que no valor de cada uma.`}</div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>Metas do mês — para premiar a equipe</h2><span class="hint">Calculadas a partir da própria loja: média recente + tendência real de crescimento + parte do que os vazamentos acima liberam</span></div>
+  <div class="grid-2">
+    <div class="card"><h3>Meta de faturamento</h3><div class="note">Piso = não regredir · Meta = crescimento real da loja + metade do potencial · Ouro = todas as ações do plano rodando</div>
+      ${svgTermometro(R.metas.atualReceita, [{ label: 'Piso', value: R.metas.receita.piso, cor: '#8A8F70' }, { label: 'Meta', value: R.metas.receita.meta, cor: '#009150' }, { label: 'Ouro', value: R.metas.receita.ouro, cor: '#E08E00' }], 'money')}
+    </div>
+    <div class="card"><h3>Meta de lucro bruto</h3><div class="note">Mesma lógica, aplicada ao lucro — é o número que sustenta bônus e comissão extra</div>
+      ${svgTermometro(R.metas.atualLucro, [{ label: 'Piso', value: R.metas.lucro.piso, cor: '#8A8F70' }, { label: 'Meta', value: R.metas.lucro.meta, cor: '#009150' }, { label: 'Ouro', value: R.metas.lucro.ouro, cor: '#E08E00' }], 'money')}
+    </div>
+  </div>
+  <div class="card card-full" style="margin-top:16px">
+    <h3>Metas por campanha — o que a equipe precisa fazer para bater a Meta</h3>
+    <table class="num"><thead><tr><th>Campanha</th><th class="num">Hoje</th><th class="num">Meta (30 dias)</th><th>Como bate a meta</th></tr></thead><tbody>
+      <tr><td>Resgate de clientes parados</td><td class="num">${br(R.inativos)} inativos</td><td class="num"><b>${br(R.metas.resgateAlvo)}</b> resgatados</td><td>Régua de WhatsApp na lista de resgate (seção abaixo), começando pelas cores laranja e vermelha.</td></tr>
+      <tr><td>Pacotes de banho e tosa</td><td class="num">${br(R.pacotesMesAtual, 0)}/mês</td><td class="num"><b>+${br(R.metas.btAlvo30)}</b> pacotes</td><td>Oferecer o pacote mensal no caixa para quem já faz banho avulso (${br(R.metas.btAlvoTotal)} clientes elegíveis).</td></tr>
+      <tr><td>Farmácia (medicamentos + antiparasitários)</td><td class="num">${kmil(R.lastF)}/mês</td><td class="num"><b>${kmil(R.metas.farmaAlvo)}</b>/mês</td><td>Repor as rupturas da curva A listadas na seção de estoque.</td></tr>
+    </tbody></table>
+    <div class="callout"><b>Sugestão de uso:</b> vincular o incentivo da equipe às três faixas — sem bônus adicional abaixo do Piso (é o mínimo para não regredir), comissão extra ao bater a Meta, e um bônus especial ao chegar no Ouro. Os valores de comissão ficam a critério do gestor.</div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>As evidências dos vazamentos</h2></div>
+  <div class="grid-2">
+    <div class="card"><h3>Farmácia (medicamentos + antiparasitários)</h3><div class="note num">Receita mensal · pico ${kmil(R.peakF)} → último mês ${kmil(R.lastF)}</div>${svgLinha(labels, R.farmaM, '#C0392B', 'rgba(192,57,43,.10)')}
+      ${R.ruptura && R.v1 > 200 ? '<div class="callout red num"><b>Cruzar com a tabela de ruptura abaixo:</b> se os líderes da categoria estão zerados, a queda é prateleira, não demanda.</div>' : ''}</div>
+    <div class="card"><h3>Há quanto tempo os clientes de ração não compram</h3><div class="legenda-ciclo num">Tempo normal entre compras: ${br(R.ciclo)} dias</div><div class="num">${recHTML}</div>
+      <div class="callout num"><b>${br(zonaResgate)} clientes de ração quase parando de comprar (46–90 dias)</b> — a lista nominal completa, com telefone, está na seção abaixo.</div></div>
+    <div class="card"><h3>Banho & tosa: motor de frequência</h3><div class="note num">Receita mensal de B&T · último mês: ${br(servBT, 0)} serviços · ${br(R.pacotesMesAtual, 0)} pacotes/mês</div>${svgBarra(labels, R.btM.map(m => m.rec), '#A8D3C4', '#009150')}
+      <div class="callout num"><b>Cliente de B&T gasta ${money(R.gastoBT)}</b> no período vs ${money(R.gastoN)} do cliente só-produto (<b>+${pc(100 * (R.gastoBT / Math.max(1, R.gastoN) - 1), 0)}</b>). ${br(R.metaPacotes)} avulsos ativos ainda sem pacote.</div></div>
+    <div class="card"><h3>Balcão: desempenho por vendedor · ${R.nM} meses</h3><div class="note">Vendedores com ≥10% das vendas</div>
+      <table class="num"><thead><tr><th>Vendedor</th><th class="num">Receita</th><th class="num">Vendas</th><th class="num">Ticket</th><th class="num">% c/ desconto</th><th class="num">Margem</th></tr></thead><tbody>${vendHTML}</tbody></table>
+      <div class="callout">${balcaoCallout}</div></div>
+  </div>
+</div></section>
+
+${resgateHTML}
+
+<section><div class="wrap">${rupturaHTML}</div></section>
+
+<section><div class="wrap">${paradoHTML}</div></section>
+
+${comprasHTML}
+
+${estoqueAtualHTML}
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>Gate 0 · Qualidade do dado</h2><span class="hint">O que dá confiança na medição — e o que a contamina</span></div>
+  <div class="gate">${gateHTML}</div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="sec-head"><h2>Plano de teste · 30 / 60 / 90</h2><span class="hint">Montado a partir das tarefas que este diagnóstico encontrou — cada loja recebe um plano diferente, conforme os próprios dados. Resultado medido contra o baseline ${periodo}.</span></div>
+  ${buildPlanoHTML(R, lucroAlvo, ret45)}
+</div></section>
+
+<section id="tarefas"><div class="wrap">
+  <div class="sec-head"><h2>Tarefas geradas</h2><span class="hint num">${br(R.tarefas.length)} ${R.tarefas.length === 1 ? 'tarefa' : 'tarefas'} — geradas automaticamente a partir dos alertas deste diagnóstico, mais críticas primeiro</span></div>
+  ${buildTarefasHTML(R)}
+</div></section>
+
+<footer><div class="wrap num">Máquina de Análise de Lojas · Rede POP Pet Center · Fonte primária: BI One Pet ${periodo} · * Margem ajustada exclui itens sem custo cadastrado · Cálculos 100% automáticos a partir dos dados da loja. Constantes da metodologia (fixas): resgate de inativos = 15% · potencial B&T = clientes com banho avulso nos últimos 60 dias e sem pacote × (valor médio real do pacote − gasto atual deles em banho).</div></footer>`;
+}
+
+/* ---------- Comparativo entre dois diagnósticos (snapshots) ---------- */
+function tierHit(atual, tiers) {
+  if (atual >= tiers.ouro) return { label: 'Ouro', cor: '#E08E00' };
+  if (atual >= tiers.meta) return { label: 'Meta', cor: '#009150' };
+  if (atual >= tiers.piso) return { label: 'Piso', cor: '#8A8F70' };
+  return { label: 'Abaixo do piso', cor: '#C0392B' };
+}
+function deltaBadge(vA, vB, fmt, higherBetter) {
+  if (vA == null || vB == null || isNaN(vA) || isNaN(vB)) return '<span style="color:var(--ink-2)">—</span>';
+  const d = vB - vA;
+  if (Math.abs(d) < 1e-9) return '<span style="color:var(--ink-2)">→ sem variação</span>';
+  const bom = higherBetter ? d > 0 : d < 0;
+  const seta = d > 0 ? '▲' : '▼';
+  return `<span style="color:${bom ? 'var(--verde-600)' : 'var(--alerta)'};font-weight:800">${seta} ${fmt(Math.abs(d))}</span>`;
+}
+function buildCompareHTML(a, b) {
+  const scoreD = deltaBadge(a.score, b.score, v => br(v, 0), true);
+  const tierRec = tierHit(b.kpis.receitaMes, a.metas.receita);
+  const tierLuc = tierHit(b.kpis.lucroMes, a.metas.lucro);
+  const rows = [
+    ['Score de lucratividade', a.score, b.score, v => br(v, 0), true],
+    ['Receita / mês', a.kpis.receitaMes, b.kpis.receitaMes, kmil, true],
+    ['Lucro bruto / mês', a.kpis.lucroMes, b.kpis.lucroMes, kmil, true],
+    ['Margem bruta ajustada', a.kpis.margemAdj, b.kpis.margemAdj, v => pc(v), true],
+    ['Ticket médio', a.kpis.ticketMedio, b.kpis.ticketMedio, money, true],
+    ['Vendas / mês', a.kpis.cuponsMes, b.kpis.cuponsMes, v => br(v, 0), true],
+    ['Clientes ativos / mês', a.kpis.ativosUlt, b.kpis.ativosUlt, v => br(v, 0), true],
+    ['% clientes identificados', a.kpis.identPct, b.kpis.identPct, v => pc(v), true],
+    ['Vazamento total (R$/mês)', a.vazamentos.total, b.vazamentos.total, kmil, false],
+    ['Clientes sem comprar há 90+ dias', a.churn.inativos90, b.churn.inativos90, v => br(v, 0), false],
+    ['Tarefas abertas (total)', a.tarefas.total, b.tarefas.total, v => br(v, 0), false],
+    ['Tarefas de severidade Alta', a.tarefas.alta, b.tarefas.alta, v => br(v, 0), false],
+  ];
+  const rowsHTML = rows.map(([lab, va, vb, fmt, hb]) => `<tr><td>${esc(lab)}</td><td class="num">${fmt(va)}</td><td class="num">${fmt(vb)}</td><td class="num">${deltaBadge(va, vb, fmt, hb)}</td></tr>`).join('');
+  const dGov = (lab, ka) => `<tr><td>${esc(lab)}</td><td class="num">${pc(a.governanca[ka] || 0, 0)}</td><td class="num">${pc(b.governanca[ka] || 0, 0)}</td><td class="num">${deltaBadge(a.governanca[ka], b.governanca[ka], v => pc(v, 0), true)}</td></tr>`;
+
+  return `
+<header class="hero"><div class="wrap">
+  <span class="eyebrow">Máquina de Análise de Lojas · Comparativo entre diagnósticos</span>
+  <h1><em>${esc(b.loja || a.loja)}</em></h1>
+  <p class="sub num">A · ${esc(a.periodo.inicio)}–${esc(a.periodo.fim)} (gerado em ${new Date(a.geradoEm).toLocaleDateString('pt-BR')}) &nbsp;→&nbsp; B · ${esc(b.periodo.inicio)}–${esc(b.periodo.fim)} (gerado em ${new Date(b.geradoEm).toLocaleDateString('pt-BR')})</p>
+</div></header>
+<div class="wrap kpis"><div class="card" style="display:flex;gap:28px;align-items:center;flex-wrap:wrap;box-shadow:0 10px 30px rgba(0,0,0,.10)">
+  <div><div class="lab">Score A</div><div class="val num" style="font-size:2.4rem;color:var(--ink-2)">${a.score}</div></div>
+  <div style="font-size:1.8rem;color:var(--ink-2)">→</div>
+  <div><div class="lab">Score B</div><div class="val num" style="font-size:2.4rem">${b.score}</div></div>
+  <div style="font-size:1.1rem">${scoreD}</div>
+</div></div>
+<section><div class="wrap">
+  <div class="sec-head"><h2>O que mudou</h2><span class="hint">Seta verde = melhorou · seta vermelha = piorou (considerando o que é bom para cada métrica)</span></div>
+  <div class="card"><table class="num"><thead><tr><th>Métrica</th><th class="num">A</th><th class="num">B</th><th class="num">Variação</th></tr></thead><tbody>${rowsHTML}</tbody></table></div>
+</div></section>
+<section><div class="wrap">
+  <div class="sec-head"><h2>Bateu a meta?</h2><span class="hint">Resultado do período B contra as faixas Piso/Meta/Ouro que o diagnóstico A tinha calculado</span></div>
+  <div class="grid-2">
+    <div class="card"><h3>Receita</h3><div class="callout num" style="border-color:${tierRec.cor}"><b style="color:${tierRec.cor}">${tierRec.label}</b> — período B fechou em ${kmil(b.kpis.receitaMes)}/mês, contra Piso ${kmil(a.metas.receita.piso)} · Meta ${kmil(a.metas.receita.meta)} · Ouro ${kmil(a.metas.receita.ouro)} definidos em A.</div></div>
+    <div class="card"><h3>Lucro bruto</h3><div class="callout num" style="border-color:${tierLuc.cor}"><b style="color:${tierLuc.cor}">${tierLuc.label}</b> — período B fechou em ${kmil(b.kpis.lucroMes)}/mês, contra Piso ${kmil(a.metas.lucro.piso)} · Meta ${kmil(a.metas.lucro.meta)} · Ouro ${kmil(a.metas.lucro.ouro)} definidos em A.</div></div>
+  </div>
+</div></section>
+<section><div class="wrap">
+  <div class="sec-head"><h2>Governança de dado</h2><span class="hint">Preenchimento dos campos que a loja controla — mostra se o treinamento de cadastro está pegando</span></div>
+  <div class="card"><table class="num"><thead><tr><th>Campo</th><th class="num">A</th><th class="num">B</th><th class="num">Variação</th></tr></thead><tbody>
+    ${dGov('Canal de venda preenchido', 'canalPct')}
+    ${dGov('Bairro preenchido', 'bairroPct')}
+  </tbody></table></div>
+</div></section>
+<footer><div class="wrap num">Comparativo gerado localmente a partir de dois instantâneos (snapshots) exportados pela Máquina de Análise de Lojas — nenhum dado de cliente trafega neste arquivo.</div></footer>`;
+}
+
+/* ---------- Benchmark entre lojas (vários Instantâneos) ---------- */
+function buildBenchmarkHTML(snaps) {
+  const arr = [...snaps].sort((a, b) => b.score - a.score);
+  const n = arr.length;
+  const scoresAsc = arr.map(a => a.score).slice().sort((x, y) => x - y);
+  const pct = p => scoresAsc[Math.min(n - 1, Math.max(0, Math.floor(p * n)))];
+  const q1v = pct(0.75), q2v = pct(0.5), q3v = pct(0.25);
+  const quartil = score => n < 4 ? { l: '—', c: 'var(--ink-2)' }
+    : score >= q1v ? { l: 'Q1', c: '#009150' } : score >= q2v ? { l: 'Q2', c: '#FDAE25' } : score >= q3v ? { l: 'Q3', c: '#E67E22' } : { l: 'Q4', c: '#C0392B' };
+  const media = s => arr.reduce((a, x) => a + s(x), 0) / n;
+  const mediaScore = media(s => s.score), mediaMargem = media(s => s.kpis.margemAdj), mediaVaz = media(s => s.vazamentos.total);
+
+  const rows = arr.map((s, i) => {
+    const q = quartil(s.score);
+    return `<tr><td class="num">${i + 1}º</td><td>${esc(s.loja || 'Loja')}</td><td class="num"><b>${br(s.score, 0)}</b></td><td class="num"><span style="color:${q.c};font-weight:800">${q.l}</span></td><td class="num">${kmil(s.kpis.receitaMes)}</td><td class="num">${pc(s.kpis.margemAdj)}</td><td class="num">${kmil(s.vazamentos.total)}</td><td class="num">${pc(s.kpis.identPct)}</td></tr>`;
+  }).join('');
+
+  return `
+<header class="hero"><div class="wrap">
+  <span class="eyebrow">Máquina de Análise de Lojas · Benchmark entre lojas</span>
+  <h1><em>${br(n)} lojas comparadas</em></h1>
+  <p class="sub num">Ranking por score de lucratividade · Q1 = melhor quartil, Q4 = pior · gerado em ${new Date().toLocaleDateString('pt-BR')}${n < 4 ? ' · com menos de 4 lojas os quartis não são calculados' : ''}.</p>
+</div></header>
+<div class="wrap kpis"><div class="kpi-grid num">
+  <div class="kpi"><div class="lab">Score médio da rede</div><div class="val">${br(mediaScore, 0)}</div></div>
+  <div class="kpi"><div class="lab">Margem média (ajustada)</div><div class="val">${pc(mediaMargem)}</div></div>
+  <div class="kpi"><div class="lab">Vazamento médio/mês</div><div class="val">${kmil(mediaVaz)}</div></div>
+  <div class="kpi"><div class="lab">Melhor score</div><div class="val">${br(arr[0].score, 0)} <span style="font-size:.6em;color:var(--ink-2)">· ${esc(arr[0].loja || '')}</span></div></div>
+</div></div>
+<section><div class="wrap">
+  <div class="sec-head"><h2>Ranking</h2><span class="hint">Ordenado por score — cada loja veio de um Instantâneo exportado no diagnóstico dela</span></div>
+  <div class="card"><table class="num"><thead><tr><th class="num">#</th><th>Loja</th><th class="num">Score</th><th class="num">Quartil</th><th class="num">Receita/mês</th><th class="num">Margem</th><th class="num">Vazamento/mês</th><th class="num">% identificados</th></tr></thead><tbody>${rows}</tbody></table></div>
+  <div class="callout">Lojas em Q3/Q4 são candidatas naturais a visita prioritária do consultor de campo — o score já resume receita, margem, mix, retenção e qualidade de dado numa nota só.</div>
+</div></section>
+<footer><div class="wrap num">Benchmark gerado localmente a partir de ${br(n)} instantâneos exportados pela Máquina de Análise de Lojas — nenhum dado de cliente trafega neste arquivo.</div></footer>`;
+}
+
+
+
+
+
+
+
+/* ============ APLICATIVO ============ */
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const state = { bi: [], prod: null, cli: null, estoqueNativo: null, entrada: [], abcCompras: null, estoqueAtual: null, chips: [], R: null, lojaLabel: '' };
+
+function renderChips(){
+  $('fileList').innerHTML = state.chips.map(c =>
+    `<span class="fchip">${c.nome}<span class="tipo ${c.cls}">${c.rot}</span></span>`).join('');
+}
+function addFiles(list){
+  const todos = Array.from(list);
+  const xlsx = todos.filter(f => /\.xlsx?$/i.test(f.name));
+  const arr = todos.filter(f => /\.csv$/i.test(f.name));
+  if (xlsx.length){ xlsx.forEach(f => state.chips.push({nome:esc(f.name),rot:'Excel — exporte como CSV',cls:'t-x'})); renderChips(); }
+  if (!arr.length){ setStatus('err', xlsx.length ? 'Arquivo(s) em Excel detectado(s) — abra no Excel/One Pet e exporte como CSV antes de subir aqui.' : 'Nenhum arquivo .csv reconhecido.'); return; }
+  let pend = arr.length; const motivos = [];
+  arr.forEach(f => {
+    const rd = new FileReader();
+    rd.onload = () => {
+      try{
+        const rows = parseCSV(rd.result);
+        const t = detectType(rows);
+        if (t === 'bi'){ state.bi.push(rows); state.chips.push({nome:esc(f.name),rot:'BI mensal',cls:'t-bi'}); }
+        else if (t === 'abcprod'){ state.prod = rows; state.chips.push({nome:esc(f.name),rot:'ABC produtos',cls:'t-prod'}); }
+        else if (t === 'estoqueparado'){ state.estoqueNativo = rows; state.chips.push({nome:esc(f.name),rot:'Estoque parado',cls:'t-estoque'}); }
+        else if (t === 'entrada'){ state.entrada.push(rows); state.chips.push({nome:esc(f.name),rot:'Entrada/compra',cls:'t-entrada'}); }
+        else if (t === 'abccompras'){ state.abcCompras = rows; state.chips.push({nome:esc(f.name),rot:'ABC compras',cls:'t-compras'}); }
+        else if (t === 'estoqueatual'){ state.estoqueAtual = rows; state.chips.push({nome:esc(f.name),rot:'Posição de estoque',cls:'t-estoque'}); }
+        else if (t === 'abccli'){ state.cli = rows; state.chips.push({nome:esc(f.name),rot:'ABC clientes',cls:'t-cli'}); }
+        else { state.chips.push({nome:esc(f.name),rot:'não reconhecido',cls:'t-x'}); motivos.push(f.name + ': ' + explicaDesconhecido(rows)); }
+      }catch(e){ state.chips.push({nome:esc(f.name),rot:'erro de leitura',cls:'t-x'}); motivos.push(f.name + ': erro ao ler o arquivo — confira se é mesmo um CSV.'); }
+      if(--pend === 0){
+        renderChips();
+        const base = state.bi.length + ' mês(es) de BI carregado(s)' + (state.prod ? ' · ABC produtos ✓' : '') + (state.estoqueNativo ? ' · Estoque parado ✓' : '') + (state.entrada.length ? ' · ' + state.entrada.length + ' arquivo(s) de entrada ✓' : '') + (state.abcCompras ? ' · ABC compras ✓' : '') + (state.estoqueAtual ? ' · Posição de estoque ✓' : '') + '.';
+        setStatus(motivos.length ? 'err' : 'ok', motivos.length ? (base + ' ' + motivos.join(' · ')) : (base + ' Clique em Gerar diagnóstico.'));
+      }
+    };
+    rd.readAsText(f, 'utf-8');
+  });
+}
+function setStatus(cls, msg){ const s=$('status'); s.className=cls; s.textContent=msg; }
+
+function baixarCSV(){
+  if (!state.R) return;
+  const csv = buildClientesCSV(state.R);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'resgate_clientes_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function initResgate(R){
+  const body = $('resgateBody'), info = $('resgateInfo');
+  let filtro = 'todos', busca = '';
+  function draw(){
+    const { html, n } = buildResgateRows(R.clientes, filtro, busca);
+    body.innerHTML = html;
+    info.textContent = n + ' cliente(s) na visão atual · a Central guarda os ' + R.clientes.length + ' clientes inativos de maior valor (código, nome e telefone do One Pet); o CSV leva todos eles.';
+    document.querySelectorAll('.fchipf').forEach(bt => bt.classList.toggle('ativo', bt.dataset.f === filtro));
+  }
+  document.querySelectorAll('.fchipf').forEach(btn => btn.addEventListener('click', () => { filtro = btn.dataset.f; draw(); }));
+  $('buscaCli').addEventListener('input', e => { busca = e.target.value; draw(); });
+  $('btnCSV2').addEventListener('click', baixarCSV);
+  draw();
+}
+
+function initTarefas(){
+  const R = state.R;
+  const chaveBase = R ? (R.filial || 'loja') + '_' + R.mensal[0].label + '-' + R.mensal[R.nM - 1].label : 'loja';
+  const key = 'raiox_tarefas_' + chaveBase.replace(/[^a-z0-9]+/gi, '_');
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e){}
+  document.querySelectorAll('.task-check').forEach((cb, idx) => {
+    if (done[idx]) { cb.checked = true; cb.closest('.task-row').classList.add('done'); }
+    cb.addEventListener('change', () => {
+      cb.closest('.task-row').classList.toggle('done', cb.checked);
+      done[idx] = cb.checked;
+      try { localStorage.setItem(key, JSON.stringify(done)); } catch(e){}
+    });
+  });
+}
+
+function baixarTarefasCSV(){
+  if (!state.R) { setStatus('err','Gere um diagnóstico primeiro.'); return; }
+  const csv = buildTarefasCSV(state.R);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'tarefas_' + (state.lojaLabel || 'loja').replace(/[^a-z0-9]+/gi,'_') + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+async function benchmark(){
+  const files = $('snapBench').files;
+  if (files.length < 2) { setCmpStatus('err','Selecione pelo menos 2 instantâneos.'); return; }
+  try {
+    const snaps = await Promise.all(Array.from(files).map(lerJSON));
+    if (snaps.some(s => !s.score && s.score !== 0)) throw new Error('Um dos arquivos não parece um instantâneo válido.');
+    state.R = null;
+    $('report').innerHTML = buildBenchmarkHTML(snaps);
+    $('toolbar').style.display = 'block';
+    $('tbTitulo').textContent = 'Benchmark · ' + snaps.length + ' lojas';
+    document.title = 'Benchmark · ' + snaps.length + ' lojas';
+    setCmpStatus('ok','Ranking gerado.');
+    $('report').scrollIntoView({ behavior:'smooth' });
+  } catch(e) {
+    setCmpStatus('err','Não consegui comparar: ' + e.message);
+  }
+}
+
+function baixarSnapshot(){
+  if (!state.R) { setStatus('err','Gere um diagnóstico primeiro.'); return; }
+  const loja = $('pLoja') ? $('pLoja').value : state.R.filial;
+  const snap = buildSnapshot(state.R, { lojaLabel: state.lojaLabel || state.R.filial });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(snap, null, 2)], { type: 'application/json' }));
+  a.download = 'snapshot_' + (snap.loja || 'loja').replace(/[^a-z0-9]+/gi,'_') + '_' + snap.periodo.fim.replace('/','-') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function setCmpStatus(cls, msg){ const s=$('cmpStatus'); s.className=cls; s.textContent=msg; }
+
+function lerJSON(file){
+  return new Promise((resolve, reject) => {
+    const rd = new FileReader();
+    rd.onload = () => { try { resolve(JSON.parse(rd.result)); } catch(e){ reject(e); } };
+    rd.onerror = reject;
+    rd.readAsText(file, 'utf-8');
+  });
+}
+
+async function comparar(){
+  const fa = $('snapA').files[0], fb = $('snapB').files[0];
+  if (!fa || !fb) { setCmpStatus('err','Selecione os dois arquivos de instantâneo (A e B).'); return; }
+  try {
+    const [a, b] = await Promise.all([lerJSON(fa), lerJSON(fb)]);
+    if (!a.score || !b.score) throw new Error('Arquivo não parece um instantâneo válido da Máquina de Análise.');
+    state.R = null;
+    $('report').innerHTML = buildCompareHTML(a, b);
+    $('toolbar').style.display = 'block';
+    $('tbTitulo').textContent = 'Comparativo · ' + (b.loja || a.loja) + ' · Score ' + a.score + ' → ' + b.score;
+    document.title = 'Comparativo · ' + (b.loja || a.loja);
+    setCmpStatus('ok','Comparativo gerado.');
+    $('report').scrollIntoView({ behavior:'smooth' });
+  } catch(e) {
+    setCmpStatus('err','Não consegui ler os arquivos: ' + e.message);
+  }
+}
+
+function gerar(){
+  if (!state.bi.length){ setStatus('err','Envie ao menos um arquivo de BI de vendas (com colunas "N. Pedido" e "Total Item").'); return; }
+  try{
+    const R = analyze(state.bi, state.prod, state.estoqueNativo, state.entrada, state.abcCompras, state.estoqueAtual);
+    state.R = R;
+    state.lojaLabel = R.filial || 'Loja';
+    window.__diagR = R;
+    const loja = R.filial || 'Loja';
+    $('report').innerHTML = buildReportHTML(R, { lojaLabel: loja });
+    initResgate(R);
+    initChartHovers();
+    initTarefas();
+    $('toolbar').style.display = 'block';
+    $('tbTitulo').textContent = 'Raio-X · ' + loja + ' · Score ' + R.score + '/100';
+    document.title = 'Raio-X de Lucro · ' + loja;
+    setStatus('ok','Diagnóstico gerado. Explore a lista de resgate ou exporte em PDF/CSV.');
+    $('report').scrollIntoView({ behavior:'smooth' });
+  }catch(e){ setStatus('err','Erro ao analisar: ' + e.message); }
+}
+
+$('fileInput').addEventListener('change', e => addFiles(e.target.files));
+const drop = $('drop');
+['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+$('btnGo').addEventListener('click', gerar);
+$('btnPDF').addEventListener('click', () => { window.print(); });
+$('btnCSV').addEventListener('click', () => { if (state.R) baixarCSV(); });
+$('btnTarefas').addEventListener('click', () => { const t = document.getElementById('tarefas'); if (t) t.scrollIntoView({ behavior: 'smooth' }); });
+$('btnTarefasCSV').addEventListener('click', baixarTarefasCSV);
+$('btnSnapshot').addEventListener('click', baixarSnapshot);
+$('btnComparar').addEventListener('click', comparar);
+$('btnBenchmark').addEventListener('click', benchmark);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMixMes(); });
+window.__rx = { initResgate, initTarefas, setStatus, state, baixarCSV, baixarTarefasCSV };
+$('btnNova').addEventListener('click', () => {
+  state.bi = []; state.prod = null; state.cli = null; state.estoqueNativo = null; state.entrada = []; state.abcCompras = null; state.estoqueAtual = null; state.chips = []; state.R = null; state.lojaLabel = '';
+  renderChips(); $('report').innerHTML = ''; $('toolbar').style.display = 'none';
+  $('fileInput').value=''; $('snapA').value=''; $('snapB').value=''; $('snapBench').value='';
+  setStatus('ok','Pronto para uma nova loja.'); setCmpStatus('','');
+  window.scrollTo({ top:0, behavior:'smooth' });
+});
+})();
+</script>
+<script src="relatorio.js?v=2.0"></script>
+</body>
+</html>

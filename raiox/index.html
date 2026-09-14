@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Raio-X POP · Central POP</title>
-<!-- Raio-X POP v1.0 · 14/09/2026 · diagnóstico de lucratividade por loja dentro da Central POP.
+<!-- Raio-X POP v2.0 · 14/09/2026 · diagnóstico de lucratividade por loja dentro da Central POP. Relatório completo em relatorio.html (motor visual original da máquina) + evolução + consultoria.
      Mesmo login da Central (projeto agenda.suporte). O cálculo roda no banco de compras pela rotina
      rede-pop-jobs e grava só o resultado nas tabelas raiox_*. Esta página lê, mostra e inicia a
      consultoria de faturamento (plano de 90 dias na agenda). Motor de estoque/ABC embutido para
@@ -193,7 +193,8 @@ table.lista td.r,table.lista th.r{text-align:right}
   <!-- ===== CONSULTORIAS ===== -->
   <div class="vista" id="v-consult">
     <div class="resumo" id="csResumo"></div>
-    <div class="painel"><h3>Consultorias de faturamento <small>o consultor inicia na ficha da loja; o plano de 90 dias nasce na agenda</small></h3><div id="csLista"></div></div>
+    <div class="painel"><h3>Consultorias de faturamento <small>o consultor inicia na ficha da loja; o plano de 90 dias nasce na agenda</small><span style="flex:1"></span><button class="btn claro" id="btnConsCSV" type="button">⬇ Andamento (CSV)</button></h3><div id="csLista"></div></div>
+    <div class="painel"><h3>Gargalos da rede <small>o que mais trava as consultorias — calculado da agenda, não de opinião</small></h3><div id="csGargalos"></div></div>
   </div>
 
   <!-- ===== ARQUIVOS ===== -->
@@ -217,7 +218,7 @@ table.lista td.r,table.lista th.r{text-align:right}
 <div id="mBg"><div id="mBox"></div></div>
 <div class="toast" id="toast">salvo ✓</div>
 
-<script src="motor.js"></script>
-<script src="app.js"></script>
+<script src="motor.js?v=2.0"></script>
+<script src="app.js?v=2.0"></script>
 </body>
 </html>

@@ -84,7 +84,7 @@
     (R.compras.recompraParado || []).forEach(i => { i.dataCompra = reviver(i.dataCompra); });
     (R.compras.custoSubindo || []).forEach(i => { i.dataIni = reviver(i.dataIni); i.dataFim = reviver(i.dataFim); });
   }
-  // lista de resgate: o banco guarda os 300 inativos de maior valor (código, nome, telefone)
+  // lista de resgate: a Central guarda todos os clientes identificados da loja (código, nome, telefone); quem vê é regra do banco (carteira do consultor, franqueado da loja, admin/supervisão)
   R.clientes = (resgQ.data || []).map(c => ({
     cli: c.cliente_cod, nome: c.nome || ('Cód. ' + c.cliente_cod), tel: c.telefone || '', ultima: c.ultima ? new Date(c.ultima + 'T12:00:00') : R.ref,
     dias: c.dias, banda: c.banda, compras: c.compras, gasto: +c.gasto || 0, gastoMes: +c.gasto_mes || 0, racao: !!c.racao, bt: !!c.bt, pacote: false
@@ -118,7 +118,9 @@
   const lojaLabel = (F.nome || ('FRA ' + FRA)) + ' · FRA ' + FRA;
   window.__diagR = R; rx.state.R = R; rx.state.lojaLabel = lojaLabel;
   rep.innerHTML = buildReportHTML(R, { lojaLabel });
-  rx.initResgate(R); initChartHovers(); rx.initTarefas();
+  window.__rxAchadosDB = true;
+  rx.initResgate(R); initChartHovers(); rx.initTarefas(); await ligarAchados();
+  if (window.parent !== window) document.body.classList.add('embed');
   $('toolbar').style.display = 'block';
   $('tbTitulo').textContent = 'Raio-X · ' + lojaLabel + ' · ' + (S.score == null ? 'sem nota' : 'Score ' + S.score + '/100');
   document.title = 'Raio-X · ' + lojaLabel;
@@ -145,7 +147,29 @@
   ligarExportacoes();
   ajustarModais();
   avisarPai(); new ResizeObserver(avisarPai).observe(document.body);
-  window.addEventListener('message', ev => { if (ev.origin !== location.origin || !ev.data) return; if (ev.data.raiox === 'ir') { const el = document.getElementById(ev.data.alvo); if (el) el.scrollIntoView({ behavior: 'smooth' }); } });
+  window.addEventListener('message', ev => {
+    if (ev.origin !== location.origin || !ev.data || ev.source !== window.parent) return;
+    if (ev.data.raiox === 'ir') { const el = document.getElementById(ev.data.alvo); if (el) el.scrollIntoView({ behavior: 'smooth' }); }
+    if (ev.data.raiox === 'aba' && window.__rxIr) window.__rxIr(String(ev.data.aba), false);
+    if (ev.data.raiox === 'exportar') { const b = document.getElementById(String(ev.data.botao)); if (b && /^btn[A-Za-z0-9]+$/.test(String(ev.data.botao))) b.click(); }
+  });
+
+  /* ===== achados do raio-x marcados como feitos: gravados na Central (fra + chave), por consultor ou franqueado ===== */
+  async function ligarAchados() {
+    const { data } = await sb.from('raiox_achados').select('chave,concluida,por,em').eq('fra', FRA);
+    const feitos = {}; (data || []).forEach(a => { feitos[a.chave] = a; });
+    document.querySelectorAll('.task-check[data-chave]').forEach(cb => {
+      const ch = cb.dataset.chave, row = cb.closest('.task-row');
+      if (feitos[ch] && feitos[ch].concluida) { cb.checked = true; row.classList.add('done'); }
+      cb.addEventListener('change', async () => {
+        cb.disabled = true;
+        const { error } = await sb.from('raiox_achados').upsert({ fra: FRA, chave: ch, concluida: cb.checked, por: session.user.id, em: new Date().toISOString() }, { onConflict: 'fra,chave' });
+        cb.disabled = false;
+        if (error) { cb.checked = !cb.checked; alert('Não salvou: ' + error.message); return; }
+        row.classList.toggle('done', cb.checked);
+      });
+    });
+  }
 
   /* ===== evolução: uma linha por snapshot mensal (janela móvel de 12 meses) ===== */
   function buildEvolucaoHTML() {
@@ -205,8 +229,8 @@
     const c = CONS.find(x => x.status === 'ativa') || CONS[0];
     if (!c) return;
     const [itensQ, perfQ, baseQ, avQ] = await Promise.all([
-      sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,user_id').eq('consultoria_id', c.id).order('data'),
-      sb.from('perfis').select('id,nome').in('id', [c.consultor_id, c.franqueado_id].filter(Boolean)),
+      sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id').eq('consultoria_id', c.id).order('data').order('id'),
+      sb.from('perfis').select('id,nome').in('id', [c.consultor_id, c.franqueado_id, session.user.id].filter(Boolean)),
       c.mes_ref_base ? sb.from('raiox_snapshots').select('fra,mes_ref,calculado_em,score,sub,kpis,dados->metas,dados->governanca,dados->churnGeral,tarefas').eq('fra', FRA).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null }),
       sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false })
     ]);
@@ -292,8 +316,8 @@
     const abertos = itens.filter(i => !i.concluida).sort((a, b) => String(venc(a)).localeCompare(String(venc(b))));
     const G = { venc: abertos.filter(i => venc(i) && venc(i) < hojeISO), hoje: abertos.filter(i => venc(i) === hojeISO), semana: abertos.filter(i => venc(i) > hojeISO && venc(i) <= em7), depois: abertos.filter(i => !venc(i) || venc(i) > em7), feitas: itens.filter(i => i.concluida).sort((a, b) => String(b.concluida_em || '').localeCompare(String(a.concluida_em || ''))) };
     const item = i => { const v = venc(i), cls = i.concluida ? 'feita' : (v && v < hojeISO) ? 'venc' : v === hojeISO ? 'hoje' : '';
-      return `<div class="item-plano ${cls}"><div><div class="tt">${i.tipo === 'tarefa' ? '☐' : '📅'} ${esc(i.titulo)}</div><div class="sub">${i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : 'reunião ' + dBR(v) + (i.ini ? ' às ' + String(i.ini).slice(0, 5) : '')}${i.concluida ? ' · feita' + (i.concluida_em ? ' em ' + dBR(i.concluida_em) : '') : cls === 'venc' ? ' · <b style="color:var(--alerta)">vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)</b>' : ''} · ${esc(nomes[i.user_id] || '')}</div></div>
-        <div class="acao">${EH_FRANQ ? '' : i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}</div></div>`; };
+      return `<div class="item-plano ${cls}"><div><div class="tt">${i.tipo === 'tarefa' ? '☐' : '📅'} ${esc(i.titulo)}</div><div class="sub">${i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : 'reunião ' + dBR(v) + (i.ini ? ' às ' + String(i.ini).slice(0, 5) : '')}${i.concluida ? ' · feita' + (i.concluida_em ? ' em ' + dBR(i.concluida_em) : '') + (i.concluida_por ? ' por ' + esc(nomes[i.concluida_por] || 'equipe') : '') : cls === 'venc' ? ' · <b style="color:var(--alerta)">vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)</b>' : ''} · ${esc(nomes[i.user_id] || '')}</div></div>
+        <div class="acao">${c.status !== 'ativa' ? '' : i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}</div></div>`; };
     const grupo = (tit, lista, vazio) => `<div class="grupo"><h4>${tit} · ${br(lista.length)}</h4>${lista.length ? lista.map(item).join('') : `<div style="font-size:.78rem;color:var(--ink-2);padding:4px 0 8px">${vazio}</div>`}</div>`;
     sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Plano de 90 dias</h2><span class="hint num">${esc(nomes[c.consultor_id] || 'consultor')} · ${dBR(c.inicio)} a ${dBR(c.fim_previsto)} · ${br(itens.length)} itens · marcar aqui atualiza a agenda da Central</span></div>
       <div class="resumo-tarefas num">
@@ -308,15 +332,16 @@
         ${grupo('Próximos 7 dias', G.semana, 'Nada nesta semana.')}
         ${grupo('Depois', G.depois, 'Nada mais agendado.')}
         ${grupo('Feitas', G.feitas, 'Nenhuma ainda.')}
-        <div class="note" style="margin-top:12px">${EH_FRANQ ? 'Quem marca os itens é o consultor. Se algo já foi feito e não aparece, avise na aba Avaliação.' : 'Quem marca: o consultor responsável ou um admin. Editar prazo, título ou apagar continua só na agenda, por admin.'}</div>
+        <div class="note" style="margin-top:12px">${EH_FRANQ ? 'Você pode marcar o que já foi feito; fica registrado com seu nome e data, e o consultor vê na agenda dele.' : 'Quem marca: o consultor responsável, o franqueado da loja ou um admin — fica registrado quem marcou. Editar prazo, título ou apagar continua só na agenda, por admin.'}</div>
       </div></div>`;
     rep.insertBefore(sec, secTarefas);
     sec.querySelectorAll('[data-concluir],[data-reabrir]').forEach(b => b.onclick = async () => {
       const id = b.dataset.concluir || b.dataset.reabrir, feito = !!b.dataset.concluir;
       b.disabled = true;
-      const { data, error } = await sb.from('agenda_eventos').update({ concluida: feito, concluida_em: feito ? new Date().toISOString() : null }).eq('id', id).select('id');
-      if (error || !data || !data.length) { b.disabled = false; alert(error ? error.message : 'Sem permissão: só o consultor responsável ou um admin marca este item.'); return; }
-      const it = itens.find(x => x.id === id); if (it) { it.concluida = feito; it.concluida_em = feito ? new Date().toISOString() : null; }
+      const { data, error } = await sb.rpc('raiox_concluir_item', { p_id: id, p_concluida: feito });
+      if (error || !data) { b.disabled = false; alert(error ? error.message : 'Sem permissão para marcar este item.'); return; }
+      const it = itens.find(x => x.id === id); if (it) { it.concluida = feito; it.concluida_em = feito ? new Date().toISOString() : null; it.concluida_por = feito ? session.user.id : null; }
+      if (!nomes[session.user.id] && PERFIL) nomes[session.user.id] = PERFIL.nome;
       const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
       cc.tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO); cc.rPend = reunioes.filter(r => r.data < hojeISO && !r.concluida);
       cc.pctTarefas = tarefas.length ? 100 * tarefas.filter(t => t.concluida).length / tarefas.length : 0;
@@ -373,7 +398,7 @@
       ${a.sugestao ? `<p style="font-size:.86rem;margin-top:6px"><b>Sugestão:</b> ${esc(a.sugestao)}</p>` : ''}
       ${a.resposta ? `<div class="resp"><b>Resposta${a.respondido_por ? ' de ' + esc(nomeDe(a.respondido_por)) : ''}${a.respondido_em ? ' · ' + dBR(a.respondido_em) : ''}:</b> ${esc(a.resposta)}</div>` : (EH_EQUIPE ? `<div style="margin-top:8px"><textarea class="resp-txt" placeholder="Responder ao franqueado…" style="width:100%;border:1.5px solid var(--linha);border-radius:8px;padding:8px;font:inherit;font-size:.84rem;min-height:50px"></textarea><button type="button" class="btn btn-sec" data-resp="${esc(a.id)}" style="margin-top:6px">Responder</button></div>` : '')}
     </div>`;
-    const form = (EH_FRANQ || EH_ADMIN) && c.status === 'ativa' ? `<div class="card form-av" id="formAv"><h3>${minha ? 'Sua avaliação desta semana' : 'Como foi esta semana?'} <span class="note" style="display:inline">· semana de ${dBR(semanaAtual)}</span></h3>
+    const form = EH_FRANQ && c.status === 'ativa' ? `<div class="card form-av" id="formAv"><h3>${minha ? 'Sua avaliação desta semana' : 'Como foi esta semana?'} <span class="note" style="display:inline">· semana de ${dBR(semanaAtual)}</span></h3>
       <label>Nota para a semana da consultoria</label><div class="estrelas" id="avEstrelas">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${minha && n <= minha.nota ? 'on' : ''}">★</button>`).join('')}</div>
       <label>A loja, nesta semana</label><div class="opc" id="avAnd">${['melhorou', 'igual', 'piorou'].map(k => `<button type="button" data-k="${k}" class="${minha && minha.andamento === k ? 'on' : ''}">${ROT[k]}</button>`).join('')}</div>
       <label>O que aconteceu (opcional)</label><textarea id="avCom" placeholder="O que funcionou, o que travou, o que a equipe sentiu…">${minha ? esc(minha.comentario || '') : ''}</textarea>
@@ -405,7 +430,8 @@
       const { data, error } = await sb.from('raiox_avaliacoes').update({ resposta: txt }).eq('id', b.dataset.resp).select('id');
       if (error || !data || !data.length) { b.disabled = false; alert(error ? error.message : 'Sem permissão para responder.'); return; }
       // a tarefa "Avaliação semanal do franqueado" da agenda fecha junto
-      await sb.from('agenda_eventos').update({ concluida: true, concluida_em: new Date().toISOString() }).eq('consultoria_id', c.id).eq('concluida', false).like('titulo', 'Avaliação semanal do franqueado%');
+      const avR = cc.avs.find(a => a.id === b.dataset.resp);
+      await sb.from('agenda_eventos').update({ concluida: true, concluida_em: new Date().toISOString(), concluida_por: session.user.id }).eq('consultoria_id', c.id).eq('concluida', false).like('titulo', 'Avaliação semanal do franqueado%').like('descricao', 'Semana de ' + (avR ? dBR(avR.semana) : '') + '%');
       const { data: novas } = await sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false });
       cc.avs = novas || []; sec.remove(); buildAvaliacaoTab(); montarAbas(true);
     });
@@ -458,7 +484,9 @@
       rep.querySelectorAll('[data-aba]').forEach(el => el.classList.toggle('on', el.dataset.aba === aba));
       if (rolar && window.parent !== window) window.parent.postMessage({ raiox: 'topo', fra: FRA }, location.protocol === 'file:' ? '*' : location.origin);
       avisarPai();
+      if (window.parent !== window) window.parent.postMessage({ raiox: 'abas', fra: FRA, atual: aba, badges: { tarefas: nAbertas, avaliacao: !!(EH_FRANQ && window.__avalPendente) } }, location.protocol === 'file:' ? '*' : location.origin);
     };
+    window.__rxIr = ir;
     document.querySelectorAll('.abas .aba').forEach(b => b.onclick = () => ir(b.dataset.aba, true));
     const bA = $('abaAvalN'); if (bA) bA.style.display = (EH_FRANQ && window.__avalPendente) ? '' : 'none';
     ir(atual || (['diag', 'tarefas', 'clientes', 'estoque', 'evolucao', 'consultoria', 'avaliacao', 'historico'].includes(pedida) ? pedida : (EH_FRANQ && window.__avalPendente ? 'avaliacao' : 'diag')), false);
@@ -479,6 +507,9 @@
     const baixar = (nome, conteudo, tipo) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([conteudo], { type: tipo })); a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
     const seg = v => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t : t; };
     const tag = 'FR' + FRA + '_' + S.mes_ref;
+    // lista de resgate = nome + telefone de clientes: cada download fica registrado (quem, quando, quantas linhas)
+    const bCli = $('btnCSV');
+    if (bCli) bCli.addEventListener('click', () => { sb.from('raiox_exportacoes').insert({ user_id: session.user.id, fra: FRA, tipo: 'resgate_csv', linhas: (R.clientes || []).length }).then(() => {}); });
     // instantâneo (JSON), resgate (CSV), tarefas (CSV) e PDF já são os botões originais da máquina
     // evolução mensal em CSV
     const bEvo = $('btnEvolucaoCSV');

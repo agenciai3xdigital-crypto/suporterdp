@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Ficha de formação de preço de loja · Rede POP Pet Center</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{--verde:#009150;--verde-escuro:#00573F;--laranja:#FF6B15;--amarelo:#FDAE25;--verde-claro:#A8D3C4;
   --fundo:#f4f6f5;--texto:#1e2b26;--muted:#5f6c68;--linha:#cfdad4}
@@ -146,7 +146,8 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 const $=id=>document.getElementById(id);
 const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
 const fmtD=iso=>iso?new Date(iso).toLocaleDateString('pt-BR'):'';
-const token=new URLSearchParams(location.search).get('t')||'';
+// token no fragmento (#t=…): não vai ao servidor nem ao Referer; ?t= aceito por compatibilidade com links antigos
+const token=new URLSearchParams(location.hash.replace(/^#/,'')).get('t')||new URLSearchParams(location.search).get('t')||'';
 const CAMPOS=['m2','locacaoAte','motivo','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos','obsCedente'];
 const NUM=new Set(['m2','valorPedido','fat','margem','estoque','estoqueMorto','ticket','outrosPassivos']);
 const LISTAS={desp:{padrao:['Aluguel','IPTU','Telefone e internet','Água','Energia'],rot:'Total de despesas',ph:'Descrição'},

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Raio-X · Central POP</title>
 <!-- Relatório completo da Máquina de Análise de Lojas, alimentado pelo banco da Central POP (raiox/relatorio.js). Gerado a partir do index.html original da máquina: NÃO editar à mão o miolo, só o relatorio.js. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{
   --verde-900:#00573F; --verde-600:#009150; --verde-200:#A8D3C4;
@@ -268,6 +268,7 @@ footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);fon
 .lt-item.venc::before{background:var(--alerta)}.lt-item.marco::before{background:var(--amarelo)}.lt-item.av::before{background:#71C5E8}
 .lt-item .q{font-size:.72rem;color:var(--ink-2)}
 .veredito{display:inline-block;padding:6px 14px;border-radius:99px;font-weight:800;color:#fff;font-size:.9rem}
+body.embed .toolbar{display:none!important}
 @media print{#report [data-aba]{display:block!important}.abas,.exportar{display:none!important}}
 </style>
 </head>
@@ -1059,15 +1060,15 @@ function buildTarefasHTML(R) {
   if (!R.tarefas.length) return `<div class="card"><div class="callout" style="background:#E4F5EB;border-color:#BFE3CC"><b>Nenhuma tarefa crítica no momento.</b> Os indicadores que a máquina monitora estão dentro do esperado.</div></div>`;
   const rows = R.tarefas.map((t, i) => {
     const s = SEV[t.sev], txt = TASK_TEXT[t.chave](t.dados);
-    return `<label class="task-row" style="border-left-color:${s.cor}"><input type="checkbox" class="task-check"><div class="task-body"><span class="task-sev" style="background:${s.bg};color:${s.cor}">${s.label}</span><b>${esc(txt.titulo)}</b><p>${esc(txt.desc)}</p></div></label>`;
+    return `<label class="task-row" data-chave="${esc(t.chave)}" style="border-left-color:${s.cor}"><input type="checkbox" class="task-check" data-chave="${esc(t.chave)}"><div class="task-body"><span class="task-sev" style="background:${s.bg};color:${s.cor}">${s.label}</span><b>${esc(txt.titulo)}</b><p>${esc(txt.desc)}</p></div></label>`;
   }).join('');
-  return `<div class="card"><div id="tarefasList">${rows}</div><div class="note" style="margin-top:10px">Marque conforme resolve — fica salvo neste navegador entre aberturas do mesmo arquivo (pode não funcionar em todos os navegadores quando o arquivo é aberto localmente).</div></div>`;
+  return `<div class="card"><div id="tarefasList">${rows}</div><div class="note" style="margin-top:10px" id="tarefasNota">Marque conforme resolve — fica salvo na Central (quem marcou e quando), e vale para o consultor e para o franqueado.</div></div>`;
 }
 function buildTarefasCSV(R) {
   const linhas = ['severidade;titulo;descricao'];
   R.tarefas.forEach(t => {
     const s = SEV[t.sev], txt = TASK_TEXT[t.chave](t.dados);
-    linhas.push([s.label, '"' + txt.titulo.replace(/"/g, '""') + '"', '"' + txt.desc.replace(/"/g, '""') + '"'].join(';'));
+    linhas.push([s.label, '"' + segCSV(txt.titulo).replace(/"/g, '""') + '"', '"' + segCSV(txt.desc).replace(/"/g, '""') + '"'].join(';'));
   });
   return '\ufeff' + linhas.join('\r\n');
 }
@@ -1268,11 +1269,12 @@ function buildResgateRows(clientes, filtro, busca) {
   }).join('');
   return { html, n: lista.length };
 }
+const segCSV = v => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t : t; };
 function buildClientesCSV(R) {
   const linhas = ['status;cliente;telefone;ultima_compra;dias_sem_comprar;compras;gasto_total;gasto_mensal;compra_racao;usa_banho_tosa;tem_pacote'];
   ordenaResgate(R.clientes).forEach(c => {
     const b = BANDAS.find(x => x.id === c.banda);
-    linhas.push([b.rot + ' (' + c.banda + 'd)', '"' + c.nome.replace(/"/g, '""') + '"', c.tel,
+    linhas.push([b.rot + ' (' + c.banda + 'd)', '"' + segCSV(c.nome).replace(/"/g, '""') + '"', segCSV(c.tel),
       fmtData(c.ultima), c.dias, c.compras, br(c.gasto, 2), br(c.gastoMes, 2),
       c.racao ? 'SIM' : 'NAO', c.bt ? 'SIM' : 'NAO', c.pacote ? 'SIM' : 'NAO'].join(';'));
   });
@@ -1392,7 +1394,7 @@ function buildReportHTML(R, cfg) {
     .map(([id, rot, n]) => `<button class="fchipf" data-f="${id}">${rot} <b>${br(n)}</b></button>`).join('');
   const legenda = BANDAS.map(x => `<span class="leg"><i style="background:${x.cor}"></i>${x.rot} (${x.id} dias)</span>`).join('');
   const resgateHTML = `<section><div class="wrap">
-    <div class="sec-head"><h2>Lista de resgate de clientes</h2><span class="hint num">${br(R.cliTot)} clientes identificados · cor conforme o tempo sem comprar (qualquer item) · ordenada por prioridade de resgate e valor do cliente${R.semTel ? ' · ' + br(R.semTel) + ' sem telefone no cadastro' : ''}</span></div>
+    <div class="sec-head"><h2>Lista de resgate de clientes</h2><span class="hint num">${br(R.cliTot)} clientes identificados · cor conforme o tempo sem comprar (qualquer item), dias contados até ${fmtData(R.ref)} (última venda carregada) · ordenada por prioridade de resgate e valor do cliente${R.semTel ? ' · ' + br(R.semTel) + ' sem telefone no cadastro' : ''}</span></div>
     <div class="total-tag num" style="background:var(--alerta);color:#fff"><div class="big">${br(R.churnGeral.inativos90)}</div><div class="desc" style="color:#fff">clientes sem comprar nada há 90+ dias, de qualquer categoria — ${br(R.churnGeral.naoRacaoInativo)} deles nunca compraram ração e por isso não apareceriam em nenhuma régua pensada só pra ração.</div></div>
     <div class="card">
       <div class="filtros no-print">${chipsFiltro}<input type="search" id="buscaCli" placeholder="Buscar nome ou telefone…" aria-label="Buscar cliente"><button class="btn btn-sec" id="btnCSV2">⬇ Baixar CSV</button></div>
@@ -1821,6 +1823,7 @@ function initResgate(R){
 }
 
 function initTarefas(){
+  if (window.__rxAchadosDB) return;   // dentro da Central: relatorio.js liga os checkboxes ao banco
   const R = state.R;
   const chaveBase = R ? (R.filial || 'loja') + '_' + R.mensal[0].label + '-' + R.mensal[R.nM - 1].label : 'loja';
   const key = 'raiox_tarefas_' + chaveBase.replace(/[^a-z0-9]+/gi, '_');

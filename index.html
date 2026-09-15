@@ -10,6 +10,9 @@
 <!-- v7.1 · 03/09/2026 · remove aba Financeiro (dados unificados no painel Inteligência Comercial) -->
 <!-- v7.2 · 04/09/2026 · agenda aceita convite .ics (Google Calendar / Outlook) -->
 <!-- v7.6 · 09/09/2026 · pop-up de detalhes do item + trava de sobreposição de horário -->
+<!-- v7.9.3 · 15/09/2026 · correções da auditoria: salvarEventoBetta (uid/evData/lote), escHtml em todos os campos vindos do banco,
+     chaveDia em fuso local, pdf.js 4.x (isEvalSupported:false), supabase-js pinado, confirmações em ações destrutivas, paginação,
+     ICS/CSV sanitizados, SW só abre URLs da própria origem, acessos.origem, resumo de logins no Admin. -->
 <!-- v7.9.2 · 15/09/2026 · login de franqueado é redirecionado para raiox/ · v7.9.1 · 14/09/2026 · link "Consultoria" da agenda abre a aba Tarefas do Raio-X · v7.9 · link Raio-X no cabeçalho (raiox/), itens de consultoria na agenda
      (consultoria_id) sem Editar para não-admin — a trava real fica no banco. -->
 <!-- v7.7 · 13/09/2026 · aba Eventos (tipo evento da agenda_eventos): acompanhamento de tarefas,
@@ -21,9 +24,18 @@
 <meta name="apple-mobile-web-app-title" content="Central POP">
 <link rel="apple-touch-icon" href="icone-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icone-192.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script><!-- v7.9.3: versão exata (antes @2 flutuante) -->
+<!-- RISCO CONHECIDO (v7.9.3): xlsx 0.18.5 é a última publicada no cdnjs/npm e tem CVEs abertas (prototype pollution / ReDoS — CVE-2023-30533, CVE-2024-22363).
+     Só é usado para ler o export .xlsx do PDV enviado pelo próprio usuário; não aceitar arquivos de terceiros. Versões corrigidas (0.20.x) só existem no CDN do SheetJS. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* v7.9.3: pdf.js 4.x (ESM) — a 3.11.174 é vulnerável a execução de JS via fonte maliciosa (CVE-2024-4367).
+   Carregado via import() dinâmico para manter o resto do arquivo como script clássico; a lib fica em window.pdfjsLib quando pronta. */
+window.__pdfjsPronto=import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs').then(lib=>{
+  lib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs';
+  window.pdfjsLib=lib;return lib;
+}).catch(e=>{console.error('pdf.js não carregou',e);return null;});
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
 :root{
@@ -961,7 +973,7 @@ const TIPOS=[['atend','Atendimento'],['pico','Pico'],['plantao','Almoço/Plantã
 const PALETA=['#0E5A64','#F5691D','#5B4A9E','#1E7F4F','#B97E10','#8E3B46','#2C6E91','#7A6F2B'];
 const $=id=>document.getElementById(id);
 const agora=()=>new Date();
-const chaveDia=d=>d.toISOString().slice(0,10);
+const chaveDia=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}; // v7.9.3: data LOCAL (toISOString virava o dia seguinte após 21h em UTC-3)
 
 /* ---------- Modelos padrão (almoço 1h12 + 2h livres) ---------- */
 const MODELO_PRODUTOS={
@@ -1048,7 +1060,7 @@ async function carregarBase(){
   TAREFAS={};(tf||[]).forEach(r=>{(TAREFAS[r.user_id]=TAREFAS[r.user_id]||{})[r.perfil]=r.tarefas;});
 }
 async function carregarChecks(){
-  const {data}=await sb.from('checks_diarios').select('*').eq('dia',chaveDia(agora()));
+  const data=await fetchAllSB(()=>sb.from('checks_diarios').select('*').eq('dia',chaveDia(agora())).order('user_id')); // v7.9.3: paginado
   checksHoje={};CFG.usuarios.forEach(u=>checksHoje[u.id]=new Set());
   (data||[]).forEach(r=>checksHoje[r.user_id]=new Set(r.ids));
 }
@@ -1085,34 +1097,40 @@ function calcPrazoRegra(dataEvento,dataCriacao,regra,dias){
   return dataEvento;
 }
 async function salvarEventoBetta(){
+  // v7.9.3: uid do alvo da agenda (era ReferenceError), data do formulário (evData, não agData), FR obrigatória, try/catch e insert em lote
+  const uid=agAlvo();
   const titulo=$('evTitulo').value.trim()||'Evento Betta';
-  const data=$('agData').value;
+  const data=$('evData').value||$('agData').value;
   if(!data){alert('Defina a data do evento.');return;}
+  if(evFraSel===null||evFraSel===undefined){alert('Selecione a franquia (FR) do evento. Para itens internos, escolha "INTERNO / SEDE".');$('evFra').focus();return;}
   const dataCriacao=chaveDia(agora());
   const custo=Number($('evCusto').value)||0;
   const dados={custo_total:custo,faturamento_direto:null,faturamento_carrinho:null,filial_arquivo:null,processado_em:null,pedido_num:pdfBettaExtra.pedido_num||null};
   // v7.7 — ini/fim são NOT NULL no banco: mandar null derrubava a criação do evento
   // (era por isso que nenhum Evento Betta gerava as tarefas das regras).
   const iniEv=$('evIni').value||'00:00', fimEv=$('evFim').value||'23:59';
-  const {data:pai,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini:iniEv,fim:fimEv,tipo:'evento',descricao:$('evDesc').value.trim(),participantes:[...evPartsSel],franquia_fra:evFraSel,dados_evento:dados,criado_por:usuarioAtual.id}).select().single();
-  if(error){erroDB(error);return;}
   const ativos=REGRAS_BETTA.filter(r=>r.ativo!==false);
-  if(!ativos.length){alert('Evento criado, mas não há regras cadastradas em Admin → Regras do Evento Betta — nenhuma tarefa foi gerada.');}
-  for(const r of ativos){
-    const prazo=calcPrazoRegra(data,dataCriacao,r.regra,r.dias);
-    const {error:e2}=await sb.from('agenda_eventos').insert({user_id:uid,titulo:r.titulo,data:dataCriacao,tipo:'tarefa',franquia_fra:evFraSel,prazo,evento_pai:pai.id,criado_por:usuarioAtual.id,subtarefas:[]});
-    if(e2)erroDB(e2);
-  }
+  try{
+    const {data:pai,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini:iniEv,fim:fimEv,tipo:'evento',descricao:$('evDesc').value.trim(),participantes:[...evPartsSel],franquia_fra:evFraSel,dados_evento:dados,criado_por:usuarioAtual.id}).select().single();
+    if(error)throw error;
+    if(!ativos.length){alert('Evento criado, mas não há regras cadastradas em Admin → Regras do Evento Betta — nenhuma tarefa foi gerada.');}
+    else{
+      const filhas=ativos.map(r=>({user_id:uid,titulo:r.titulo,data:dataCriacao,tipo:'tarefa',franquia_fra:evFraSel,prazo:calcPrazoRegra(data,dataCriacao,r.regra,r.dias),evento_pai:pai.id,criado_por:usuarioAtual.id,subtarefas:[]}));
+      const {error:e2}=await sb.from('agenda_eventos').insert(filhas);
+      if(e2)throw e2;
+    }
+  }catch(err){erroDB(err);return;}
   fecharFormAgenda();$('evTitulo').value='';$('evDesc').value='';$('evCusto').value='';evPartsSel.clear();sairEdicao();desenharEvParts();
   emModoBetta=false;evDadosEventoOrig=null;pdfBettaExtra={};$('evCustoLbl').style.display='none';$('btnPdfBettaNome').textContent='';
   await carregarAgenda();desenharAgenda();piscar();
   alert('Evento Betta criado ✓\n\n'+ativos.length+' tarefa(s) gerada(s) automaticamente com prazo calculado.');
 }
 let pdfBettaExtra={};
-pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+async function pdfjs(){const lib=await (window.__pdfjsPronto||Promise.resolve(window.pdfjsLib||null));if(!lib)throw new Error('Biblioteca de PDF não carregou (CDN indisponível). Recarregue a página.');return lib;}
 async function extrairValorPDF(file){
   const buf=await file.arrayBuffer();
-  const doc=await pdfjsLib.getDocument({data:buf}).promise;
+  const lib=await pdfjs();
+  const doc=await lib.getDocument({data:buf,isEvalSupported:false}).promise; // v7.9.3: pdf.js 4.x + sem eval
   let texto='';
   for(let i=1;i<=doc.numPages;i++){
     const pg=await doc.getPage(i);
@@ -1219,7 +1237,7 @@ async function ativarPush(){
   await navigator.serviceWorker.ready;
   let sub=await reg.pushManager.getSubscription();
   if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ParaUint8(VAPID_PUBLIC_KEY)});
-  const{error}=await sb.from('push_subscriptions').upsert({user_id:usuarioAtual.id,subscription:sub.toJSON()},{onConflict:'user_id,endpoint'});
+  const{error}=await sb.from('push_subscriptions').upsert({user_id:usuarioAtual.id,endpoint:sub.endpoint,subscription:sub.toJSON()},{onConflict:'user_id,endpoint'}); // v7.9.3: endpoint no payload (onConflict dependia dele)
   if(error){erroDB(error);return;}
   btn.textContent='🔔 Avisos ativos neste aparelho';btn.disabled=true;
   piscar();
@@ -1233,7 +1251,7 @@ async function estadoPushInicial(){
     const sub=reg&&await reg.pushManager.getSubscription();
     if(sub&&Notification.permission==='granted'){
       // Autocura: garante que a inscrição deste aparelho existe no banco (recria se foi apagada lá)
-      const{error}=await sb.from('push_subscriptions').upsert({user_id:usuarioAtual.id,subscription:sub.toJSON()},{onConflict:'user_id,endpoint'});
+      const{error}=await sb.from('push_subscriptions').upsert({user_id:usuarioAtual.id,endpoint:sub.endpoint,subscription:sub.toJSON()},{onConflict:'user_id,endpoint'}); // v7.9.3
       if(error)console.warn('resync push',error);
       btn.textContent='🔔 Avisos ativos neste aparelho';btn.disabled=true;
       const cp=$('cnPush');if(cp)cp.textContent='Avisos ativos neste aparelho',cp.disabled=true;
@@ -1336,7 +1354,7 @@ async function iniciarSessao(user){
   usuarioAtual=perfil;
   // franqueado não usa a Central: vai direto para o Raio-X da loja dele (o banco também não deixa ler nada daqui)
   if(!perfil.admin&&(perfil.papeis||[]).includes('franqueado')){location.replace('raiox/');return;}
-  sb.from('acessos').insert({user_id:user.id}).then(()=>{});
+  sb.from('acessos').insert({user_id:user.id,origem:'central'}).then(()=>{}); // v7.9.3: coluna origem
   await carregarLidos();
   await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas(),carregarDemandas(),carregarItens()]);
   ligarRealtime();
@@ -1440,7 +1458,7 @@ function desenharRelTarefas(){
     for(const u of CFG.usuarios){
       const r=relatorioTarefas(u.id);
       if(!r.total)continue;
-      linhas+='<span>'+u.nome.split(' ')[0]+'</span>'+barraRel(r.pct)
+      linhas+='<span>'+escHtml(u.nome.split(' ')[0])+'</span>'+barraRel(r.pct)
         +'<span style="font-weight:800;color:'+(r.pct>=70?'#3B6D11':'#a34608')+'">'+r.pct+'%</span>'
         +'<span style="font-size:11.5px;color:var(--tinta-suave)">'+r.concl+'/'+r.total+(r.venc?' · <b style="color:#B3241A">'+r.venc+' vencida'+(r.venc>1?'s':'')+'</b>':' · em dia')+'</span>';
     }
@@ -1469,7 +1487,7 @@ function desenharDia(){
   $('rzFaixa').innerHTML='Equipe hoje: '+CFG.usuarios.filter(u=>!u.admin).map(u=>{
     if(emFerias(u.id,d))return u.nome.split(' ')[0]+' <span style="color:var(--tinta-suave)">· férias até '+u.feriasAte.split('-').reverse().slice(0,2).join('/')+'</span>';
     const b=reguaDe(u.id,d);
-    return'<strong>'+u.nome.split(' ')[0]+'</strong> '+(b.length?fmt(b[0].ini)+'–'+fmt(b[b.length-1].fim):'sem expediente');
+    return'<strong>'+escHtml(u.nome.split(' ')[0])+'</strong> '+(b.length?fmt(b[0].ini)+'–'+fmt(b[b.length-1].fim):'sem expediente');
   }).join(' · ');
   desenharChecklist();desenharTimeProg();desenharChamadosAvaliar();
 }
@@ -1486,7 +1504,7 @@ async function desenharChamadosAvaliar(){
   const desde=new Date(Date.now()-3*24*3600*1000).toISOString();
   const{data:chs}=await sb.from('chamados_sults').select('id,titulo,assunto,unidade,resolvido')
     .ilike('responsavel','%'+eu.nomeSults+'%').gte('resolvido',desde)
-    .order('resolvido',{ascending:false}).limit(40);
+    .order('resolvido',{ascending:false}).limit(200); // v7.9.3: era 40
   const lista=chs||[];
   if(!lista.length){resumo('✅ Chamados para avaliar — nenhum resolvido nos últimos 3 dias');box.innerHTML='<p class="vazio">Nenhum chamado seu resolvido nos últimos 3 dias.</p>';return;}
   const cids=lista.map(c=>'ch_'+c.id);
@@ -1498,8 +1516,8 @@ async function desenharChamadosAvaliar(){
   box.innerHTML='<div class="faixa">Isso alimenta a matriz de automação — obrigado!</div>';
   for(const c of pend.slice(0,15)){
     const div=document.createElement('div');div.className='tarefa';div.style.cursor='default';
-    div.innerHTML='<div class="txt">#'+c.id+' · '+(c.assunto||'(sem assunto)')
-      +'<small>'+((c.titulo||'').slice(0,70))+(c.unidade?' · '+c.unidade:'')+'</small>'
+    div.innerHTML='<div class="txt">#'+escHtml(c.id)+' · '+escHtml(c.assunto||'(sem assunto)')
+      +'<small>'+escHtml((c.titulo||'').slice(0,70))+(c.unidade?' · '+escHtml(c.unidade):'')+'</small>'
       +'<div class="dif-chips"><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div></div>';
     div.querySelectorAll('button').forEach(b=>{
       b.onclick=async()=>{
@@ -1607,7 +1625,7 @@ function linhaEventoDia(uid,e){
   const urg=urgencia(e);
   if(urg)row.classList.add('evento','urg-'+urg.n);
   const podeDevolver=ehT&&!e.concluida&&e.dono===usuarioAtual.id&&e.por&&e.por!==e.dono;
-  const subsHtml=ehT&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(e.concluida?' disabled':'')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
+  const subsHtml=ehT&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(e.concluida?' disabled':'')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+escHtml(s.txt)+'</label>').join('')
     +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'';
   const pendDesde=ehT&&!e.concluida&&e.data<chaveDia(agora())?Math.round((new Date(chaveDia(agora())+'T12:00:00')-new Date(e.data+'T12:00:00'))/86400000):0;
   row.innerHTML=(ehT?'<label style="display:inline"><input type="checkbox" class="ck-md" '+((e.concluida||pend)?'checked':'')+'></label>':'<span class="ld-ev-ico">🕐</span>')
@@ -1644,6 +1662,7 @@ function linhaEventoDia(uid,e){
     }
     if(!ev.target.checked&&pendentes.has(chave)){pendentes.delete(chave);redesenharTarefasDia();return;}
     if(!ev.target.checked&&e.concluida){
+      if(!confirm('Desfazer a conclusão de "'+e.titulo+'"? O registro no histórico será apagado.')){ev.target.checked=true;return;} // v7.9.3
       await sb.from('agenda_eventos').update({concluida:false,concluida_em:null}).eq('id',e.id);
       await sb.from('historico_tarefas').delete().match({user_id:uid,cid:'ag_'+e.id});
       await carregarAgenda();redesenharTarefasDia();piscar();
@@ -1675,8 +1694,8 @@ function linhaMacro(uid,t){
   const pend=pendentes.has(chave);
   const done=t.subs.filter(s=>checksHoje[uid].has(t.cid+'_s'+s.id)).length;
   const box=document.createElement('div');box.className='tarefa macro'+(feita?' feita':'');
-  box.innerHTML='<div class="txt"><strong>'+(feita?'✅ ':'▣ ')+t.txt+'</strong> <span class="mc-cont'+(done===t.subs.length?' ok':'')+'">'+done+'/'+t.subs.length+'</span>'
-    +(t.sub?'<small>'+t.sub+'</small>':'')
+  box.innerHTML='<div class="txt"><strong>'+(feita?'✅ ':'▣ ')+escHtml(t.txt)+'</strong> <span class="mc-cont'+(done===t.subs.length?' ok':'')+'">'+done+'/'+t.subs.length+'</span>'
+    +(t.sub?'<small>'+escHtml(t.sub)+'</small>':'')
     +(pend?'<div class="dif-chips"><span>Macro completa! Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'<div class="mc-subs"></div></div>';
   const subsBox=box.querySelector('.mc-subs');
@@ -1684,7 +1703,7 @@ function linhaMacro(uid,t){
     const scid=t.cid+'_s'+s.id;
     const sfeita=checksHoje[uid].has(scid);
     const l=document.createElement('label');l.className='tarefa sub'+(sfeita?' feita':'');
-    l.innerHTML='<input type="checkbox" '+(sfeita?'checked':'')+'><div class="txt">'+s.txt+'</div>';
+    l.innerHTML='<input type="checkbox" '+(sfeita?'checked':'')+'><div class="txt">'+escHtml(s.txt)+'</div>';
     l.querySelector('input').onchange=async e=>{
       if(e.target.checked){
         checksHoje[uid].add(scid);
@@ -1726,7 +1745,7 @@ function linhaTarefa(uid,t){
   const chave=uid+'|'+t.cid;
   const pend=pendentes.has(chave);
   const row=document.createElement('label');row.className='tarefa'+(feita?' feita':'');
-  row.innerHTML='<input type="checkbox" '+((feita||pend)?'checked':'')+'><div class="txt">'+t.txt+(t.sub?'<small>'+t.sub+'</small>':'')
+  row.innerHTML='<input type="checkbox" '+((feita||pend)?'checked':'')+'><div class="txt">'+escHtml(t.txt)+(t.sub?'<small>'+escHtml(t.sub)+'</small>':'')
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>'+(t.removivel&&!pend?'<button class="remover">×</button>':'');
   row.querySelector('input').onchange=async e=>{
@@ -1737,6 +1756,7 @@ function linhaTarefa(uid,t){
     }else{
       if(pendentes.has(chave)){pendentes.delete(chave);desenharChecklist();return;}
       // desfazer conclusão: remove o check e apaga o evento de hoje do histórico
+      if(!confirm('Desfazer a conclusão de "'+t.txt+'"? O registro de hoje no histórico será apagado.')){e.target.checked=true;return;} // v7.9.3
       checksHoje[uid].delete(t.cid);
       desenharChecklist();desenharTimeProg();
       await sb.from('historico_tarefas').delete().match({user_id:uid,dia:chaveDia(agora()),cid:t.cid});
@@ -1758,6 +1778,7 @@ function linhaTarefa(uid,t){
   });
   if(t.removivel&&!pend)row.querySelector('.remover').onclick=async e=>{
     e.preventDefault();
+    if(!confirm('Remover a atividade "'+t.txt+'"?'))return; // v7.9.3
     const{error}=await sb.from('atividades_livres').delete().eq('id',t.id);
     if(error)erroDB(error);
     checksHoje[uid].delete(t.cid);
@@ -1773,7 +1794,7 @@ function desenharTimeProg(){
     const total=totalDe(u.id,d);
     const pct=total?Math.round(100*Math.min((checksHoje[u.id]||new Set()).size,total)/total):0;
     const l=document.createElement('div');l.className='tp-linha';
-    l.innerHTML='<span class="n">'+u.nome+'</span><span class="barra"><i style="width:'+pct+'%"></i></span><span class="pct">'+(total?pct+'%':'—')+'</span>';
+    l.innerHTML='<span class="n">'+escHtml(u.nome)+'</span><span class="barra"><i style="width:'+pct+'%"></i></span><span class="pct">'+(total?pct+'%':'—')+'</span>';
     box.appendChild(l);
   }
 }
@@ -1789,10 +1810,13 @@ function gcalUrl(titulo,dataISO,hIni,hFim,det){
     +'&details='+encodeURIComponent(det||'Central POP');
 }
 function baixarICS(nomeArq,eventos){
+  // v7.9.3: texto sem quebras de linha (impedia injeção de propriedades no .ics) e linhas dobradas a 75 octetos (RFC 5545 §3.1)
+  const icsTxt=v=>String(v==null?'':v).replace(/\\/g,'\\\\').replace(/[\r\n]+/g,' ').replace(/[,;]/g,' ');
+  const dobrar=linha=>{const enc=new TextEncoder(),out=[];let cur='',n=0;for(const ch of linha){const b=enc.encode(ch).length;if(n+b>(out.length?74:75)){out.push(cur);cur=ch;n=b;}else{cur+=ch;n+=b;}}out.push(cur);return out.join('\r\n ');};
   let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//PlantaoSuporte//PT-BR\r\n';
   for(const e of eventos){
-    const d=e.data.replaceAll('-','');
-    ics+='BEGIN:VEVENT\r\nUID:'+(e.id||Math.random().toString(36).slice(2))+'@plantao\r\nDTSTART:'+d+'T'+e.ini.replace(':','')+'00\r\nDTEND:'+d+'T'+e.fim.replace(':','')+'00\r\nSUMMARY:'+e.titulo.replace(/[,;\\]/g,' ')+'\r\nDESCRIPTION:'+String(e.descricao||'Central POP').replace(/[,;\\]/g,' ').replace(/\r?\n/g,' ')+'\r\nEND:VEVENT\r\n';
+    const d=String(e.data).replaceAll('-','');
+    ics+='BEGIN:VEVENT\r\n'+dobrar('UID:'+icsTxt(e.id||Math.random().toString(36).slice(2))+'@plantao')+'\r\nDTSTART:'+d+'T'+e.ini.replace(':','')+'00\r\nDTEND:'+d+'T'+e.fim.replace(':','')+'00\r\n'+dobrar('SUMMARY:'+icsTxt(e.titulo))+'\r\n'+dobrar('DESCRIPTION:'+icsTxt(e.descricao||'Central POP'))+'\r\nEND:VEVENT\r\n';
   }
   ics+='END:VCALENDAR\r\n';
   const blob=new Blob([ics],{type:'text/calendar'});
@@ -1811,7 +1835,7 @@ function desenharPrevia(dia){
     const cols=document.createElement('div');cols.className='pv-cols';
     for(const u of CFG.usuarios){
       const col=document.createElement('div');col.className='pv-col';
-      col.innerHTML='<div class="pv-nome"><span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span>'+u.nome+'</div>';
+      col.innerHTML='<div class="pv-nome"><span class="avatar" style="background:'+corDe(u.id)+'">'+escHtml(u.nome[0].toUpperCase())+'</span>'+escHtml(u.nome)+'</div>';
       const corpo=document.createElement('div');corpo.className='pv-corpo';corpo.style.height=ALT+'px';
       const evs=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo!=='tarefa');
       const tars=(agenda[u.id]||[]).filter(e=>noDia(e,dia)&&e.tipo==='tarefa');
@@ -1846,7 +1870,7 @@ function desenharPrevia(dia){
     const hojeISO=chaveDia(agora());
     for(let i=0;i<7;i++){
       const d=new Date(seg);d.setDate(seg.getDate()+i);
-      const iso=d.toISOString().slice(0,10);
+      const iso=chaveDia(d);
       const cel=document.createElement('div');
       cel.className='pv-dia'+(iso===dia?' sel':'')+(iso===hojeISO?' hoje':'');
       cel.innerHTML='<div class="pv-rot">'+ROT[i]+'</div><div class="pv-num">'+d.getDate()+'</div>';
@@ -1896,7 +1920,7 @@ function eventoEl(uid,e){
       +(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')
       +(e.origem?' · 🔗 continuidade':'')+'</div>':'')
     +(ehTarefa&&(e.reaberturas||[]).length?'<div class="n" style="color:#B3241A">↩ Reaberta por '+escHtml((((uPorId((e.reaberturas[e.reaberturas.length-1]||{}).por)||{}).nome)||'—').split(' ')[0])+' em '+fmtDtHr((e.reaberturas[e.reaberturas.length-1]||{}).quando)+' — "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</div>':'')
-    +(ehTarefa&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(podeConcluir&&!e.concluida?'':' disabled')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+s.txt+'</label>').join('')
+    +(ehTarefa&&(e.subs||[]).length?'<div class="subs-box">'+e.subs.map(s=>'<label class="'+(s.feita?'feita':'')+'"><input type="checkbox" data-sid="'+s.id+'" '+(s.feita?'checked':'')+(podeConcluir&&!e.concluida?'':' disabled')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+escHtml(s.txt)+'</label>').join('')
       +'<div style="font-size:11px;color:var(--tinta-suave)">'+e.subs.filter(s=>s.feita).length+' de '+e.subs.length+' feitas</div></div>':'')
     +htmlUploadBetta(e)
     +(ehTarefa&&!e.concluida&&podeConcluir&&e.por&&e.por!==e.dono?'<div style="margin:6px 0"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
@@ -1923,6 +1947,12 @@ function eventoEl(uid,e){
   const bIcs=div.querySelector('.ics');if(bIcs)bIcs.onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
   const bx=div.querySelector('.x');
   if(bx)bx.onclick=async()=>{
+    // v7.9.3: confirma e bloqueia a exclusão quando há dependentes (tarefas filhas por evento_pai / itens do quartinho por evento_id)
+    const filhas=todosEventosUnicos().filter(x=>x.eventoPai===e.id).length;
+    let itens=0;
+    try{const{count}=await sb.from('itens_movimentos').select('id',{count:'exact',head:true}).eq('evento_id',e.id);itens=count||0;}catch(_){}
+    if(filhas||itens){alert('Não é possível remover "'+e.titulo+'": há '+filhas+' tarefa(s) gerada(s) por este item e '+itens+' registro(s) do quartinho vinculado(s). Remova/desvincule os dependentes primeiro.');return;}
+    if(!confirm('Remover "'+e.titulo+'" da agenda?\n\nDependentes: 0 tarefas · 0 itens do quartinho.'))return;
     const{error}=await sb.from('agenda_eventos').delete().eq('id',e.id);
     if(error)erroDB(error);else{await carregarAgenda();desenharAgenda();}
   };
@@ -1948,6 +1978,7 @@ function eventoEl(uid,e){
     if(!ev.target.checked&&pendEv.has(e.id)){pendEv.delete(e.id);desenharAgenda();return;}
     if(!ev.target.checked&&e.concluida){
       // desfazer conclusão da tarefa
+      if(!confirm('Desfazer a conclusão de "'+e.titulo+'"? O registro no histórico será apagado.')){ev.target.checked=true;return;} // v7.9.3
       await sb.from('agenda_eventos').update({concluida:false,concluida_em:null}).eq('id',e.id);
       await sb.from('historico_tarefas').delete().match({user_id:e.dono||uid,cid:'ag_'+e.id});
       await carregarAgenda();desenharAgenda();piscar();
@@ -2091,12 +2122,12 @@ function desenharAvisos(){
   todosEventosUnicos().forEach(e=>(e.avisos||[]).forEach(a=>{if(a.para===usuarioAtual.id&&!a.ciente)meus.push({e,a});}));
   meus.sort((x,y)=>String(y.a.quando).localeCompare(String(x.a.quando)));
   meus.forEach(({e,a})=>{
-    const quem=(((uPorId(a.por)||{}).nome||'—').split(' ')[0]);
+    const quem=escHtml(((uPorId(a.por)||{}).nome||'—').split(' ')[0]);
     const dt=new Date(a.quando);
     const div=document.createElement('div');div.className='aviso-done';
     if(a.tipo==='reaberta'){div.style.background='#FDECEA';div.style.border='1px solid #E8B3AC';}
     const corH=a.tipo==='reaberta'?'#8C271E':'#3B6D11';
-    div.innerHTML='<span class="aviso-txt">'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+a.titulo+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+a.titulo+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')))
+    div.innerHTML='<span class="aviso-txt">'+(a.tipo==='reaberta'?'↩ <b>'+quem+' reabriu</b> sua tarefa: "'+escHtml(a.titulo)+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')+' Corrija e conclua novamente.':(a.tipo==='devolvida'?'↩ <b>'+quem+' devolveu</b> a tarefa que você pediu: "'+escHtml(a.titulo)+'" — uma nova tarefa de continuidade foi criada para você.':'✅ <b>'+quem+' concluiu</b> a tarefa que você pediu: "'+escHtml(a.titulo)+'"'+(a.obs?' — <b>obs:</b> "'+escHtml(a.obs)+'".':'')))
       +' <span style="color:'+corH+';font-size:12px">('+dt.toLocaleDateString('pt-BR').slice(0,5)+' às '+dt.toLocaleTimeString('pt-BR').slice(0,5)+')</span></span>'
       +'<span class="aviso-acoes">'
       +(a.tipo==='concluida'&&e.concluida?'<button type="button" class="av-reab" style="border-color:var(--verm);color:var(--verm)">↩ Reabrir tarefa</button>':'')
@@ -2117,7 +2148,7 @@ function desenharAgenda(){
   const lista=$('listaEventos');lista.innerHTML='';
   const q=$('evQuem');
   if(!q.options.length){
-    q.innerHTML=CFG.usuarios.map(u=>'<option value="'+u.id+'">'+u.nome+'</option>').join('');
+    q.innerHTML=CFG.usuarios.map(u=>'<option value="'+u.id+'">'+escHtml(u.nome)+'</option>').join('');
     q.value=usuarioAtual.id;
   }
   atualizarCamposTipo();
@@ -2175,7 +2206,7 @@ function desenharAgenda(){
       const evs=(agenda[u.id]||[]).filter(e=>noDia(e,dia)).sort((a,b)=>a.ini.localeCompare(b.ini));
       totalDia+=evs.length;
       const sec=document.createElement('div');sec.className='ag-sec';
-      sec.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span>'+u.nome+' <span class="qtd">'+(evs.length?evs.length+' compromisso'+(evs.length>1?'s':''):'livre neste dia')+'</span>';
+      sec.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+escHtml(u.nome[0].toUpperCase())+'</span>'+escHtml(u.nome)+' <span class="qtd">'+(evs.length?evs.length+' compromisso'+(evs.length>1?'s':''):'livre neste dia')+'</span>';
       lista.appendChild(sec);
       for(const e of evs)lista.appendChild(eventoEl(u.id,e));
     }
@@ -2213,7 +2244,7 @@ function desenharEvSubs(){
   const box=$('evSubsLista');box.innerHTML='';
   evSubsArr.forEach((s,i)=>{
     const d=document.createElement('div');d.className='sitem';
-    d.innerHTML='<span>≡ '+s.txt+'</span><button type="button" title="remover">✕</button>';
+    d.innerHTML='<span>≡ '+escHtml(s.txt)+'</span><button type="button" title="remover">✕</button>';
     d.querySelector('button').onclick=()=>{evSubsArr.splice(i,1);desenharEvSubs();};
     box.appendChild(d);
   });
@@ -2748,7 +2779,7 @@ function desenharAgendaFranquias(lista){
     const itens=porFra[f.fra]||[];
     if(!itens.length&&q==='')continue;
     if(!itens.length)continue;
-    bloco(f.fra,(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome)+(f.consultor?' <span class="fr-tag">'+f.consultor+'</span>':''),itens);
+    bloco(f.fra,escHtml(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome)+(f.consultor?' <span class="fr-tag">'+escHtml(f.consultor)+'</span>':''),itens);
   }
   if(porFra['sem']&&!q)bloco('sem','Sem franquia vinculada <span class="fr-tag">itens antigos</span>',porFra['sem']);
   if(!mostrou){const p=document.createElement('p');p.className='vazio';p.textContent='Nenhum item no período para as franquias filtradas.';lista.appendChild(p);}
@@ -2759,7 +2790,7 @@ function desenharAgendaFranquias(lista){
 /* ===== v8 — Conferência de tarefas concluídas + reabertura (admin) ===== */
 let confPessoa='todas',confPer='mes';
 function fmtDtHr(iso){if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pt-BR').slice(0,5)+' '+d.toLocaleTimeString('pt-BR').slice(0,5);}
-function diaLocal(iso){const d=new Date(iso),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function diaLocal(iso){return chaveDia(new Date(iso));} // v7.9.3: unificado com chaveDia
 function desenharAgendaConferencia(lista){
   if(!usuarioAtual.admin)return;
   const barra=document.createElement('div');
@@ -2827,6 +2858,11 @@ async function reagendarTarefa(e){
   const m=novaData.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if(!m){alert('Data inválida. Use o formato DD/MM/AAAA.');return;}
   const iso=m[3]+'-'+m[2]+'-'+m[1];
+  { // v7.9.3: valida a data de verdade (31/02 etc.) e recusa passado
+    const dt=new Date(iso+'T12:00:00');
+    if(isNaN(dt.getTime())||chaveDia(dt)!==iso){alert('Data inválida: esse dia não existe no calendário.');return;}
+    if(iso<chaveDia(agora())){alert('A nova data não pode ser no passado.');return;}
+  }
   const obs=prompt('Motivo do reagendamento (obrigatório):');
   if(obs===null)return;
   if(!obs.trim()){alert('O motivo é obrigatório para reagendar.');return;}
@@ -2920,7 +2956,7 @@ function desenharEventos(){
   selF.value=fras.map(String).includes(manter)?manter:'';
   evtFraSel=selF.value;
 
-  const d30=new Date(agora().getTime()+30*86400000).toISOString().slice(0,10);
+  const d30=chaveDia(new Date(agora().getTime()+30*86400000));
   const proximos30=todos.filter(e=>e.data>=hoje&&e.data<=d30).length;
   let abertas=0,atrasadas=0,custo=0,comRoi=[];
   todos.forEach(e=>{
@@ -3015,9 +3051,9 @@ function qtItemPorId(id){return ITENS_Q.find(i=>i.id===id);}
 async function carregarItens(){
   const [a,b]=await Promise.all([
     sb.from('itens_status').select('*').order('ordem').order('codigo'),
-    sb.from('itens_movimentos').select('*').order('quando',{ascending:false}).limit(500)
+    fetchAllSB(()=>sb.from('itens_movimentos').select('*').order('quando',{ascending:false})) // v7.9.3: paginado (era limit 500)
   ]);
-  ITENS_Q=a.data||[];MOVS_Q=b.data||[];
+  ITENS_Q=a.data||[];MOVS_Q=b||[];
 }
 function qtDestinoTxt(i){
   if(i.evento_id){const e=todosEventosUnicos().find(x=>x.id===i.evento_id);if(e)return'🎪 '+e.titulo;}
@@ -3469,7 +3505,7 @@ function desenharAgendaIntervalo(de,ate,lista){
 }
 function legendaEquipe(box){
   const lg=document.createElement('div');lg.style.cssText='display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--tinta-suave);margin-top:8px';
-  lg.innerHTML=pessoasVisiveis().map(u=>'<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+corDe(u.id)+';vertical-align:-1px"></span> '+u.nome.split(' ')[0]+'</span>').join('');
+  lg.innerHTML=pessoasVisiveis().map(u=>'<span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+corDe(u.id)+';vertical-align:-1px"></span> '+escHtml(u.nome.split(' ')[0])+'</span>').join('');
   box.appendChild(lg);
 }
 
@@ -3491,7 +3527,7 @@ function desenharRotinaGrid(){
     const blocos=[...((REGUAS[u.id]||{}).padrao||[])].sort((a,b)=>a.ini-b.ini);
     const temSab=!!((REGUAS[u.id]||{}).sabado||[]).length;
     const vig=VIG[u.id+'|padrao'];
-    col.innerHTML='<div class="rot-cab"><span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span><strong>'+u.nome.split(' ')[0]+'</strong>'
+    col.innerHTML='<div class="rot-cab"><span class="avatar" style="background:'+corDe(u.id)+'">'+escHtml(u.nome[0].toUpperCase())+'</span><strong>'+escHtml(u.nome.split(' ')[0])+'</strong>'
       +(u.feriasAte&&u.feriasAte>=chaveDia(agora())?'<span class="st-rot ferias">férias até '+u.feriasAte.split('-').reverse().slice(0,2).join('/')+'</span>':'')
       +'<span class="esp"></span>'
       +(blocos.length?'<span class="rot-h">'+fmt(blocos[0].ini)+'–'+fmt(blocos[blocos.length-1].fim)+'</span>':'')
@@ -3544,7 +3580,7 @@ function faixaEl(u,b){
       const sBox=me.querySelector('.rf-subs');
       (mm.subs||[]).forEach((s,si)=>{
         const se=document.createElement('div');se.className='rf-linha';
-        se.innerHTML='<span class="rf-tag">☐</span><input class="rf-stxt" value="'+String(s.txt).replace(/"/g,'&quot;')+'"><button class="rf-x">×</button>';
+        se.innerHTML='<span class="rf-tag">☐</span><input class="rf-stxt" value="'+escHtml(s.txt)+'"><button class="rf-x">×</button>';
         se.querySelector('.rf-x').onclick=()=>{mm.subs.splice(si,1);desenharRotinaGrid();};
         se.querySelector('input').onchange=e=>{s.txt=e.target.value.trim();};
         sBox.appendChild(se);
@@ -3561,14 +3597,19 @@ function faixaEl(u,b){
     };
     f.querySelector('.rf-del').onclick=()=>{
       if(!confirm('Remover a faixa "'+b.nome+'"?'))return;
-      const arr=REGUAS[u.id].padrao;arr.splice(arr.findIndex(x=>x.id===b.id),1);
+      const arr=REGUAS[u.id].padrao;const ix=arr.findIndex(x=>x.id===b.id);if(ix>=0)arr.splice(ix,1); // v7.9.3: splice(-1) apagava a última faixa
       delete ts[b.id];
       salvarRotina(u.id);
     };
     f.querySelector('.rf-save').onclick=()=>{
+      // v7.9.3: valida antes de gravar — início < fim e sem sobreposição com as outras faixas
+      const nIni=hm(f.querySelector('.rf-ini').value),nFim=hm(f.querySelector('.rf-fim').value);
+      if(!(nIni<nFim)){alert('A hora inicial da faixa deve ser antes da hora final.');return;}
+      const outra=(REGUAS[u.id].padrao||[]).find(x=>x.id!==b.id&&nIni<x.fim&&x.ini<nFim);
+      if(outra){alert('A faixa '+fmt(nIni)+'–'+fmt(nFim)+' sobrepõe "'+outra.nome+'" ('+fmt(outra.ini)+'–'+fmt(outra.fim)+'). Ajuste os horários.');return;}
       b.nome=f.querySelector('.rf-nome').value.trim()||b.nome;
-      b.ini=hm(f.querySelector('.rf-ini').value);
-      b.fim=hm(f.querySelector('.rf-fim').value);
+      b.ini=nIni;
+      b.fim=nFim;
       b.tipo=f.querySelector('.rf-tipo').value;
       rotAberta.delete(chave);
       salvarRotina(u.id);
@@ -3617,10 +3658,10 @@ async function desenharRotinaDados(){
         const done=(t.subs&&t.subs.length)?t.subs.filter(s=>feito.has(u.id+'|'+hojeISO+'|'+cid+'_s'+s.id)).length:(feito.has(u.id+'|'+hojeISO+'|'+cid)?1:0);
         const ok=macroOk(u.id,hojeISO,t,cid);
         const cls=ok?'ok':(done>0?'meio':(minAg>=b.fim?'tarde':''));
-        chips+='<span class="mon-chip '+cls+'">'+(ok?'✓ ':'')+t.txt+' '+done+'/'+total+'</span>';
+        chips+='<span class="mon-chip '+cls+'">'+(ok?'✓ ':'')+escHtml(t.txt)+' '+done+'/'+total+'</span>';
       }
     }
-    linha.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+u.nome[0].toUpperCase()+'</span><strong>'+u.nome.split(' ')[0]+'</strong> '
+    linha.innerHTML='<span class="avatar" style="background:'+corDe(u.id)+'">'+escHtml(u.nome[0].toUpperCase())+'</span><strong>'+escHtml(u.nome.split(' ')[0])+'</strong> '
       +(blocos.length?(chips||'<span class="mon-chip">sem macros hoje</span>'):'<span class="mon-chip">'+papelTexto(u.id,hoje)+'</span>');
     mon.appendChild(linha);
   }
@@ -3658,8 +3699,8 @@ async function desenharRotinaDados(){
   tab.innerHTML='<tr><th>Macro-tarefa</th><th>Faixa</th><th>Responsável</th><th>Data original</th><th>Atraso</th><th>Status</th></tr>';
   for(const l of vis.slice(0,300)){
     const tr=document.createElement('tr');
-    tr.innerHTML='<td>'+l.txt+'</td><td style="color:var(--tinta-suave)">'+l.bloco+'</td>'
-      +'<td><span class="avatar" style="background:'+corDe(l.u.id)+'">'+l.u.nome[0].toUpperCase()+'</span> '+l.u.nome.split(' ')[0]+'</td>'
+    tr.innerHTML='<td>'+escHtml(l.txt)+'</td><td style="color:var(--tinta-suave)">'+escHtml(l.bloco)+'</td>'
+      +'<td><span class="avatar" style="background:'+corDe(l.u.id)+'">'+escHtml(l.u.nome[0].toUpperCase())+'</span> '+escHtml(l.u.nome.split(' ')[0])+'</td>'
       +'<td>'+l.iso.split('-').reverse().join('/')+'</td>'
       +'<td style="font-weight:700;color:'+(l.atraso>0?'var(--verm)':'var(--tinta-suave)')+'">'+(l.atraso>0?l.atraso+' d':'—')+'</td>'
       +'<td>'+(l.atraso>0?'<span class="st-rot atrasada">Atrasada</span>':'<span class="st-rot hoje">Hoje</span>')+'</td>';
@@ -3836,7 +3877,7 @@ const DIF_NOME={facil:'Fácil',medio:'Médio',dificil:'Difícil'};
 function mediana(arr){if(!arr.length)return null;const s=[...arr].sort((a,b)=>a-b);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function horas(a,b){if(!a||!b)return null;return (new Date(b)-new Date(a))/3600000;}
 function kpiCard(rotulo,valor,sub){return '<div class="card"><div class="rotulo">'+rotulo+'</div><div class="valor">'+valor+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>';}
-function insLinha(t,pct,v){return '<div class="ins-linha"><span class="t" title="'+t+'">'+t+'</span><span class="b"><i style="width:'+pct+'%"></i></span><span class="v">'+v+'</span></div>';}
+function insLinha(t,pct,v){t=escHtml(t);return '<div class="ins-linha"><span class="t" title="'+t+'">'+t+'</span><span class="b"><i style="width:'+pct+'%"></i></span><span class="v">'+v+'</span></div>';}
 
 async function desenharInsightsTP(dias,desdeISO){
   const hoje=chaveDia(agora());
@@ -3871,7 +3912,7 @@ async function desenharInsightsTP(dias,desdeISO){
     const v=minhas.filter(e=>e.prazo&&e.prazo<hoje).length;
     const lim3=chaveDia(new Date(agora().getTime()+3*86400000));
     const breve=minhas.filter(e=>e.prazo&&e.prazo>=hoje&&e.prazo<=lim3).length;
-    cg+='<div class="frq-row" style="cursor:default"><span>'+u.nome.split(' ')[0]+'</span><span style="font-size:12px">'
+    cg+='<div class="frq-row" style="cursor:default"><span>'+escHtml(u.nome.split(' ')[0])+'</span><span style="font-size:12px">'
       +minhas.length+' pendente'+(minhas.length>1?'s':'')
       +(v?' · <b style="color:#B3241A">'+v+' vencida'+(v>1?'s':'')+'</b>':'')
       +(breve?' · <b style="color:#a34608">'+breve+' em ≤3d</b>':'')+'</span></div>';
@@ -3933,8 +3974,8 @@ async function fetchAllSB(builderFn,step){
 }
 async function desenharInsights(){
   const dias=Number($('insPeriodo').value);
-  const desdeISO=new Date(Date.now()-dias*24*3600*1000).toISOString().slice(0,10);
-  const desdeAntISO=new Date(Date.now()-2*dias*24*3600*1000).toISOString().slice(0,10);
+  const desdeISO=chaveDia(new Date(Date.now()-dias*24*3600*1000));
+  const desdeAntISO=chaveDia(new Date(Date.now()-2*dias*24*3600*1000));
   desenharInsightsTP(dias,desdeISO);
 
   /* ---- Chamados: período atual + anterior (comparação) + fila aberta ---- */
@@ -4014,7 +4055,7 @@ function desenharAlertasChamados(C,ANT,dias){
   if(s.resp!=null&&s.resp>0.5)recs.push(['🔴','1ª resposta em '+fmtH(s.resp)+' (meta 30 min). Reforce a triagem nos picos (9h–11h e 15h–16h30): quem está na triagem responde ANTES de resolver.']);
   const porAssunto={};C.forEach(c=>{const k=c.assunto||'(sem assunto)';(porAssunto[k]=porAssunto[k]||[]).push(c);});
   const rank=Object.entries(porAssunto).map(([as,l])=>({as,n:l.length,share:l.length/Math.max(1,C.length),med:mediana(l.map(c=>horas(c.aberto,c.resolvido)).filter(v=>v!=null&&v>=0))})).sort((x,y)=>y.n-x.n);
-  if(rank[0]&&rank[0].share>=0.3)recs.push(['🤖','"'+rank[0].as+'" é '+Math.round(rank[0].share*100)+'% do volume ('+rank[0].n+' chamados). É o alvo nº 1 de automação — cada ponto percentual automatizado libera capacidade direta da equipe.']);
+  if(rank[0]&&rank[0].share>=0.3)recs.push(['🤖','"'+escHtml(rank[0].as)+'" é '+Math.round(rank[0].share*100)+'% do volume ('+rank[0].n+' chamados). É o alvo nº 1 de automação — cada ponto percentual automatizado libera capacidade direta da equipe.']);
   const semAssunto=((porAssunto['(sem assunto)']||[]).length)+((porAssunto['Outros']||[]).length);
   if(semAssunto>=3)recs.push(['🏷️',semAssunto+' chamados em "Outros"/sem assunto no período. Sem tipificação não há automação possível — retipificar na triagem (regra anti-Outros).']);
   const porResp={};C.forEach(c=>{const k=c.responsavel||'(fila)';(porResp[k]=porResp[k]||[]).push(c);});
@@ -4023,9 +4064,9 @@ function desenharAlertasChamados(C,ANT,dias){
     const cp=l.filter(c=>c.resolvido&&c.prazo_estipulado);
     if(!cp.length)return;
     const np=cp.filter(c=>new Date(c.resolvido)<=new Date(c.prazo_estipulado)).length/cp.length*100;
-    if(np<85)recs.push(['⚠️',r.split(' ')[0]+' com '+Math.round(np)+'% no prazo em '+l.length+' chamados. Investigar: excesso de carga, chamados parados aguardando terceiros, ou um assunto específico travando — cruzar com a fila ao lado.']);
+    if(np<85)recs.push(['⚠️',escHtml(r.split(' ')[0])+' com '+Math.round(np)+'% no prazo em '+l.length+' chamados. Investigar: excesso de carga, chamados parados aguardando terceiros, ou um assunto específico travando — cruzar com a fila ao lado.']);
   });
-  rank.filter(x=>x.med!=null&&x.med>12&&x.n>=3).slice(0,2).forEach(x=>recs.push(['🐢','"'+x.as+'" resolve em '+fmtH(x.med)+' (mediana). Candidato a POP documentado + formulário de abertura obrigatório para cortar idas e vindas.']));
+  rank.filter(x=>x.med!=null&&x.med>12&&x.n>=3).slice(0,2).forEach(x=>recs.push(['🐢','"'+escHtml(x.as)+'" resolve em '+fmtH(x.med)+' (mediana). Candidato a POP documentado + formulário de abertura obrigatório para cortar idas e vindas.']));
   if(!recs.length)recs.push(['✅','Todas as metas do período dentro do alvo. Use o ranking de automação abaixo para o próximo ganho de capacidade.']);
   $('insRecs').innerHTML=recs.map(r=>'<div class="rec"><span class="ico">'+r[0]+'</span><span>'+r[1]+'</span></div>').join('');
 }
@@ -4041,7 +4082,7 @@ function desenharFila(FILA){
   html+='<div style="margin-top:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave)">Mais antigos em aberto</div>';
   html+=antigos.map(c=>{
     const d=Math.floor((agoraMs-new Date(c.aberto))/(24*3600*1000));
-    return '<div class="fila-item"><span class="fi-t" title="'+(c.titulo||'')+'">#'+c.id+' '+(c.titulo||'(sem título)')+' · '+(c.unidade||'')+'</span><span class="fi-v">'+d+'d</span></div>';
+    return '<div class="fila-item"><span class="fi-t" title="'+escHtml(c.titulo||'')+'">#'+escHtml(c.id)+' '+escHtml(c.titulo||'(sem título)')+' · '+escHtml(c.unidade||'')+'</span><span class="fi-v">'+d+'d</span></div>';
   }).join('');
   $('insFila').innerHTML=html;
 }
@@ -4063,7 +4104,7 @@ function desenharAutomacaoChamados(C,dias,difCh){
     const classe=facil?'q-auto':'q-doc';
     const rot=facil?'🤖 Automatizar':'📋 POP + formulário';
     const mensal=Math.round(x.n*(30/dias));
-    return '<div class="auto-item quad '+classe+'"><div class="ai-t"><span>'+(i+1)+'. '+x.as+'</span><span>'+Math.round(x.share*100)+'% do volume</span></div>'
+    return '<div class="auto-item quad '+classe+'"><div class="ai-t"><span>'+(i+1)+'. '+escHtml(x.as)+'</span><span>'+Math.round(x.share*100)+'% do volume</span></div>'
       +'<div class="ai-d">'+rot+' · '+x.n+' no período (≈'+mensal+'/mês) · resolução '+(x.med!=null?fmtH(x.med):'—')
       +(x.esf!=null?' · esforço avaliado <strong>'+x.esf.toFixed(1)+'/3</strong> ('+x.nAval+' aval.)':' · <em>sem avaliações de esforço ainda</em>')
       +' · ciclo consumido ≈'+fmtH(x.ciclo)+'</div></div>';
@@ -4077,7 +4118,7 @@ function desenharTendencia(TODOS){
   TODOS.forEach(c=>{
     if(!c.aberto)return;
     const d=new Date(c.aberto);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));
-    const k=d.toISOString().slice(0,10);
+    const k=chaveDia(d);
     porSem[k]=(porSem[k]||0)+1;
   });
   const sems=Object.entries(porSem).sort((a,b)=>a[0].localeCompare(b[0])).slice(-10);
@@ -4122,7 +4163,7 @@ function desenharTarefasPainel(H,dias){
     else if(!freq&&dificil)quad.esp.push(l);
     else quad.ok.push(l);
   });
-  const fq=l=>l.sort((a,b)=>b.n-a.n).slice(0,5).map(x=>x.t+' <span class="v">('+x.n+'× · '+x.s.toFixed(1)+')</span>').join('<br>')||'<span style="color:var(--tinta-suave)">— nada aqui ainda</span>';
+  const fq=l=>l.sort((a,b)=>b.n-a.n).slice(0,5).map(x=>escHtml(x.t)+' <span class="v">('+x.n+'× · '+x.s.toFixed(1)+')</span>').join('<br>')||'<span style="color:var(--tinta-suave)">— nada aqui ainda</span>';
   $('insMatriz').innerHTML=
     '<div class="quad q-auto"><h5>🤖 Automatizar (frequente + fácil)</h5><div class="itens">'+fq(quad.auto)+'</div></div>'
     +'<div class="quad q-doc"><h5>📋 Criar POP e treinar (frequente + difícil)</h5><div class="itens">'+fq(quad.doc)+'</div></div>'
@@ -4190,7 +4231,7 @@ async function exportarAvaliacoes(){
       XLSX.utils.book_append_sheet(wb,w2,'Resumo por assunto');
       XLSX.writeFile(wb,'avaliacoes_chamados_'+chaveDia(agora())+'.xlsx');
     }else{
-      const esc=v=>'"'+String(v).replace(/"/g,'""')+'"';
+      const esc=v=>{let t=String(v==null?'':v);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';}; // v7.9.3: neutraliza fórmulas (CSV injection)
       const cab=Object.keys(linhas[0]);
       const csv='\ufeff'+cab.map(esc).join(';')+'\n'+linhas.map(l=>cab.map(k=>esc(l[k])).join(';')).join('\n');
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
@@ -4246,9 +4287,9 @@ function desenharFrqAdmin(){
   for(const f of frs){
     if(frqEdit===f.fra){el.appendChild(frqForm(f));continue;}
     const row=document.createElement('div');row.className='frq-row';row.style.cursor='default';
-    row.innerHTML='<span>'+(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome)
-      +(f.cidade?' <span style="color:var(--tinta-suave);font-size:12px">— '+f.cidade+'</span>':'')
-      +(f.consultor?' <span class="fr-tag">'+f.consultor+'</span>':'')
+    row.innerHTML='<span>'+escHtml(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome)
+      +(f.cidade?' <span style="color:var(--tinta-suave);font-size:12px">— '+escHtml(f.cidade)+'</span>':'')
+      +(f.consultor?' <span class="fr-tag">'+escHtml(f.consultor)+'</span>':'')
       +(f.ativo===false?' <span class="st reprovada">inativa</span>':'')
       +'</span><button class="btn claro" style="padding:2px 10px;font-size:12px">✎</button>';
     row.querySelector('button').onclick=()=>{frqEdit=f.fra;frqNovaOn=false;desenharFrqAdmin();};
@@ -4325,7 +4366,7 @@ function desenharUsuarios(){
   t.innerHTML='<tr><th>Nome</th><th>Nome no Sults</th><th>Férias até</th><th>Admin</th><th>Cor</th></tr>';
   CFG.usuarios.forEach(u=>{
     const tr=document.createElement('tr');
-    tr.innerHTML='<td><input value="'+u.nome+'"></td><td><input value="'+(u.nomeSults||'')+'" placeholder="como aparece no Sults"></td><td><input type="date" value="'+(u.feriasAte||'')+'" style="width:135px"></td><td><input type="checkbox" '+(u.admin?'checked':'')+'></td><td><input type="color" value="'+(u.cor||corDe(u.id))+'" style="width:44px;padding:2px"></td>';
+    tr.innerHTML='<td><input value="'+escHtml(u.nome)+'"></td><td><input value="'+escHtml(u.nomeSults||'')+'" placeholder="como aparece no Sults"></td><td><input type="date" value="'+escHtml(u.feriasAte||'')+'" style="width:135px"></td><td><input type="checkbox" '+(u.admin?'checked':'')+'></td><td><input type="color" value="'+(u.cor||corDe(u.id))+'" style="width:44px;padding:2px"></td>';
     const textos=tr.querySelectorAll('input:not([type=checkbox]):not([type=color]):not([type=date])');
     const inN=textos[0], inS=textos[1];
     const inF=tr.querySelector('input[type=date]');
@@ -4339,9 +4380,12 @@ function desenharUsuarios(){
     t.appendChild(tr);
   });
 }
+// TODO: UI do rodízio removida na v7.x — as funções abaixo (desenharRodizio, prepararEditorRegua, desenharEditorRegua,
+//       aplicarModelo, salvarRegua) apontam para IDs que não existem mais no HTML (painelRodizio, admUser, admPerfil, admReguaEditor).
+//       v7.9.3: protegidas para não lançar erro se forem chamadas; não apagar (UI perdida, pode voltar).
 function desenharRodizio(){
-  const p=$('painelRodizio');
-  const opts=sel=>'<option value="">—</option>'+CFG.usuarios.map(u=>'<option value="'+u.id+'" '+(sel===u.id?'selected':'')+'>'+u.nome+'</option>').join('');
+  const p=$('painelRodizio');if(!p)return;
+  const opts=sel=>'<option value="">—</option>'+CFG.usuarios.map(u=>'<option value="'+u.id+'" '+(sel===u.id?'selected':'')+'>'+escHtml(u.nome)+'</option>').join('');
   p.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;font-size:13px">'
     +'<label>Dupla do rodízio (1)<br><select id="rdA">'+opts(CFG.rodizio.dupla[0])+'</select></label>'
     +'<label>Dupla do rodízio (2)<br><select id="rdB">'+opts(CFG.rodizio.dupla[1])+'</select></label>'
@@ -4357,12 +4401,13 @@ function desenharRodizio(){
   ['rdA','rdB','rdProd','rdSab','rdAncora'].forEach(id=>$(id).onchange=salvar);
 }
 function prepararEditorRegua(){
-  const su=$('admUser');
-  su.innerHTML=CFG.usuarios.filter(u=>!u.admin).map(u=>'<option value="'+u.id+'">'+u.nome+'</option>').join('');
+  const su=$('admUser');if(!su||!$('admPerfil'))return;
+  su.innerHTML=CFG.usuarios.filter(u=>!u.admin).map(u=>'<option value="'+u.id+'">'+escHtml(u.nome)+'</option>').join('');
   su.onchange=desenharEditorRegua;$('admPerfil').onchange=desenharEditorRegua;
   desenharEditorRegua();
 }
 function desenharEditorRegua(){
+  if(!$('admUser')||!$('admPerfil')||!$('admReguaEditor'))return;
   const uid=$('admUser').value,perfil=$('admPerfil').value;
   const box=$('admReguaEditor');
   if(!uid){box.innerHTML='<p class="vazio">Nenhum usuário não-admin cadastrado ainda.</p>';admReguaDraft=null;return;}
@@ -4392,7 +4437,7 @@ function desenharEditorRegua(){
     const lista=tarefas[b.id]||(tarefas[b.id]=[]);
     lista.forEach((t,ti)=>{
       const lt=document.createElement('div');lt.className='lt';
-      lt.innerHTML='<input value="'+t.txt.replaceAll('"','&quot;')+'" placeholder="Tarefa"><input value="'+(t.sub||'').replaceAll('"','&quot;')+'" placeholder="Detalhe (opcional)"><button class="x" style="border:none;background:none;color:var(--verm)">×</button>';
+      lt.innerHTML='<input value="'+escHtml(t.txt)+'" placeholder="Tarefa"><input value="'+escHtml(t.sub||'')+'" placeholder="Detalhe (opcional)"><button class="x" style="border:none;background:none;color:var(--verm)">×</button>';
       const[i1,i2]=lt.querySelectorAll('input');
       i1.onchange=()=>t.txt=i1.value;i2.onchange=()=>t.sub=i2.value;
       lt.querySelector('.x').onclick=()=>{lista.splice(ti,1);redesenharDraft();};
@@ -4411,7 +4456,7 @@ function desenharEditorRegua(){
   }
 }
 function aplicarModelo(){
-  if(!admReguaDraft)return;
+  if(!admReguaDraft||!$('admReguaEditor'))return;
   const{uid,perfil}=admReguaDraft;
   const ehProdutos=uid===CFG.rodizio.produtos;
   const MB=ehProdutos?MODELO_PRODUTOS:MODELO_TECNICO;
@@ -4423,7 +4468,7 @@ function aplicarModelo(){
   desenharEditorRegua();
 }
 async function salvarRegua(){
-  const d=admReguaDraft;if(!d)return;
+  const d=admReguaDraft;if(!d||!$('admReguaEditor'))return;
   d.blocos.sort((a,b)=>a.ini-b.ini);
   const r1=await sb.from('reguas').upsert({user_id:d.uid,perfil:d.perfil,blocos:d.blocos});
   const r2=await sb.from('tarefas_fixas').upsert({user_id:d.uid,perfil:d.perfil,tarefas:d.tarefas});
@@ -4433,12 +4478,21 @@ async function salvarRegua(){
   piscar();desenharEditorRegua();desenharDia();
 }
 async function desenharLog(){
-  const{data}=await sb.from('acessos').select('em, perfis(nome)').order('em',{ascending:false}).limit(100);
+  // v7.9.3: mostra a origem (central / raiox), limite 300 e resumo de logins (7 dias) + usuários sem login há 14+ dias
+  const{data}=await sb.from('acessos').select('em, origem, user_id, perfis(nome)').order('em',{ascending:false}).limit(300);
   const p=$('painelLog');p.innerHTML='';
-  if(!data||!data.length){p.innerHTML='<p class="vazio">Nenhum acesso registrado ainda.</p>';return;}
+  const d7=new Date(Date.now()-7*86400000).toISOString(),d14=new Date(Date.now()-14*86400000).toISOString();
+  const rec=await fetchAllSB(()=>sb.from('acessos').select('user_id,em').gte('em',d14).order('em',{ascending:false}));
+  const n7=rec.filter(a=>a.em>=d7).length;
+  const com14=new Set(rec.map(a=>a.user_id));
+  const sem14=CFG.usuarios.filter(u=>!com14.has(u.id)).map(u=>u.nome.split(' ')[0]);
+  const res=document.createElement('div');res.className='faixa';res.style.marginBottom='8px';
+  res.innerHTML='<strong>Últimos 7 dias:</strong> '+n7+' login'+(n7===1?'':'s')+' · <strong>sem login há 14+ dias:</strong> '+(sem14.length?escHtml(sem14.join(', ')):'ninguém');
+  p.appendChild(res);
+  if(!data||!data.length){p.insertAdjacentHTML('beforeend','<p class="vazio">Nenhum acesso registrado ainda.</p>');return;}
   for(const l of data){
     const div=document.createElement('div');div.className='log-linha';
-    div.innerHTML='<strong>'+((l.perfis||{}).nome||'—')+'</strong><span>'+new Date(l.em).toLocaleString('pt-BR')+'</span>';
+    div.innerHTML='<strong>'+escHtml((l.perfis||{}).nome||'—')+'</strong><span><span class="fr-tag" style="margin-right:8px">'+escHtml(l.origem||'central')+'</span>'+new Date(l.em).toLocaleString('pt-BR')+'</span>';
     p.appendChild(div);
   }
 }
@@ -4664,7 +4718,13 @@ const DIAS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feir
 function tick(){
   const d=agora();
   $('relogio').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  if(usuarioAtual){$('quemSou').textContent=usuarioAtual.nome+' · '+DIAS[d.getDay()]+' · '+papelTexto(usuarioAtual.id,d);if(vistaAtiva()==='dia')desenharChecklist();}
+  if(usuarioAtual){
+    $('quemSou').textContent=usuarioAtual.nome+' · '+DIAS[d.getDay()]+' · '+papelTexto(usuarioAtual.id,d);
+    // v7.9.3: não redesenha o checklist enquanto o usuário está digitando dentro dele (perdia o texto do campo)
+    const ae=document.activeElement,lista=$('linhaDia');
+    const digitando=ae&&lista&&lista.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+    if(vistaAtiva()==='dia'&&!digitando)desenharChecklist();
+  }
 }
 function ligarAbas(){
   document.querySelectorAll('.aba[data-v]').forEach(a=>{
@@ -4687,6 +4747,8 @@ ligarAbas();
     return;
   }
   sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  // v7.9.3: sessão encerrada em outra aba / refresh sem sessão → recarrega (volta ao login) em vez de continuar com dados velhos
+  sb.auth.onAuthStateChange((ev,s)=>{ if(!usuarioAtual)return; if(ev==='SIGNED_OUT'||(ev==='TOKEN_REFRESHED'&&!s)) location.reload(); });
   $('btnEntrar').onclick=entrar;
   $('loginSenha').addEventListener('keydown',e=>{if(e.key==='Enter')entrar();});
   $('btnSair').onclick=sair;

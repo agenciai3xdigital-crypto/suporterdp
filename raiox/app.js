@@ -1,9 +1,9 @@
-/* Raio-X POP · app.js · v1.0 · 14/09/2026
+/* Raio-X POP · app.js · v3.1 · 15/09/2026
    Lê as tabelas raiox_* da Central POP e a agenda; inicia a consultoria de faturamento. */
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.0';
+const VERSAO = 'v3.1';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,6 +15,7 @@ const dBR = iso => iso ? String(iso).slice(0, 10).split('-').reverse().join('/')
 const mesBR = ym => { const M = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']; return ym ? M[+ym.slice(5, 7) - 1] + '/' + ym.slice(2, 4) : '—'; };
 const hojeISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const addDias = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const diasDesde = iso => Math.round((Date.now() - new Date(iso)) / 864e5);
 const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
 function toast(t) { const el = $('toast'); el.textContent = t || 'salvo ✓'; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 1400); }
 function erro(e) { console.error(e); alert('Erro: ' + (e.message || e)); }
@@ -47,7 +48,9 @@ async function entrou(session) {
   perfil = p || { nome: usuario.email, is_admin: false, papeis: [] };
   $('quem').textContent = perfil.nome + (perfil.is_admin ? ' · admin' : ehFranq() ? ' · franqueado' : '') + ' · ' + VERSAO;
   $('login').style.display = 'none'; $('app').style.display = ''; $('btnSair').style.display = '';
+  sb.from('acessos').insert({ user_id: usuario.id, origem: 'raiox' }).then(() => {});
   if (ehAdmin()) { $('btnRecalcRede').style.display = ''; $('abaFranq').style.display = ''; }
+  if (ehAdmin() || (perfil.papeis || []).some(p => ['supervisor', 'diretoria'].includes(p))) { const bd = $('btnDash'); if (bd) bd.style.display = ''; }
   const qs = new URLSearchParams(location.search), fraUrl = qs.get('fra');
   if (ehFranq()) { await entrouFranqueado(fraUrl ? +fraUrl : null, qs.get('aba')); return; }
   try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); if (ehAdmin()) desenharFranqueados(); }
@@ -102,7 +105,7 @@ async function carregarTudo() {
     sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }),
     fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')),
     sb.from('raiox_fila').select('fra').is('processado_em', null),
-    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data'))
+    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data').order('id'))
   ]);
   ITENS = it || [];
   PERFIS = (pf.data || []).filter(p => !/robo\.raiox/i.test(p.nome || ''));
@@ -113,7 +116,7 @@ async function carregarTudo() {
   FILA = new Set((fl.data || []).map(f => f.fra));
 }
 async function recarregar(o) {
-  if (o === 'cons') { const { data } = await sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }); CONS = data || []; ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data')); }
+  if (o === 'cons') { const { data } = await sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }); CONS = data || []; ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data').order('id')); }
   if (o === 'estoque') { const es = await fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')); ESTQ = {}; es.forEach(e => { const k = e.fra + '|' + e.tipo; if (!ESTQ[k]) ESTQ[k] = e; }); }
 }
 function quartis() {
@@ -218,7 +221,7 @@ async function abrirLoja(fra, aba) {
   const s = SNAPS[fra], f = frqDe(fra);
   if (!s) { box.innerHTML = cabecaLoja(f, null) + '<div class="vazio">Esta loja ainda não tem raio-x: o banco de compras não recebeu o BI de vendas dela. Depois da carga, a rotina noturna calcula sozinha.</div>'; return; }
   // o relatório completo (motor visual original da máquina) roda em relatorio.html, alimentado pelo banco
-  box.innerHTML = cabecaLoja(f, s) + `<div class="painel" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}${aba ? '&aba=' + encodeURIComponent(aba) : ''}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
+  box.innerHTML = cabecaLoja(f, s) + `<div class="abas-pai" id="ljAbas"></div><div class="painel" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}${aba ? '&aba=' + encodeURIComponent(aba) : ''}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
   ligarFicha(f, s, { tarefas: s.tarefas || [] });
 }
 window.addEventListener('message', ev => {
@@ -226,7 +229,19 @@ window.addEventListener('message', ev => {
   const fr = $('ljFrame'); if (!fr) return;
   if (ev.data.raiox === 'altura') fr.style.height = Math.max(400, ev.data.altura + 24) + 'px';
   if (ev.data.raiox === 'topo') window.scrollTo({ top: Math.max(0, fr.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' });
+  if (ev.data.raiox === 'abas') desenharAbasPai(ev.data);
 });
+const ABAS_REL = [['diag', 'Diagnóstico'], ['tarefas', 'Tarefas'], ['clientes', 'Clientes'], ['estoque', 'Estoque'], ['evolucao', 'Evolução'], ['consultoria', 'Consultoria'], ['avaliacao', 'Avaliação'], ['historico', 'Histórico']];
+const EXPORTS_REL = [['btnPDF', '⬇ Relatório em PDF'], ['btnCSV', '⬇ Lista de resgate (CSV)'], ['btnTarefasCSV', '⬇ Achados do raio-x (CSV)'], ['btnPlanoCSV', '⬇ Plano da consultoria (CSV)'], ['btnEvolucaoCSV', '⬇ Evolução mensal (CSV)'], ['btnSnapshot', '⬇ Instantâneo (JSON)']];
+function desenharAbasPai(d) {
+  const box = $('ljAbas'), fr = $('ljFrame'); if (!box || !fr) return;
+  const bd = d.badges || {};
+  box.innerHTML = `<div class="abas-pai-in">${ABAS_REL.map(([k, t]) => `<button type="button" class="aba-rel${d.atual === k ? ' on' : ''}" data-aba="${k}">${t}${k === 'tarefas' && bd.tarefas ? ` <b class="bd">${bd.tarefas}</b>` : ''}${k === 'avaliacao' && bd.avaliacao ? ' <b class="bd">!</b>' : ''}</button>`).join('')}<span style="flex:1"></span><div class="exp-pai"><button type="button" class="btn claro" id="btnExpPai">⬇ Exportar ▾</button><div class="menu" id="menuExpPai">${EXPORTS_REL.map(([id, t]) => `<button type="button" data-exp="${id}">${t}</button>`).join('')}</div></div></div>`;
+  box.querySelectorAll('.aba-rel').forEach(b => b.onclick = () => { fr.contentWindow.postMessage({ raiox: 'aba', aba: b.dataset.aba }, location.origin); box.querySelectorAll('.aba-rel').forEach(x => x.classList.toggle('on', x === b)); window.scrollTo({ top: Math.max(0, box.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' }); });
+  const m = $('menuExpPai'); $('btnExpPai').onclick = ev => { ev.stopPropagation(); m.classList.toggle('on'); };
+  box.querySelectorAll('[data-exp]').forEach(b => b.onclick = () => { m.classList.remove('on'); fr.contentWindow.postMessage({ raiox: 'exportar', botao: b.dataset.exp }, location.origin); });
+  document.addEventListener('click', () => m.classList.remove('on'), { once: true });
+}
 function cabecaLoja(f, s) {
   const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDoConsultor(f.consultor);
   const podeIniciar = !c && !ehFranq() && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
@@ -371,7 +386,14 @@ function desenharConsultorias() {
         <td><div class="t">${a.rFeitas.length}/${a.reunioes.length}</div><div class="s">${a.rPend.length ? '<b style="color:#a34608">' + a.rPend.length + ' passada(s) sem confirmação</b>' : a.rProx.length + ' agendada(s)'}</div></td>
         <td class="r num">${c.score_inicial ?? '—'} → ${SNAPS[c.fra] && SNAPS[c.fra].score != null ? SNAPS[c.fra].score : '—'}${a.dScore != null ? `<div class="s" style="color:${a.dScore > 0 ? 'var(--verde)' : a.dScore < 0 ? 'var(--verm)' : 'inherit'}">${a.dScore > 0 ? '+' : ''}${a.dScore}</div>` : ''}</td>
         <td style="font-size:12px;max-width:220px">${prox}</td>
-        <td>${ehAdmin() && c.status === 'ativa' ? `<button class="btn claro" data-enc="${c.id}" type="button" style="padding:4px 10px;font-size:12px">Encerrar</button> <button class="btn verm" data-canc="${c.id}" type="button" style="padding:4px 10px;font-size:12px">Cancelar</button>` : ''}</td></tr>`; }).join('') + '</tbody></table></div>';
+        <td>${ehAdmin() && c.status === 'ativa' ? `<button class="btn claro" data-enc="${c.id}" type="button" style="padding:4px 10px;font-size:12px">Encerrar</button> <button class="btn verm" data-canc="${c.id}" type="button" style="padding:4px 10px;font-size:12px">Cancelar</button>` : ehAdmin() && c.status === 'concluida' && (!c.resultado || c.resultado.veredito === 'sem leitura') ? `<button class="btn claro" data-recalc="${c.id}" type="button" style="padding:4px 10px;font-size:12px" title="Refaz o veredito com o raio-x mais recente">↻ Resultado</button>` : ''}</td></tr>`; }).join('') + '</tbody></table></div>';
+  box.querySelectorAll('[data-recalc]').forEach(b => b.onclick = async () => {
+    const c = CONS.find(x => x.id === b.dataset.recalc); b.disabled = true;
+    const resultado = await calcularResultado(c);
+    const { error } = await sb.from('raiox_consultorias').update({ resultado }).eq('id', c.id);
+    if (error) { b.disabled = false; return erro(error); }
+    await recarregar('cons'); desenharConsultorias(); toast('resultado: ' + resultado.veredito);
+  });
   box.querySelectorAll('tr[data-fra]').forEach(tr => tr.onclick = ev => { if (ev.target.closest('button')) return; abrirLoja(+tr.dataset.fra); });
   box.querySelectorAll('[data-enc],[data-canc]').forEach(b => b.onclick = async () => {
     const id = b.dataset.enc || b.dataset.canc, status = b.dataset.enc ? 'concluida' : 'cancelada';
@@ -382,7 +404,7 @@ function desenharConsultorias() {
     const { error } = await sb.from('raiox_consultorias').update({ status, encerrada_em: new Date().toISOString(), encerrada_por: usuario.id, resultado, encerramento_obs: obs || null }).eq('id', id);
     if (error) return erro(error);
     // marco na agenda da franquia: fica no histórico da loja
-    if (resultado) await sb.from('agenda_eventos').insert({ user_id: c.consultor_id, titulo: `Encerramento da consultoria · FRA ${c.fra} · ${resultado.veredito} (nota ${c.score_inicial ?? '—'} → ${resultado.score_fim ?? '—'})`, data: hojeISO(), ini: '00:00', fim: '00:00', tipo: 'compromisso', categoria: 'reuniao', descricao: resultado.texto + (obs ? '\n\nObservação: ' + obs : ''), franquia_fra: c.fra, consultoria_id: c.id, concluida: true, criado_por: usuario.id, participantes: [], subtarefas: [] });
+    if (resultado) { const { error: eM } = await sb.from('agenda_eventos').insert({ user_id: c.consultor_id, titulo: `Encerramento da consultoria · FRA ${c.fra} · ${resultado.veredito} (nota ${c.score_inicial ?? '—'} → ${resultado.score_fim ?? '—'})`, data: hojeISO(), ini: '00:00', fim: '00:00', tipo: 'compromisso', categoria: 'reuniao', descricao: resultado.texto + (obs ? '\n\nObservação: ' + obs : ''), franquia_fra: c.fra, consultoria_id: c.id, concluida: true, criado_por: usuario.id, participantes: [], subtarefas: [] }); if (eM) alert('Consultoria encerrada, mas o marco não entrou na agenda: ' + eM.message); }
     await recarregar('cons'); desenharConsultorias(); desenharRede(); toast(resultado ? 'encerrada: ' + resultado.veredito : 'cancelada');
   });
   // ---- gargalos da rede: quais tarefas mais vencem, quais consultores acumulam atraso, lojas sem evolução
@@ -425,10 +447,10 @@ async function calcularResultado(c) {
   const notas = (avs || []).map(a => a.nota), mediaAv = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
   const mesmoMes = !!(base && fim && base.mes_ref === fim.mes_ref);
   let veredito, motivo;
-  if (mesmoMes || dScore == null) { veredito = 'sem leitura'; motivo = 'O raio-x atual ainda é o mesmo do início (' + mesBR(c.mes_ref_base) + ') — não há mês novo fechado para comparar. Recalcule depois da próxima carga e reabra o resultado.'; }
-  else if (dScore >= 5 || (dLucro != null && dLucro >= 5 && dScore >= 0)) { veredito = 'positiva'; motivo = `Nota ${base.score} → ${fim.score} (${dScore >= 0 ? '+' : ''}${dScore}) e lucro bruto/mês ${dLucro >= 0 ? '+' : ''}${br(dLucro, 1)}%.`; }
-  else if (dScore <= -5 || (dLucro != null && dLucro <= -5)) { veredito = 'negativa'; motivo = `Nota ${base.score} → ${fim.score} (${dScore}) e lucro bruto/mês ${dLucro >= 0 ? '+' : ''}${br(dLucro, 1)}% — os indicadores pioraram no período.`; }
-  else { veredito = 'não fez diferença'; motivo = `Nota ${base.score} → ${fim.score} (${dScore >= 0 ? '+' : ''}${dScore}) e lucro bruto/mês ${dLucro == null ? '—' : (dLucro >= 0 ? '+' : '') + br(dLucro, 1) + '%'} — variação dentro do ruído normal.`; }
+  if (mesmoMes || (dScore == null && dLucro == null)) { veredito = 'sem leitura'; motivo = 'O raio-x atual ainda é o mesmo do início (' + mesBR(c.mes_ref_base) + ') — não há mês novo fechado para comparar. Recalcule depois da próxima carga e reabra o resultado.'; }
+  else if ((dScore != null && dScore >= 5) || (dLucro != null && dLucro >= 5 && (dScore == null || dScore >= 0))) { veredito = 'positiva'; motivo = `Nota ${base.score ?? '—'} → ${fim.score ?? '—'} (${dScore == null ? 'sem nota' : (dScore >= 0 ? '+' : '') + dScore}) e lucro bruto/mês ${dLucro == null ? '—' : (dLucro >= 0 ? '+' : '') + br(dLucro, 1) + '%'}.`; }
+  else if ((dScore != null && dScore <= -5) || (dLucro != null && dLucro <= -5)) { veredito = 'negativa'; motivo = `Nota ${base.score ?? '—'} → ${fim.score ?? '—'} (${dScore == null ? 'sem nota' : dScore}) e lucro bruto/mês ${dLucro == null ? '—' : (dLucro >= 0 ? '+' : '') + br(dLucro, 1) + '%'} — os indicadores pioraram no período.`; }
+  else { veredito = 'não fez diferença'; motivo = `Nota ${base.score ?? '—'} → ${fim.score ?? '—'} (${dScore == null ? 'sem nota' : (dScore >= 0 ? '+' : '') + dScore}) e lucro bruto/mês ${dLucro == null ? '—' : (dLucro >= 0 ? '+' : '') + br(dLucro, 1) + '%'} — variação dentro do ruído normal.`; }
   const texto = `Resultado da consultoria de faturamento · FRA ${c.fra} · ${dBR(c.inicio)} a ${hojeISO().split('-').reverse().join('/')}: ${veredito.toUpperCase()}. ${motivo}` +
     (base && fim && !mesmoMes ? ` Receita/mês ${dRec == null ? '—' : (dRec >= 0 ? '+' : '') + br(dRec, 1) + '%'}, margem ajustada ${dMg == null ? '—' : (dMg >= 0 ? '+' : '') + br(dMg, 1) + ' pp'}, receita identificada ${dId == null ? '—' : (dId >= 0 ? '+' : '') + br(dId, 1) + ' pp'}, ração em dia ${dRet == null ? '—' : (dRet >= 0 ? '+' : '') + br(dRet, 1) + ' pp'}.` : '') +
     ` Plano: ${tarefas.filter(t => t.concluida).length}/${tarefas.length} tarefas feitas, ${reun.filter(r => r.concluida).length}/${reun.length} reuniões realizadas.` +
@@ -450,9 +472,10 @@ async function chamarFranq(corpo) {
 async function desenharFranqueados() {
   const { data: fl } = await sb.from('franqueado_lojas').select('user_id,fra,criado_em'); FQ_MAPA = fl || [];
   const franqs = PERFIS.filter(p => !p.is_admin && (p.papeis || []).includes('franqueado'));
+  const ULT = {}; if (franqs.length) { const { data: ac } = await sb.from('acessos').select('user_id,em').in('user_id', franqs.map(p => p.id)).order('em', { ascending: false }).limit(2000); (ac || []).forEach(a => { const o = ULT[a.user_id] = ULT[a.user_id] || { ult: a.em, n30: 0 }; if (diasDesde(a.em) <= 30) o.n30++; }); }
   const box = $('fqLista');
-  box.innerHTML = franqs.length ? `<table class="lista"><tr><th>Nome</th><th>Lojas</th><th></th></tr>` + franqs.map(p => { const lojas = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).sort((a, b) => a - b);
-    return `<tr><td><div class="t">${esc(p.nome)}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}…</div></td><td>${lojas.length ? lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)}">FRA ${f}</span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
+  box.innerHTML = franqs.length ? `<table class="lista"><tr><th>Nome</th><th>Último acesso</th><th>Lojas</th><th></th></tr>` + franqs.map(p => { const lojas = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).sort((a, b) => a - b); const u = ULT[p.id];
+    return `<tr><td><div class="t">${esc(p.nome)}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}…</div></td><td>${u ? `<div class="t">${dBR(u.ult)}</div><div class="s">${u.n30} acesso(s) em 30 dias</div>` : '<span class="st lar">nunca entrou</span>'}</td><td>${lojas.length ? lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)}">FRA ${f}</span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
       <td style="white-space:nowrap"><button class="btn claro" data-fqlojas="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Lojas</button> <button class="btn claro" data-fqsenha="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Senha</button> <button class="btn verm" data-fqdes="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Desativar</button></td></tr>`; }).join('') + '</table>'
     : '<div class="vazio">Nenhum franqueado cadastrado. Use "+ Novo franqueado".</div>';
   box.querySelectorAll('[data-fqlojas]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqlojas); const atuais = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).join(', ');
@@ -463,13 +486,14 @@ async function desenharFranqueados() {
   box.querySelectorAll('[data-fqdes]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqdes); if (!confirm('Desativar o login de ' + p.nome + '? Ele não consegue mais entrar e as lojas são desligadas.')) return;
     chamarFranq({ acao: 'desativar', user_id: p.id }).then(() => { toast('desativado'); desenharFranqueados(); }).catch(erro); });
 }
+function senhaInicial() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; const u = new Uint32Array(10); crypto.getRandomValues(u); return 'Pop' + [...u].map(x => A[x % A.length]).join('') + '!'; }
 $('btnNovoFranq').onclick = () => {
   const lojas = FRQ.filter(f => f.fra > 0 && f.ativo !== false).sort((a, b) => a.fra - b.fra);
   $('mBox').innerHTML = `<h3>+ Novo login de franqueado</h3>
     <div class="form">
       <label>Nome</label><input id="nfNome" placeholder="Nome do franqueado">
       <label>E-mail (login)</label><input id="nfEmail" type="email" placeholder="franqueado@email.com">
-      <label>Senha inicial</label><input id="nfSenha" type="text" value="${'Pop' + Math.random().toString(36).slice(2, 8) + '!' + Math.floor(Math.random() * 90 + 10)}">
+      <label>Senha inicial</label><input id="nfSenha" type="text" value="${senhaInicial()}">
       <label>Lojas (FRA)</label><select id="nfLojas" multiple size="8">${lojas.map(f => `<option value="${f.fra}">FRA ${f.fra} · ${esc(f.nome)}</option>`).join('')}</select>
       <p style="font-size:12px;color:var(--tinta-suave)">Segure Ctrl/Cmd para escolher mais de uma loja. O franqueado entra no mesmo endereço do Raio-X e vê só essas lojas.</p>
     </div>

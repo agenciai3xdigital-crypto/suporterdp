@@ -11,7 +11,7 @@
      consultoria de faturamento (plano de 90 dias na agenda). Motor de estoque/ABC embutido para
      os arquivos que o banco não tem. -->
 <link rel="icon" href="../icone-192.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
 :root{
@@ -138,6 +138,12 @@ table.lista td.r,table.lista th.r{text-align:right}
 #login .err{color:var(--verm);font-size:13px;min-height:18px}
 @media(max-width:640px){.ficha-topo .big{font-size:44px}.wrap{padding:0 12px 60px}}
 @media print{.topo,.abas,.barra,.btn,.aviso{display:none!important}.painel{break-inside:avoid}}
+.abas-pai{position:sticky;top:58px;z-index:9;margin:10px 0}
+.abas-pai-in{display:flex;gap:4px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--linha,#dfe8e2);border-radius:12px;padding:6px 8px;box-shadow:0 3px 12px rgba(16,35,28,.06)}
+.aba-rel{border:0;background:transparent;border-radius:9px;padding:7px 12px;font:inherit;font-weight:700;font-size:13px;color:#5c6d64;cursor:pointer;display:flex;gap:6px;align-items:center}
+.aba-rel:hover{background:#EDF4F0;color:#00573F}.aba-rel.on{background:#00573F;color:#fff}
+.aba-rel .bd{background:#C0392B;color:#fff;border-radius:99px;font-size:11px;padding:0 6px;line-height:1.5}.aba-rel.on .bd{background:#FDAE25;color:#10231C}
+.exp-pai{position:relative}.exp-pai .menu{display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--linha,#dfe8e2);border-radius:10px;box-shadow:0 8px 24px rgba(16,35,28,.14);min-width:240px;z-index:20;padding:6px}.exp-pai .menu.on{display:block}.exp-pai .menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;font:inherit;font-size:13px;border-radius:7px;cursor:pointer}.exp-pai .menu button:hover{background:#EDF4F0}
 </style>
 </head>
 <body>
@@ -183,6 +189,7 @@ table.lista td.r,table.lista th.r{text-align:right}
       <select id="rdCons"><option value="">Todos os consultores</option></select>
       <select id="rdUf"><option value="">Todas as UFs</option></select>
       <input id="rdBusca" placeholder="FRA, loja ou cidade" style="min-width:180px">
+      <a class="btn claro" id="btnDash" href="dash.html" style="display:none" title="Acompanhamento da consultoria — diretoria e supervisão">📊 Acompanhamento</a>
       <button class="btn claro" id="btnRecalcRede" style="display:none" title="Pede à rotina que recalcule a rede inteira na próxima rodada (a cada 2 horas)">↻ Recalcular rede</button>
     </div>
     <div class="painel"><div class="tw"><table class="rede" id="rdTab"></table></div></div>

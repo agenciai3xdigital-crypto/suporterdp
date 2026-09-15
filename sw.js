@@ -1,5 +1,6 @@
-/* Plantão do Suporte — service worker (v6.2)
-   Só push e clique em notificação. NÃO faz cache: o painel sempre carrega do servidor. */
+/* Plantão do Suporte — service worker (v7.9.3)
+   Só push e clique em notificação. NÃO faz cache: o painel sempre carrega do servidor.
+   v7.9.3: notificationclick só abre URLs da própria origem (payload de push não pode redirecionar para fora). */
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
@@ -22,7 +23,11 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = new URL((e.notification.data && e.notification.data.url) || './?aba=agenda', self.location.href).href;
+  let url = new URL('./?aba=agenda', self.location.href).href;
+  try {
+    const pedida = new URL((e.notification.data && e.notification.data.url) || './?aba=agenda', self.location.href);
+    if (pedida.href.startsWith(self.location.origin + '/')) url = pedida.href; // v7.9.3: só a própria origem; senão abre a raiz
+  } catch (_) {}
   const id = e.notification.data && e.notification.data.id;
   e.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });

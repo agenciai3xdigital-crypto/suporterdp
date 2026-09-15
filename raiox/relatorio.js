@@ -244,7 +244,7 @@
     const c = CONS.find(x => x.status === 'ativa') || CONS[0];
     if (!c) return;
     const [itensQ, perfQ, baseQ, avQ] = await Promise.all([
-      sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id').eq('consultoria_id', c.id).order('data').order('id'),
+      sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id,responsavel,descricao').eq('consultoria_id', c.id).order('data').order('id'),
       sb.from('perfis').select('id,nome').in('id', [c.consultor_id, c.franqueado_id, session.user.id].filter(Boolean)),
       c.mes_ref_base ? sb.from('raiox_snapshots').select('fra,mes_ref,calculado_em,score,sub,kpis,dados->metas,dados->governanca,dados->churnGeral,tarefas').eq('fra', FRA).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null }),
       sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false })
@@ -332,7 +332,16 @@
     const G = { venc: abertos.filter(i => venc(i) && venc(i) < hojeISO), hoje: abertos.filter(i => venc(i) === hojeISO), semana: abertos.filter(i => venc(i) > hojeISO && venc(i) <= em7), depois: abertos.filter(i => !venc(i) || venc(i) > em7), feitas: itens.filter(i => i.concluida).sort((a, b) => String(b.concluida_em || '').localeCompare(String(a.concluida_em || ''))) };
     const item = i => { const v = venc(i), cls = i.concluida ? 'feita' : (v && v < hojeISO) ? 'venc' : v === hojeISO ? 'hoje' : '';
       return `<div class="item-plano ${cls}"><div><div class="tt">${i.tipo === 'tarefa' ? '☐' : '📅'} ${esc(i.titulo)}</div><div class="sub">${i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : 'reunião ' + dBR(v) + (i.ini ? ' às ' + String(i.ini).slice(0, 5) : '')}${i.concluida ? ' · feita' + (i.concluida_em ? ' em ' + dBR(i.concluida_em) : '') + (i.concluida_por ? ' por ' + esc(nomes[i.concluida_por] || 'equipe') : '') : cls === 'venc' ? ' · <b style="color:var(--alerta)">vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)</b>' : ''} · ${esc(nomes[i.user_id] || '')}</div></div>
-        <div class="acao">${c.status !== 'ativa' ? '' : i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}</div></div>`; };
+        <div class="acao">${c.status !== 'ativa' ? '' : i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}${PODE_GERIR && i.tipo === 'tarefa' && !i.concluida ? ` <button type="button" class="feita" data-editar="${esc(i.id)}" title="Editar título, prazo, responsável ou descrição">✎</button> <button type="button" class="feita" data-remover="${esc(i.id)}" title="Remover esta tarefa da consultoria">✕</button>` : ''}</div></div>${PODE_GERIR && i.tipo === 'tarefa' && !i.concluida ? `<div class="edit-tarefa" data-edit-de="${esc(i.id)}" style="display:none">${formTarefa(i)}</div>` : ''}`; };
+    // só admin cria/edita/remove tarefas da consultoria (a regra também está no banco: RPC raiox_tarefa_gerir)
+    const PODE_GERIR = EH_ADMIN && c.status === 'ativa';
+    const formTarefa = (t) => `<div class="ft-grid">
+        <label>Tarefa<input class="ftT" maxlength="200" value="${esc(t ? t.titulo : '')}" placeholder="O que precisa ser feito"></label>
+        <label>Prazo<input class="ftP" type="date" value="${esc(t && t.prazo ? t.prazo : '')}"></label>
+        <label>Responsável<select class="ftR"><option value="consultor"${!t || t.responsavel !== 'franqueado' ? ' selected' : ''}>consultor</option><option value="franqueado"${t && t.responsavel === 'franqueado' ? ' selected' : ''}>franqueado</option></select></label>
+        <label class="full">Descrição / como fazer (opcional)<textarea class="ftD" rows="2" maxlength="4000">${esc(t ? t.descricao || '' : '')}</textarea></label>
+        <div class="full ft-acoes"><button type="button" class="ft-salvar">${t ? 'Salvar alterações' : '+ Adicionar tarefa'}</button>${t ? ' <button type="button" class="ft-cancelar">Cancelar</button>' : ''}</div>
+      </div>`;
     const grupo = (tit, lista, vazio) => `<div class="grupo"><h4>${tit} · ${br(lista.length)}</h4>${lista.length ? lista.map(item).join('') : `<div style="font-size:.78rem;color:var(--ink-2);padding:4px 0 8px">${vazio}</div>`}</div>`;
     sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Plano de 90 dias</h2><span class="hint num">${esc(nomes[c.consultor_id] || 'consultor')} · ${dBR(c.inicio)} a ${dBR(c.fim_previsto)} · ${br(itens.length)} itens · marcar aqui atualiza a agenda da Central</span></div>
       <div class="resumo-tarefas num">
@@ -342,12 +351,13 @@
         <div class="kpi"><div class="lab">Ritmo</div><div class="val" style="font-size:1.1rem;color:${cc.ritmo.c}">${cc.ritmo.l}</div><div class="delta neutro">${pc(cc.pctTarefas, 0)} feitas · ${pc(cc.pctTempo, 0)} do prazo</div></div>
       </div>
       <div class="card">
+        ${PODE_GERIR ? `<div class="grupo" style="margin-top:0"><h4>Nova tarefa para o consultor · admin</h4><div class="edit-tarefa nova">${formTarefa(null)}</div></div>` : ''}
         ${grupo('Vencidas', G.venc, 'Nada vencido.')}
         ${grupo('Hoje', G.hoje, 'Nada para hoje.')}
         ${grupo('Próximos 7 dias', G.semana, 'Nada nesta semana.')}
         ${grupo('Depois', G.depois, 'Nada mais agendado.')}
         ${grupo('Feitas', G.feitas, 'Nenhuma ainda.')}
-        <div class="note" style="margin-top:12px">${EH_FRANQ ? 'Você pode marcar o que já foi feito; fica registrado com seu nome e data, e o consultor vê na agenda dele.' : 'Quem marca: o consultor responsável, o franqueado da loja ou um admin — fica registrado quem marcou. Editar prazo, título ou apagar continua só na agenda, por admin.'}</div>
+        <div class="note" style="margin-top:12px">${EH_FRANQ ? 'Você pode marcar o que já foi feito; fica registrado com seu nome e data, e o consultor vê na agenda dele.' : 'Quem marca: o consultor responsável, o franqueado da loja ou um admin — fica registrado quem marcou. ' + (EH_ADMIN ? 'Como admin, você também cria (✚), edita (✎) e remove (✕) tarefas aqui; a agenda do consultor na Central atualiza na hora.' : 'Criar, editar prazo/título ou apagar tarefas: só admin.')}</div>
       </div></div>`;
     rep.insertBefore(sec, secTarefas);
     sec.querySelectorAll('[data-concluir],[data-reabrir]').forEach(b => b.onclick = async () => {
@@ -362,6 +372,41 @@
       cc.pctTarefas = tarefas.length ? 100 * tarefas.filter(t => t.concluida).length / tarefas.length : 0;
       cc.ritmo = cc.pctTarefas >= cc.pctTempo - 10 ? { l: 'No ritmo', c: '#009150' } : cc.pctTarefas >= cc.pctTempo - 30 ? { l: 'Atrasando', c: '#E67E22' } : { l: 'Travada', c: '#C0392B' };
       sec.remove(); buildTarefasTab(); montarAbas(true);
+    });
+    if (!PODE_GERIR) return;
+    /* --- gestão de tarefas (admin): criar / editar / remover via RPC raiox_tarefa_gerir --- */
+    const recarregar = async () => {
+      const { data } = await sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id,responsavel,descricao').eq('consultoria_id', c.id).order('data').order('id');
+      itens.length = 0; (data || []).forEach(i => itens.push(i));
+      const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
+      cc.tarefas = tarefas; cc.reunioes = reunioes;
+      cc.tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO); cc.rPend = reunioes.filter(r => r.data < hojeISO && !r.concluida);
+      cc.pctTarefas = tarefas.length ? 100 * tarefas.filter(t => t.concluida).length / tarefas.length : 0;
+      cc.ritmo = cc.pctTarefas >= cc.pctTempo - 10 ? { l: 'No ritmo', c: '#009150' } : cc.pctTarefas >= cc.pctTempo - 30 ? { l: 'Atrasando', c: '#E67E22' } : { l: 'Travada', c: '#C0392B' };
+      sec.remove(); buildTarefasTab(); montarAbas(true);
+    };
+    const gerir = async (args, btn) => {
+      if (btn) btn.disabled = true;
+      const { error } = await sb.rpc('raiox_tarefa_gerir', args);
+      if (error) { if (btn) btn.disabled = false; alert('Não deu: ' + error.message); return false; }
+      await recarregar(); return true;
+    };
+    const lerForm = box => ({ titulo: box.querySelector('.ftT').value.trim(), prazo: box.querySelector('.ftP').value || null, resp: box.querySelector('.ftR').value, desc: box.querySelector('.ftD').value.trim() });
+    sec.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => { const f = sec.querySelector(`[data-edit-de="${b.dataset.editar}"]`); if (f) f.style.display = f.style.display === 'none' ? '' : 'none'; avisarPai(); });
+    sec.querySelectorAll('.ft-cancelar').forEach(b => b.onclick = () => { b.closest('.edit-tarefa').style.display = 'none'; avisarPai(); });
+    sec.querySelectorAll('[data-remover]').forEach(b => b.onclick = () => {
+      const it = itens.find(x => x.id === b.dataset.remover); if (!it) return;
+      if (!confirm('Remover a tarefa "' + it.titulo + '" desta consultoria? Ela sai da agenda do consultor.')) return;
+      gerir({ p_acao: 'remover', p_id: it.id }, b);
+    });
+    sec.querySelectorAll('.edit-tarefa').forEach(box => {
+      const salvar = box.querySelector('.ft-salvar'); if (!salvar) return;
+      salvar.onclick = () => {
+        const v = lerForm(box);
+        if (!v.titulo) return alert('Escreva o título da tarefa.');
+        if (box.classList.contains('nova')) gerir({ p_acao: 'criar', p_consultoria: c.id, p_titulo: v.titulo, p_descricao: v.desc || null, p_prazo: v.prazo, p_responsavel: v.resp }, salvar);
+        else gerir({ p_acao: 'editar', p_id: box.dataset.editDe, p_titulo: v.titulo, p_descricao: v.desc, p_prazo: v.prazo, p_responsavel: v.resp }, salvar);
+      };
     });
   }
 

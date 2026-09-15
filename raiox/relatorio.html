@@ -256,6 +256,18 @@ footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);fon
 .item-plano .acao button.feita{border-color:var(--linha);color:var(--ink-2)}
 .resumo-tarefas{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 @media (max-width:560px){.resumo-tarefas{grid-template-columns:repeat(2,1fr)}}
+.estrelas{display:inline-flex;gap:4px}.estrelas button{border:none;background:none;font-size:1.7rem;line-height:1;cursor:pointer;color:#D9E3DD;padding:0}.estrelas button.on{color:var(--amarelo)}
+.opc{display:inline-flex;gap:6px;flex-wrap:wrap}.opc button{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:7px 14px;font-weight:700;font-size:.8rem;color:var(--ink-2)}.opc button.on{background:var(--verde-900);border-color:var(--verde-900);color:#fff}
+.form-av label{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2);margin:14px 0 6px}
+.form-av textarea{width:100%;border:1.5px solid var(--linha);border-radius:10px;padding:10px 12px;font:inherit;font-size:.86rem;min-height:70px}
+.av-item{border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff}
+.av-item .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.8rem;color:var(--ink-2)}
+.av-item .resp{margin-top:8px;background:#EAF4EE;border-radius:8px;padding:8px 10px;font-size:.82rem}
+.linha-tempo{position:relative;padding-left:22px}.linha-tempo::before{content:"";position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--linha)}
+.lt-item{position:relative;margin-bottom:12px;font-size:.84rem}.lt-item::before{content:"";position:absolute;left:-19px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--verde-600);border:2px solid #fff;box-shadow:0 0 0 1px var(--linha)}
+.lt-item.venc::before{background:var(--alerta)}.lt-item.marco::before{background:var(--amarelo)}.lt-item.av::before{background:#71C5E8}
+.lt-item .q{font-size:.72rem;color:var(--ink-2)}
+.veredito{display:inline-block;padding:6px 14px;border-radius:99px;font-weight:800;color:#fff;font-size:.9rem}
 @media print{#report [data-aba]{display:block!important}.abas,.exportar{display:none!important}}
 </style>
 </head>
@@ -324,6 +336,8 @@ footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);fon
       <button class="aba" data-aba="estoque" type="button">Estoque</button>
       <button class="aba" data-aba="evolucao" type="button">Evolução</button>
       <button class="aba" data-aba="consultoria" type="button">Consultoria</button>
+      <button class="aba" data-aba="avaliacao" type="button">Avaliação <b id="abaAvalN" class="badge" style="display:none">!</b></button>
+      <button class="aba" data-aba="historico" type="button">Histórico</button>
     </nav>
     <span style="flex:1"></span>
     <div class="exportar" id="exportar">
@@ -1934,6 +1948,6 @@ $('btnNova').addEventListener('click', () => {
 });
 })();
 </script>
-<script src="relatorio.js?v=2.1.2"></script>
+<script src="relatorio.js?v=3.0"></script>
 </body>
 </html>

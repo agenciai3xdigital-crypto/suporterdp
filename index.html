@@ -10,7 +10,7 @@
 <!-- v7.1 · 03/09/2026 · remove aba Financeiro (dados unificados no painel Inteligência Comercial) -->
 <!-- v7.2 · 04/09/2026 · agenda aceita convite .ics (Google Calendar / Outlook) -->
 <!-- v7.6 · 09/09/2026 · pop-up de detalhes do item + trava de sobreposição de horário -->
-<!-- v7.9.1 · 14/09/2026 · link "Consultoria" da agenda abre a aba Tarefas do Raio-X · v7.9 · link Raio-X no cabeçalho (raiox/), itens de consultoria na agenda
+<!-- v7.9.2 · 15/09/2026 · login de franqueado é redirecionado para raiox/ · v7.9.1 · 14/09/2026 · link "Consultoria" da agenda abre a aba Tarefas do Raio-X · v7.9 · link Raio-X no cabeçalho (raiox/), itens de consultoria na agenda
      (consultoria_id) sem Editar para não-admin — a trava real fica no banco. -->
 <!-- v7.7 · 13/09/2026 · aba Eventos (tipo evento da agenda_eventos): acompanhamento de tarefas,
      custo/ROI do Evento Betta e busca por loja. Absorve a visão "Histórico Betta" da Agenda. -->
@@ -1334,6 +1334,8 @@ async function iniciarSessao(user){
   const perfil=uPorId(user.id);
   if(!perfil){$('loginErro').textContent='Perfil não encontrado — avise o gestor.';await sb.auth.signOut();return;}
   usuarioAtual=perfil;
+  // franqueado não usa a Central: vai direto para o Raio-X da loja dele (o banco também não deixa ler nada daqui)
+  if(!perfil.admin&&(perfil.papeis||[]).includes('franqueado')){location.replace('raiox/');return;}
   sb.from('acessos').insert({user_id:user.id}).then(()=>{});
   await carregarLidos();
   await Promise.all([carregarChecks(),carregarAtividades(),carregarAgenda(),carregarAbas(),carregarDemandas(),carregarItens()]);

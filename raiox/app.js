@@ -3,7 +3,8 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v2.1.2';
+const VERSAO = 'v3.0';
+const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const br = (n, d = 0) => (isFinite(n) ? n : 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -18,9 +19,10 @@ const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').
 function toast(t) { const el = $('toast'); el.textContent = t || 'salvo ✓'; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 1400); }
 function erro(e) { console.error(e); alert('Erro: ' + (e.message || e)); }
 
-let sb, usuario, perfil, PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ITENS = [], ESTQ = {}, FILA = new Set();
+let sb, usuario, perfil, PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ITENS = [], ESTQ = {}, FILA = new Set(), FQ_LOJAS = [], FQ_MAPA = [];
 let rdFiltro = 'todas', lojaAtual = null, rdOrd = { k: 'score', asc: true };
 const ehAdmin = () => !!(perfil && perfil.is_admin);
+const ehFranq = () => !!(perfil && !perfil.is_admin && (perfil.papeis || []).includes('franqueado'));
 const nomeDe = uid => ((PERFIS.find(p => p.id === uid) || {}).nome || '—');
 const primeiro = n => String(n || '').split(' ')[0];
 const frqDe = fra => FRQ.find(f => f.fra === fra) || { fra, nome: 'FRA ' + fra };
@@ -43,12 +45,13 @@ async function entrou(session) {
   usuario = session.user;
   const { data: p } = await sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults').eq('id', usuario.id).maybeSingle();
   perfil = p || { nome: usuario.email, is_admin: false, papeis: [] };
-  $('quem').textContent = perfil.nome + (perfil.is_admin ? ' · admin' : '') + ' · ' + VERSAO;
+  $('quem').textContent = perfil.nome + (perfil.is_admin ? ' · admin' : ehFranq() ? ' · franqueado' : '') + ' · ' + VERSAO;
   $('login').style.display = 'none'; $('app').style.display = ''; $('btnSair').style.display = '';
-  if (ehAdmin()) $('btnRecalcRede').style.display = '';
-  try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); }
-  catch (e) { erro(e); }
+  if (ehAdmin()) { $('btnRecalcRede').style.display = ''; $('abaFranq').style.display = ''; }
   const qs = new URLSearchParams(location.search), fraUrl = qs.get('fra');
+  if (ehFranq()) { await entrouFranqueado(fraUrl ? +fraUrl : null, qs.get('aba')); return; }
+  try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); if (ehAdmin()) desenharFranqueados(); }
+  catch (e) { erro(e); }
   if (fraUrl) abrirLoja(+fraUrl, qs.get('aba'));
 }
 $('loginForm').onsubmit = async ev => {
@@ -59,6 +62,31 @@ $('loginForm').onsubmit = async ev => {
   await entrou(data.session);
 };
 $('btnSair').onclick = async () => { await sb.auth.signOut(); };
+
+/* ================= modo FRANQUEADO ================= */
+async function entrouFranqueado(fraPedida, aba) {
+  // esconde tudo que não é dele: abas de rede/consultorias/arquivos e o link para a Central
+  document.querySelectorAll('.aba[data-v=rede],.aba[data-v=consult],.aba[data-v=arquivos],.aba[data-v=franq]').forEach(a => a.style.display = 'none');
+  document.querySelectorAll('a[href="../"], a[href="../index.html"], #btnCentral').forEach(a => a.remove());
+  $('v-rede').classList.remove('ativa');
+  const [{ data: fl }, { data: fq }, { data: pf }] = await Promise.all([
+    sb.from('franqueado_lojas').select('fra').eq('user_id', usuario.id),
+    sb.from('franquias').select('fra,nome,cidade,estado,consultor,ativo'),
+    sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor')
+  ]);
+  FQ_LOJAS = (fl || []).map(x => x.fra).sort((a, b) => a - b); FRQ = fq || []; PERFIS = pf || [];
+  if (!FQ_LOJAS.length) { $('v-loja').classList.add('ativa'); $('ljConteudo').innerHTML = '<div class="vazio">Seu login ainda não está ligado a nenhuma loja. Fale com a franqueadora.</div>'; return; }
+  const [{ data: sn }, { data: cs }] = await Promise.all([
+    sb.from('raiox_snapshots_atual').select('fra,mes_ref,janela_meses,perfil,calculado_em,score,sem_nota_motivo,sub,kpis,tarefas').in('fra', FQ_LOJAS),
+    sb.from('raiox_consultorias').select('*').in('fra', FQ_LOJAS).order('criado_em', { ascending: false })
+  ]);
+  SNAPS = {}; (sn || []).forEach(x => { SNAPS[x.fra] = x; }); CONS = cs || [];
+  const barra = $('fqBarra'); barra.style.display = FQ_LOJAS.length > 1 ? '' : 'none';
+  $('fqLojas').innerHTML = FQ_LOJAS.map(f => `<button class="pill" data-fra="${f}" type="button">FRA ${f} · ${esc(frqDe(f).nome)}</button>`).join('');
+  $('fqLojas').querySelectorAll('.pill').forEach(b => b.onclick = () => abrirLoja(+b.dataset.fra));
+  const fra = FQ_LOJAS.includes(fraPedida) ? fraPedida : FQ_LOJAS[0];
+  abrirLoja(fra, aba);
+}
 
 /* ================= dados ================= */
 async function fetchAll(builder, step = 1000) {
@@ -185,6 +213,7 @@ async function abrirLoja(fra, aba) {
   document.querySelectorAll('.vista').forEach(v => v.classList.toggle('ativa', v.id === 'v-loja'));
   $('abaLoja').textContent = 'FRA ' + fra;
   history.replaceState(null, '', '?fra=' + fra);
+  if (ehFranq()) $('fqLojas').querySelectorAll('.pill').forEach(b => b.classList.toggle('on', +b.dataset.fra === fra));
   const box = $('ljConteudo');
   const s = SNAPS[fra], f = frqDe(fra);
   if (!s) { box.innerHTML = cabecaLoja(f, null) + '<div class="vazio">Esta loja ainda não tem raio-x: o banco de compras não recebeu o BI de vendas dela. Depois da carga, a rotina noturna calcula sozinha.</div>'; return; }
@@ -200,7 +229,7 @@ window.addEventListener('message', ev => {
 });
 function cabecaLoja(f, s) {
   const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDoConsultor(f.consultor);
-  const podeIniciar = !c && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
+  const podeIniciar = !c && !ehFranq() && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
   return `<div class="painel"><div class="ficha-topo">
     <div class="big">${s ? (s.score == null ? '<span style="font-size:22px;color:var(--tinta-suave)">sem nota</span>' : `<span class="score ${classeScore(s.score, Q)}" style="font-size:44px;height:auto;padding:6px 14px">${s.score}</span>`) : '—'}<small>nota · ${s ? mesBR(s.kpis.mes_ini) + ' a ' + mesBR(s.mes_ref) : 'sem raio-x'}</small></div>
     <div style="flex:1;min-width:240px">
@@ -211,7 +240,7 @@ function cabecaLoja(f, s) {
       ${s && s.kpis.mes_parcial ? `<div style="margin-top:6px;font-size:13px;color:#a34608">⚠ ${mesBR(s.kpis.mes_parcial.mes)} entrou com só ${s.kpis.mes_parcial.cupons} vendas (esperado ~${s.kpis.mes_parcial.esperado}) — carga parcial; a janela fechou em ${mesBR(s.mes_ref)}. Reenvie o BI completo com a recarga marcada.</div>` : ''}
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         ${c ? `<span class="st roxo" style="align-self:center">consultoria ativa desde ${dBR(c.inicio)} · ${esc(primeiro(nomeDe(c.consultor_id)))}</span>` : (podeIniciar && s ? '<button class="btn laranja" id="btnIniciarCons">▶ Iniciar consultoria de faturamento</button>' : '')}
-        ${s ? `<button class="btn claro" id="btnRecalc"${FILA.has(f.fra) ? ' disabled' : ''}>${FILA.has(f.fra) ? '↻ na fila' : '↻ Recalcular'}</button>` : ''}
+        ${s && !ehFranq() ? `<button class="btn claro" id="btnRecalc"${FILA.has(f.fra) ? ' disabled' : ''}>${FILA.has(f.fra) ? '↻ na fila' : '↻ Recalcular'}</button>` : ''}
         ${s ? '<button class="btn claro" id="btnImprimir">🖨 Imprimir / PDF</button>' : ''}
       </div>
     </div>
@@ -346,9 +375,15 @@ function desenharConsultorias() {
   box.querySelectorAll('tr[data-fra]').forEach(tr => tr.onclick = ev => { if (ev.target.closest('button')) return; abrirLoja(+tr.dataset.fra); });
   box.querySelectorAll('[data-enc],[data-canc]').forEach(b => b.onclick = async () => {
     const id = b.dataset.enc || b.dataset.canc, status = b.dataset.enc ? 'concluida' : 'cancelada';
-    if (!confirm(status === 'concluida' ? 'Encerrar a consultoria como concluída?' : 'Cancelar a consultoria? As tarefas e reuniões ficam na agenda para você apagar, se quiser.')) return;
-    const { error } = await sb.from('raiox_consultorias').update({ status, encerrada_em: new Date().toISOString(), encerrada_por: usuario.id }).eq('id', id);
-    if (error) return erro(error); await recarregar('cons'); desenharConsultorias(); desenharRede(); toast();
+    const c = CONS.find(x => x.id === id);
+    const obs = status === 'concluida' ? prompt('Encerrar a consultoria como concluída. Observação final (opcional):', '') : (confirm('Cancelar a consultoria? As tarefas e reuniões ficam na agenda para você apagar, se quiser.') ? '' : null);
+    if (obs === null) return;
+    const resultado = status === 'concluida' ? await calcularResultado(c) : null;
+    const { error } = await sb.from('raiox_consultorias').update({ status, encerrada_em: new Date().toISOString(), encerrada_por: usuario.id, resultado, encerramento_obs: obs || null }).eq('id', id);
+    if (error) return erro(error);
+    // marco na agenda da franquia: fica no histórico da loja
+    if (resultado) await sb.from('agenda_eventos').insert({ user_id: c.consultor_id, titulo: `Encerramento da consultoria · FRA ${c.fra} · ${resultado.veredito} (nota ${c.score_inicial ?? '—'} → ${resultado.score_fim ?? '—'})`, data: hojeISO(), ini: '00:00', fim: '00:00', tipo: 'compromisso', categoria: 'reuniao', descricao: resultado.texto + (obs ? '\n\nObservação: ' + obs : ''), franquia_fra: c.fra, consultoria_id: c.id, concluida: true, criado_por: usuario.id, participantes: [], subtarefas: [] });
+    await recarregar('cons'); desenharConsultorias(); desenharRede(); toast(resultado ? 'encerrada: ' + resultado.veredito : 'cancelada');
   });
   // ---- gargalos da rede: quais tarefas mais vencem, quais consultores acumulam atraso, lojas sem evolução
   const porTarefa = {}, porCons = {};
@@ -371,6 +406,85 @@ function desenharConsultorias() {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + l.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = 'consultorias_' + hojeISO() + '.csv'; a.click();
   };
 }
+
+/* ================= RESULTADO DA CONSULTORIA =================
+   Compara o raio-x do início (mes_ref_base) com o mais recente e o que o franqueado avaliou.
+   Veredito: positiva / negativa / sem diferença — regra fixa, sem opinião. */
+async function calcularResultado(c) {
+  const [{ data: base }, { data: fim }, { data: avs }, { data: itens }] = await Promise.all([
+    c.mes_ref_base ? sb.from('raiox_snapshots').select('mes_ref,score,kpis').eq('fra', c.fra).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null }),
+    sb.from('raiox_snapshots_atual').select('mes_ref,score,kpis').eq('fra', c.fra).maybeSingle(),
+    sb.from('raiox_avaliacoes').select('semana,nota,andamento').eq('consultoria_id', c.id).order('semana'),
+    sb.from('agenda_eventos').select('tipo,concluida,prazo,data').eq('consultoria_id', c.id)
+  ]);
+  const d = (k) => (base && fim && base.kpis && fim.kpis && base.kpis[k] != null && fim.kpis[k] != null) ? fim.kpis[k] - base.kpis[k] : null;
+  const dPct = (k) => (base && fim && base.kpis && base.kpis[k]) ? 100 * (fim.kpis[k] / base.kpis[k] - 1) : null;
+  const dScore = (base && fim && base.score != null && fim.score != null) ? fim.score - base.score : null;
+  const dLucro = dPct('lucro_mes'), dRec = dPct('receita_mes'), dMg = d('margem_adj'), dId = d('ident_pct'), dRet = d('ret45');
+  const tarefas = (itens || []).filter(i => i.tipo === 'tarefa'), reun = (itens || []).filter(i => i.tipo !== 'tarefa');
+  const notas = (avs || []).map(a => a.nota), mediaAv = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
+  const mesmoMes = !!(base && fim && base.mes_ref === fim.mes_ref);
+  let veredito, motivo;
+  if (mesmoMes || dScore == null) { veredito = 'sem leitura'; motivo = 'O raio-x atual ainda é o mesmo do início (' + mesBR(c.mes_ref_base) + ') — não há mês novo fechado para comparar. Recalcule depois da próxima carga e reabra o resultado.'; }
+  else if (dScore >= 5 || (dLucro != null && dLucro >= 5 && dScore >= 0)) { veredito = 'positiva'; motivo = `Nota ${base.score} → ${fim.score} (${dScore >= 0 ? '+' : ''}${dScore}) e lucro bruto/mês ${dLucro >= 0 ? '+' : ''}${br(dLucro, 1)}%.`; }
+  else if (dScore <= -5 || (dLucro != null && dLucro <= -5)) { veredito = 'negativa'; motivo = `Nota ${base.score} → ${fim.score} (${dScore}) e lucro bruto/mês ${dLucro >= 0 ? '+' : ''}${br(dLucro, 1)}% — os indicadores pioraram no período.`; }
+  else { veredito = 'não fez diferença'; motivo = `Nota ${base.score} → ${fim.score} (${dScore >= 0 ? '+' : ''}${dScore}) e lucro bruto/mês ${dLucro == null ? '—' : (dLucro >= 0 ? '+' : '') + br(dLucro, 1) + '%'} — variação dentro do ruído normal.`; }
+  const texto = `Resultado da consultoria de faturamento · FRA ${c.fra} · ${dBR(c.inicio)} a ${hojeISO().split('-').reverse().join('/')}: ${veredito.toUpperCase()}. ${motivo}` +
+    (base && fim && !mesmoMes ? ` Receita/mês ${dRec == null ? '—' : (dRec >= 0 ? '+' : '') + br(dRec, 1) + '%'}, margem ajustada ${dMg == null ? '—' : (dMg >= 0 ? '+' : '') + br(dMg, 1) + ' pp'}, receita identificada ${dId == null ? '—' : (dId >= 0 ? '+' : '') + br(dId, 1) + ' pp'}, ração em dia ${dRet == null ? '—' : (dRet >= 0 ? '+' : '') + br(dRet, 1) + ' pp'}.` : '') +
+    ` Plano: ${tarefas.filter(t => t.concluida).length}/${tarefas.length} tarefas feitas, ${reun.filter(r => r.concluida).length}/${reun.length} reuniões realizadas.` +
+    (mediaAv != null ? ` Avaliação do franqueado: média ${br(mediaAv, 1)}/5 em ${notas.length} semana(s), última "${(avs[avs.length - 1] || {}).andamento || '—'}".` : ' O franqueado não avaliou nenhuma semana.');
+  return { veredito, texto, score_ini: base ? base.score : c.score_inicial, score_fim: fim ? fim.score : null, mes_base: base ? base.mes_ref : c.mes_ref_base, mes_fim: fim ? fim.mes_ref : null,
+    d_score: dScore, d_lucro_pct: dLucro, d_receita_pct: dRec, d_margem_pp: dMg, d_ident_pp: dId, d_ret45_pp: dRet,
+    tarefas: tarefas.length, tarefas_feitas: tarefas.filter(t => t.concluida).length, reunioes: reun.length, reunioes_feitas: reun.filter(r => r.concluida).length,
+    avaliacoes: notas.length, avaliacao_media: mediaAv, calculado_em: new Date().toISOString() };
+}
+
+/* ================= FRANQUEADOS (admin) ================= */
+async function chamarFranq(corpo) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(FN_FRANQ, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(corpo) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.erro) throw new Error(j.erro || ('HTTP ' + r.status));
+  return j;
+}
+async function desenharFranqueados() {
+  const { data: fl } = await sb.from('franqueado_lojas').select('user_id,fra,criado_em'); FQ_MAPA = fl || [];
+  const franqs = PERFIS.filter(p => !p.is_admin && (p.papeis || []).includes('franqueado'));
+  const box = $('fqLista');
+  box.innerHTML = franqs.length ? `<table class="lista"><tr><th>Nome</th><th>Lojas</th><th></th></tr>` + franqs.map(p => { const lojas = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).sort((a, b) => a - b);
+    return `<tr><td><div class="t">${esc(p.nome)}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}…</div></td><td>${lojas.length ? lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)}">FRA ${f}</span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
+      <td style="white-space:nowrap"><button class="btn claro" data-fqlojas="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Lojas</button> <button class="btn claro" data-fqsenha="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Senha</button> <button class="btn verm" data-fqdes="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Desativar</button></td></tr>`; }).join('') + '</table>'
+    : '<div class="vazio">Nenhum franqueado cadastrado. Use "+ Novo franqueado".</div>';
+  box.querySelectorAll('[data-fqlojas]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqlojas); const atuais = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).join(', ');
+    const v = prompt('Lojas de ' + p.nome + ' (números de FRA separados por vírgula):', atuais); if (v === null) return;
+    chamarFranq({ acao: 'lojas', user_id: p.id, fras: v.split(/[,\s;]+/).filter(Boolean) }).then(() => { toast('lojas atualizadas'); desenharFranqueados(); }).catch(erro); });
+  box.querySelectorAll('[data-fqsenha]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqsenha); const v = prompt('Nova senha para ' + p.nome + ' (mínimo 8 caracteres):'); if (!v) return;
+    chamarFranq({ acao: 'senha', user_id: p.id, senha: v }).then(() => toast('senha redefinida')).catch(erro); });
+  box.querySelectorAll('[data-fqdes]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqdes); if (!confirm('Desativar o login de ' + p.nome + '? Ele não consegue mais entrar e as lojas são desligadas.')) return;
+    chamarFranq({ acao: 'desativar', user_id: p.id }).then(() => { toast('desativado'); desenharFranqueados(); }).catch(erro); });
+}
+$('btnNovoFranq').onclick = () => {
+  const lojas = FRQ.filter(f => f.fra > 0 && f.ativo !== false).sort((a, b) => a.fra - b.fra);
+  $('mBox').innerHTML = `<h3>+ Novo login de franqueado</h3>
+    <div class="form">
+      <label>Nome</label><input id="nfNome" placeholder="Nome do franqueado">
+      <label>E-mail (login)</label><input id="nfEmail" type="email" placeholder="franqueado@email.com">
+      <label>Senha inicial</label><input id="nfSenha" type="text" value="${'Pop' + Math.random().toString(36).slice(2, 8) + '!' + Math.floor(Math.random() * 90 + 10)}">
+      <label>Lojas (FRA)</label><select id="nfLojas" multiple size="8">${lojas.map(f => `<option value="${f.fra}">FRA ${f.fra} · ${esc(f.nome)}</option>`).join('')}</select>
+      <p style="font-size:12px;color:var(--tinta-suave)">Segure Ctrl/Cmd para escolher mais de uma loja. O franqueado entra no mesmo endereço do Raio-X e vê só essas lojas.</p>
+    </div>
+    <div class="acoes"><button class="btn claro" id="mFechar" type="button">Cancelar</button><button class="btn laranja" id="nfOk" type="button">Criar login</button></div>`;
+  $('mBg').classList.add('on'); $('mFechar').onclick = fecharModal;
+  $('nfOk').onclick = async () => {
+    const fras = [...$('nfLojas').selectedOptions].map(o => +o.value);
+    $('nfOk').disabled = true;
+    try { await chamarFranq({ acao: 'criar', nome: $('nfNome').value.trim(), email: $('nfEmail').value.trim(), senha: $('nfSenha').value, fras });
+      const senha = $('nfSenha').value, email = $('nfEmail').value.trim();
+      fecharModal(); const { data: pf } = await sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor').order('criado_em'); PERFIS = (pf || []).filter(p => !/robo\.raiox/i.test(p.nome || '')); desenharFranqueados();
+      alert('Login criado.\n\nE-mail: ' + email + '\nSenha: ' + senha + '\nEndereço: ' + location.origin + location.pathname + '\n\nAnote — a senha não aparece de novo (dá para redefinir).');
+    } catch (e) { erro(e); $('nfOk').disabled = false; }
+  };
+};
 
 /* ================= ARQUIVOS DE ESTOQUE ================= */
 function desenharArquivos() {
@@ -419,5 +533,6 @@ document.querySelectorAll('.aba').forEach(a => a.onclick = () => {
   document.querySelectorAll('.aba').forEach(x => x.classList.toggle('ativa', x === a));
   document.querySelectorAll('.vista').forEach(v => v.classList.toggle('ativa', v.id === 'v-' + a.dataset.v));
   if (a.dataset.v === 'arquivos') desenharArquivos();
+  if (a.dataset.v === 'franq') desenharFranqueados();
 });
 iniciar();

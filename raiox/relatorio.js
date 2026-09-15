@@ -53,6 +53,8 @@
   if (!session) return aviso('Sessão expirada — entre de novo na Central POP para ver este relatório.');
 
   /* ---------- carga: só o que este relatório precisa ---------- */
+  const { data: PERFIL } = await sb.from('perfis').select('id,nome,is_admin,papeis').eq('id', session.user.id).maybeSingle();
+  const EH_ADMIN = !!(PERFIL && PERFIL.is_admin), EH_FRANQ = !!(PERFIL && !PERFIL.is_admin && (PERFIL.papeis || []).includes('franqueado')), EH_EQUIPE = !EH_FRANQ;
   const [atualQ, histQ, consQ, frqQ, estQ] = await Promise.all([
     sb.from('raiox_snapshots_atual').select('*').eq('fra', FRA).maybeSingle(),
     sb.from('raiox_snapshots').select('fra,mes_ref,calculado_em,score,sem_nota_motivo,sub,kpis').eq('fra', FRA).order('mes_ref'),
@@ -137,6 +139,8 @@
   initChartHovers();   // registra também os gráficos novos
   await buildConsultoriaHTML();
   buildTarefasTab();
+  buildAvaliacaoTab();
+  buildHistoricoTab();
   montarAbas();
   ligarExportacoes();
   ajustarModais();
@@ -200,11 +204,13 @@
   async function buildConsultoriaHTML() {
     const c = CONS.find(x => x.status === 'ativa') || CONS[0];
     if (!c) return;
-    const [itensQ, perfQ, baseQ] = await Promise.all([
+    const [itensQ, perfQ, baseQ, avQ] = await Promise.all([
       sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,user_id').eq('consultoria_id', c.id).order('data'),
       sb.from('perfis').select('id,nome').in('id', [c.consultor_id, c.franqueado_id].filter(Boolean)),
-      c.mes_ref_base ? sb.from('raiox_snapshots').select('fra,mes_ref,calculado_em,score,sub,kpis,dados->metas,dados->governanca,dados->churnGeral,tarefas').eq('fra', FRA).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null })
+      c.mes_ref_base ? sb.from('raiox_snapshots').select('fra,mes_ref,calculado_em,score,sub,kpis,dados->metas,dados->governanca,dados->churnGeral,tarefas').eq('fra', FRA).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null }),
+      sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false })
     ]);
+    const AVS = avQ.data || [];
     const itens = itensQ.data || [], nomes = {}; (perfQ.data || []).forEach(p => { nomes[p.id] = p.nome; });
     const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
     const tConcl = tarefas.filter(t => t.concluida), tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO), tProx = tarefas.filter(t => !t.concluida && (!t.prazo || t.prazo >= hojeISO));
@@ -218,6 +224,16 @@
     const dScore = (S.score != null && c.score_inicial != null) ? S.score - c.score_inicial : null;
     if (dScore != null && decorrido >= 45 && dScore <= 0) gargalos.push(`<b>Nota não subiu</b> depois de ${br(decorrido)} dias (${c.score_inicial} → ${S.score}). Revise se as tarefas concluídas atacam os achados de maior peso (identificação de cliente e margem pesam mais na nota).`);
     if (S.mes_ref === c.mes_ref_base && decorrido >= 40) gargalos.push(`<b>O raio-x ainda é o mesmo do início</b> (${mesBR(S.mes_ref)}): carregar o BI do mês seguinte no painel de Inteligência Comercial para a evolução aparecer.`);
+    // o que o franqueado está dizendo
+    if (AVS.length) {
+      const ult = AVS[0], duasPiorou = AVS.length >= 2 && AVS[0].andamento === 'piorou' && AVS[1].andamento === 'piorou';
+      const semResposta = AVS.filter(a => (a.sugestao || a.nota <= 2 || a.andamento === 'piorou') && !a.resposta).length;
+      if (duasPiorou) gargalos.push(`<b>Franqueado diz que piorou duas semanas seguidas</b> (notas ${AVS[1].nota} e ${AVS[0].nota}/5). Conversar antes da próxima reunião — a percepção dele é parte do resultado.`);
+      else if (ult.nota <= 2) gargalos.push(`<b>Última avaliação do franqueado: ${ult.nota}/5 (${esc(ult.andamento)})</b>${ult.comentario ? ' — "' + esc(ult.comentario.slice(0, 140)) + '"' : ''}.`);
+      if (semResposta) gargalos.push(`<b>${br(semResposta)} avaliação(ões) do franqueado sem resposta</b> — sugestão ou nota baixa esperando retorno na aba Avaliação.`);
+      const diasSem = diasEntre(AVS[0].semana, hojeISO);
+      if (c.status === 'ativa' && diasSem > 14) gargalos.push(`<b>Franqueado sem avaliar há ${br(diasSem)} dias</b> — última semana avaliada: ${dBR(AVS[0].semana)}.`);
+    } else if (c.status === 'ativa' && decorrido >= 10) gargalos.push('<b>O franqueado ainda não avaliou nenhuma semana</b> — confirmar se ele tem o login do Raio-X e sabe da aba Avaliação.');
     if (!gargalos.length) gargalos.push('<b>Nenhum gargalo identificado</b> — plano dentro do prazo e reuniões em dia.');
 
     let cmp = '';
@@ -251,11 +267,12 @@
         <div class="kpi"><div class="lab">Próxima tarefa</div><div class="val" style="font-size:1rem">${tProx.length ? dBR(tProx.sort((x, y) => String(x.prazo).localeCompare(String(y.prazo)))[0].prazo) : '—'}</div><div class="delta neutro">${tProx.length ? esc(tProx[0].titulo) : 'nada pendente'}</div></div>
       </div>
       <div class="card"><h3>Gargalos da consultoria</h3><div class="note">O que está segurando o resultado — calculado da agenda e dos raios-x, não de opinião</div>${gargalos.map(g => `<div class="callout ${/vencida|não subiu|Travada/.test(g) ? 'red' : ''}">${g}</div>`).join('')}</div>
-      <div class="callout" style="margin-top:16px">Os ${br(itens.length)} itens do plano de 90 dias (reuniões e tarefas) ficam na aba <b>Tarefas</b>, onde dá para marcar o que foi feito.</div>
+      <div class="callout" style="margin-top:16px">Os ${br(itens.length)} itens do plano de 90 dias (reuniões e tarefas) ficam na aba <b>Tarefas</b>${EH_FRANQ ? '' : ', onde dá para marcar o que foi feito'}.</div>
+      ${resultadoHTML(c, AVS)}
       ${cmp}
     </div></section>`);
     initChartHovers();
-    window.__consultoria = { c, itens, tarefas, reunioes, tAtras, rPend, ritmo, pctTarefas, pctTempo, nomes };
+    window.__consultoria = { c, itens, tarefas, reunioes, tAtras, rPend, ritmo, pctTarefas, pctTempo, nomes, avs: AVS };
   }
 
   /* ===== aba TAREFAS: plano da consultoria (com ação) + achados do raio-x ===== */
@@ -276,7 +293,7 @@
     const G = { venc: abertos.filter(i => venc(i) && venc(i) < hojeISO), hoje: abertos.filter(i => venc(i) === hojeISO), semana: abertos.filter(i => venc(i) > hojeISO && venc(i) <= em7), depois: abertos.filter(i => !venc(i) || venc(i) > em7), feitas: itens.filter(i => i.concluida).sort((a, b) => String(b.concluida_em || '').localeCompare(String(a.concluida_em || ''))) };
     const item = i => { const v = venc(i), cls = i.concluida ? 'feita' : (v && v < hojeISO) ? 'venc' : v === hojeISO ? 'hoje' : '';
       return `<div class="item-plano ${cls}"><div><div class="tt">${i.tipo === 'tarefa' ? '☐' : '📅'} ${esc(i.titulo)}</div><div class="sub">${i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : 'reunião ' + dBR(v) + (i.ini ? ' às ' + String(i.ini).slice(0, 5) : '')}${i.concluida ? ' · feita' + (i.concluida_em ? ' em ' + dBR(i.concluida_em) : '') : cls === 'venc' ? ' · <b style="color:var(--alerta)">vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)</b>' : ''} · ${esc(nomes[i.user_id] || '')}</div></div>
-        <div class="acao">${i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}</div></div>`; };
+        <div class="acao">${EH_FRANQ ? '' : i.concluida ? `<button type="button" class="feita" data-reabrir="${esc(i.id)}">reabrir</button>` : `<button type="button" data-concluir="${esc(i.id)}">${i.tipo === 'tarefa' ? '✓ feita' : '✓ realizada'}</button>`}</div></div>`; };
     const grupo = (tit, lista, vazio) => `<div class="grupo"><h4>${tit} · ${br(lista.length)}</h4>${lista.length ? lista.map(item).join('') : `<div style="font-size:.78rem;color:var(--ink-2);padding:4px 0 8px">${vazio}</div>`}</div>`;
     sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Plano de 90 dias</h2><span class="hint num">${esc(nomes[c.consultor_id] || 'consultor')} · ${dBR(c.inicio)} a ${dBR(c.fim_previsto)} · ${br(itens.length)} itens · marcar aqui atualiza a agenda da Central</span></div>
       <div class="resumo-tarefas num">
@@ -291,7 +308,7 @@
         ${grupo('Próximos 7 dias', G.semana, 'Nada nesta semana.')}
         ${grupo('Depois', G.depois, 'Nada mais agendado.')}
         ${grupo('Feitas', G.feitas, 'Nenhuma ainda.')}
-        <div class="note" style="margin-top:12px">Quem marca: o consultor responsável ou um admin. Editar prazo, título ou apagar continua só na agenda, por admin.</div>
+        <div class="note" style="margin-top:12px">${EH_FRANQ ? 'Quem marca os itens é o consultor. Se algo já foi feito e não aparece, avise na aba Avaliação.' : 'Quem marca: o consultor responsável ou um admin. Editar prazo, título ou apagar continua só na agenda, por admin.'}</div>
       </div></div>`;
     rep.insertBefore(sec, secTarefas);
     sec.querySelectorAll('[data-concluir],[data-reabrir]').forEach(b => b.onclick = async () => {
@@ -308,12 +325,122 @@
     });
   }
 
+  /* ===== resultado da consultoria (documento de comparação) ===== */
+  function resultadoHTML(c, avs) {
+    const r = c.resultado;
+    const cor = v => v === 'positiva' ? '#009150' : v === 'negativa' ? '#C0392B' : v === 'não fez diferença' ? '#E67E22' : '#5A7268';
+    const fmtD = (v, f) => v == null ? '—' : (v >= 0 ? '+' : '') + f(v);
+    if (!r) {
+      if (c.status === 'ativa') return `<div class="card" style="margin-top:16px"><h3>Resultado da consultoria</h3><div class="note">Sai no encerramento: compara o raio-x do início com o mais recente e junta a avaliação do franqueado. Enquanto isso, acompanhe na aba Evolução.</div></div>`;
+      return `<div class="card" style="margin-top:16px"><h3>Resultado da consultoria</h3><div class="note">Consultoria ${esc(c.status)} em ${dBR(c.encerrada_em)} sem resultado calculado (encerrada antes da v3).</div></div>`;
+    }
+    const notas = (avs || []).map(a => a.nota);
+    const barras = [5, 4, 3, 2, 1].map(n => { const q = notas.filter(x => x === n).length; return `<div class="rec-row"><div>${'★'.repeat(n)}</div><div class="rec-bar"><i style="--w:${notas.length ? (100 * q / notas.length).toFixed(0) : 0}%;--c:${n >= 4 ? '#009150' : n === 3 ? '#FDAE25' : '#C0392B'}"></i></div><div class="qt">${q}</div></div>`; }).join('');
+    return `<div class="card" id="resultado" style="margin-top:16px"><h3>Resultado da consultoria</h3><div class="note num">${dBR(c.inicio)} a ${dBR(c.encerrada_em)} · raio-x de ${mesBR(r.mes_base)} contra ${mesBR(r.mes_fim)} · calculado em ${dBR(r.calculado_em)}</div>
+      <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:10px 0 14px"><span class="veredito" style="background:${cor(r.veredito)}">${esc(r.veredito.toUpperCase())}</span><span style="font-size:.9rem">Nota <b>${r.score_ini ?? '—'} → ${r.score_fim ?? '—'}</b>${r.d_score != null ? ' (' + fmtD(r.d_score, v => br(v, 0)) + ')' : ''}</span></div>
+      <div class="kpi-grid num" style="margin-bottom:14px">
+        <div class="kpi"><div class="lab">Lucro bruto/mês</div><div class="val">${fmtD(r.d_lucro_pct, v => br(v, 1) + '%')}</div></div>
+        <div class="kpi"><div class="lab">Receita/mês</div><div class="val">${fmtD(r.d_receita_pct, v => br(v, 1) + '%')}</div></div>
+        <div class="kpi"><div class="lab">Margem ajustada</div><div class="val">${fmtD(r.d_margem_pp, v => br(v, 1) + ' pp')}</div></div>
+        <div class="kpi"><div class="lab">Receita identificada</div><div class="val">${fmtD(r.d_ident_pp, v => br(v, 1) + ' pp')}</div></div>
+        <div class="kpi"><div class="lab">Ração em dia</div><div class="val">${fmtD(r.d_ret45_pp, v => br(v, 1) + ' pp')}</div></div>
+        <div class="kpi"><div class="lab">Plano executado</div><div class="val">${br(r.tarefas_feitas)}/${br(r.tarefas)}</div><div class="delta neutro">${br(r.reunioes_feitas)}/${br(r.reunioes)} reuniões</div></div>
+      </div>
+      <p style="font-size:.86rem;line-height:1.6">${esc(r.texto)}</p>
+      ${c.encerramento_obs ? `<div class="callout" style="margin-top:10px"><b>Observação do encerramento:</b> ${esc(c.encerramento_obs)}</div>` : ''}
+      <div class="grid-2" style="margin-top:14px"><div><h3 style="font-size:.9rem">Como o franqueado avaliou</h3><div class="note">${notas.length ? br(notas.length) + ' semana(s) · média ' + br(r.avaliacao_media, 1) + '/5' : 'nenhuma avaliação registrada'}</div><div class="num">${barras}</div></div>
+      <div><h3 style="font-size:.9rem">Regra do veredito</h3><div class="note">Positiva: nota +5 ou mais, ou lucro/mês +5% com nota não caindo. Negativa: nota −5 ou lucro −5%. Entre isso: não fez diferença. Só compara meses fechados diferentes.</div></div></div>
+      <div class="print-note">Documento gerado pelo Raio-X POP · Central POP · Rede POP Pet Center</div></div>`;
+  }
+
+  /* ===== aba AVALIAÇÃO: o franqueado avalia a semana; a equipe responde ===== */
+  function segundaDe(d) { const x = new Date(d); x.setHours(12, 0, 0, 0); const w = (x.getDay() + 6) % 7; x.setDate(x.getDate() - w); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); }
+  function buildAvaliacaoTab() {
+    const cc = window.__consultoria;
+    const sec = document.createElement('section'); sec.id = 'avaliacao';
+    const semanaAtual = segundaDe(hoje);
+    const ROT = { melhorou: 'Melhorou', igual: 'Na mesma', piorou: 'Piorou' };
+    const nomeDe = uid => (cc && cc.nomes && cc.nomes[uid]) || (PERFIL && PERFIL.id === uid ? PERFIL.nome : 'franqueado');
+    if (!cc) {
+      sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Avaliação semanal</h2></div><div class="card"><div class="callout">A avaliação semanal começa quando a consultoria de faturamento é iniciada.</div></div></div>`;
+      rep.appendChild(sec); return;
+    }
+    const { c, avs } = cc;
+    const minha = avs.find(a => a.semana === semanaAtual && a.user_id === session.user.id);
+    window.__avalPendente = EH_FRANQ && c.status === 'ativa' && !minha;
+    const item = a => `<div class="av-item" data-av="${esc(a.id)}"><div class="top"><b style="color:var(--ink)">Semana de ${dBR(a.semana)}</b><span style="color:var(--amarelo);font-size:1rem;letter-spacing:1px">${'★'.repeat(a.nota)}<span style="color:#D9E3DD">${'★'.repeat(5 - a.nota)}</span></span><span class="stbadge" style="background:${a.andamento === 'melhorou' ? '#009150' : a.andamento === 'piorou' ? '#C0392B' : '#FDAE25'};color:${a.andamento === 'igual' ? '#10231C' : '#fff'}">${ROT[a.andamento] || a.andamento}</span><span>${esc(nomeDe(a.user_id))} · ${dBR(a.criado_em)}</span></div>
+      ${a.comentario ? `<p style="font-size:.86rem;margin-top:8px">${esc(a.comentario)}</p>` : ''}
+      ${a.sugestao ? `<p style="font-size:.86rem;margin-top:6px"><b>Sugestão:</b> ${esc(a.sugestao)}</p>` : ''}
+      ${a.resposta ? `<div class="resp"><b>Resposta${a.respondido_por ? ' de ' + esc(nomeDe(a.respondido_por)) : ''}${a.respondido_em ? ' · ' + dBR(a.respondido_em) : ''}:</b> ${esc(a.resposta)}</div>` : (EH_EQUIPE ? `<div style="margin-top:8px"><textarea class="resp-txt" placeholder="Responder ao franqueado…" style="width:100%;border:1.5px solid var(--linha);border-radius:8px;padding:8px;font:inherit;font-size:.84rem;min-height:50px"></textarea><button type="button" class="btn btn-sec" data-resp="${esc(a.id)}" style="margin-top:6px">Responder</button></div>` : '')}
+    </div>`;
+    const form = (EH_FRANQ || EH_ADMIN) && c.status === 'ativa' ? `<div class="card form-av" id="formAv"><h3>${minha ? 'Sua avaliação desta semana' : 'Como foi esta semana?'} <span class="note" style="display:inline">· semana de ${dBR(semanaAtual)}</span></h3>
+      <label>Nota para a semana da consultoria</label><div class="estrelas" id="avEstrelas">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${minha && n <= minha.nota ? 'on' : ''}">★</button>`).join('')}</div>
+      <label>A loja, nesta semana</label><div class="opc" id="avAnd">${['melhorou', 'igual', 'piorou'].map(k => `<button type="button" data-k="${k}" class="${minha && minha.andamento === k ? 'on' : ''}">${ROT[k]}</button>`).join('')}</div>
+      <label>O que aconteceu (opcional)</label><textarea id="avCom" placeholder="O que funcionou, o que travou, o que a equipe sentiu…">${minha ? esc(minha.comentario || '') : ''}</textarea>
+      <label>Sugestão ou pedido de mudança (opcional)</label><textarea id="avSug" placeholder="Ex.: trocar a reunião para terça; mandar modelo de mensagem para a régua…">${minha ? esc(minha.sugestao || '') : ''}</textarea>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-pdf" id="avSalvar">${minha ? 'Atualizar avaliação' : 'Enviar avaliação'}</button><span class="note" id="avMsg" style="margin:0">Sugestão, nota baixa ou "piorou" viram tarefa na agenda do consultor, com prazo de 2 dias para responder.</span></div></div>` : '';
+    sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Avaliação semanal</h2><span class="hint">${EH_FRANQ ? 'Sua leitura do processo, toda semana — é o que mostra se a consultoria está fazendo diferença para você' : 'O que o franqueado está achando do processo, semana a semana · responda aqui; a resposta fica registrada'}</span></div>
+      ${form}
+      <div class="card" style="margin-top:16px"><h3>Histórico de avaliações</h3><div class="note">${avs.length ? br(avs.length) + ' semana(s) avaliada(s) · média ' + br(avs.reduce((x, a) => x + a.nota, 0) / avs.length, 1) + '/5' : 'Nenhuma avaliação ainda.'}</div>${avs.map(item).join('')}</div></div>`;
+    rep.appendChild(sec);
+    // interação
+    let nota = minha ? minha.nota : 0, andamento = minha ? minha.andamento : '';
+    sec.querySelectorAll('#avEstrelas button').forEach(b => b.onclick = () => { nota = +b.dataset.n; sec.querySelectorAll('#avEstrelas button').forEach(x => x.classList.toggle('on', +x.dataset.n <= nota)); });
+    sec.querySelectorAll('#avAnd button').forEach(b => b.onclick = () => { andamento = b.dataset.k; sec.querySelectorAll('#avAnd button').forEach(x => x.classList.toggle('on', x === b)); });
+    const bs = sec.querySelector('#avSalvar');
+    if (bs) bs.onclick = async () => {
+      const msg = sec.querySelector('#avMsg');
+      if (!nota || !andamento) { msg.textContent = 'Escolha a nota (estrelas) e diga se melhorou, ficou na mesma ou piorou.'; msg.style.color = 'var(--alerta)'; return; }
+      bs.disabled = true;
+      const linha = { consultoria_id: c.id, fra: FRA, user_id: session.user.id, semana: semanaAtual, nota, andamento, comentario: sec.querySelector('#avCom').value.trim() || null, sugestao: sec.querySelector('#avSug').value.trim() || null };
+      const { error } = minha ? await sb.from('raiox_avaliacoes').update({ nota, andamento, comentario: linha.comentario, sugestao: linha.sugestao }).eq('id', minha.id) : await sb.from('raiox_avaliacoes').insert(linha);
+      if (error) { bs.disabled = false; msg.textContent = 'Não salvou: ' + error.message; msg.style.color = 'var(--alerta)'; return; }
+      const { data: novas } = await sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false });
+      cc.avs = novas || []; sec.remove(); buildAvaliacaoTab(); montarAbas(true);
+      const s2 = document.getElementById('avaliacao'); if (s2) s2.scrollIntoView({ behavior: 'smooth' });
+    };
+    sec.querySelectorAll('[data-resp]').forEach(b => b.onclick = async () => {
+      const box = b.closest('.av-item'), txt = box.querySelector('.resp-txt').value.trim(); if (!txt) return;
+      b.disabled = true;
+      const { data, error } = await sb.from('raiox_avaliacoes').update({ resposta: txt }).eq('id', b.dataset.resp).select('id');
+      if (error || !data || !data.length) { b.disabled = false; alert(error ? error.message : 'Sem permissão para responder.'); return; }
+      // a tarefa "Avaliação semanal do franqueado" da agenda fecha junto
+      await sb.from('agenda_eventos').update({ concluida: true, concluida_em: new Date().toISOString() }).eq('consultoria_id', c.id).eq('concluida', false).like('titulo', 'Avaliação semanal do franqueado%');
+      const { data: novas } = await sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false });
+      cc.avs = novas || []; sec.remove(); buildAvaliacaoTab(); montarAbas(true);
+    });
+  }
+
+  /* ===== aba HISTÓRICO: linha do tempo da loja (raios-x, consultoria, plano, avaliações) ===== */
+  function buildHistoricoTab() {
+    const cc = window.__consultoria;
+    const sec = document.createElement('section'); sec.id = 'historico';
+    const ev = [];
+    HIST.forEach(h => ev.push({ d: (h.calculado_em || '').slice(0, 10), cls: '', t: `Raio-x de ${mesBR(h.mes_ref)} calculado`, q: h.score == null ? 'sem nota' : 'nota ' + h.score + ' · receita ' + kmil(h.kpis.receita_mes) + '/mês · margem ' + pc(h.kpis.margem_adj) }));
+    CONS.forEach(c => {
+      ev.push({ d: c.inicio, cls: 'marco', t: 'Início da consultoria de faturamento', q: 'nota inicial ' + (c.score_inicial ?? '—') + (c.obs ? ' · ' + c.obs : '') });
+      if (c.encerrada_em) ev.push({ d: c.encerrada_em.slice(0, 10), cls: 'marco', t: 'Consultoria ' + c.status + (c.resultado ? ' · resultado: ' + c.resultado.veredito : ''), q: c.resultado ? 'nota ' + (c.resultado.score_ini ?? '—') + ' → ' + (c.resultado.score_fim ?? '—') : '' });
+    });
+    if (cc) {
+      cc.itens.forEach(i => { const v = i.tipo === 'tarefa' ? i.prazo : i.data; if (i.concluida) ev.push({ d: (i.concluida_em || v || '').slice(0, 10), cls: '', t: (i.tipo === 'tarefa' ? 'Tarefa feita: ' : 'Reunião realizada: ') + i.titulo, q: i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : dBR(v) }); else if (v && v < hojeISO && !/^Avaliação semanal/.test(i.titulo)) ev.push({ d: v, cls: 'venc', t: (i.tipo === 'tarefa' ? 'Tarefa vencida: ' : 'Reunião sem confirmação: ') + i.titulo, q: 'vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)' }); });
+      cc.avs.forEach(a => ev.push({ d: a.semana, cls: 'av', t: 'Avaliação do franqueado: ' + a.nota + '/5 · ' + a.andamento, q: (a.comentario ? a.comentario.slice(0, 120) : '') + (a.resposta ? ' · respondida' : '') }));
+    }
+    ev.sort((a, b) => String(b.d).localeCompare(String(a.d)));
+    const porMes = {}; ev.forEach(e => { const k = String(e.d).slice(0, 7); (porMes[k] = porMes[k] || []).push(e); });
+    const meses = Object.keys(porMes).sort().reverse();
+    sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Histórico da loja</h2><span class="hint">Tudo que aconteceu com esta loja no Raio-X: leituras mensais, consultoria, plano e avaliações — os mesmos itens ficam na agenda da franquia na Central</span></div>
+      <div class="card">${meses.length ? meses.map(m => `<h3 style="margin:${m === meses[0] ? 0 : 18}px 0 8px">${mesBR(m)}</h3><div class="linha-tempo">${porMes[m].map(e => `<div class="lt-item ${e.cls}"><b>${esc(e.t)}</b><div class="q">${dBR(e.d)}${e.q ? ' · ' + esc(e.q) : ''}</div></div>`).join('')}</div>`).join('') : '<div class="callout">Nada registrado ainda.</div>'}</div></div>`;
+    rep.appendChild(sec);
+  }
+
   /* ===== abas: cada bloco do relatório vai para uma aba; cabeçalho e KPIs ficam sempre ===== */
   function montarAbas(manter) {
     const de = el => {
       if (el.id === 'evolucao') return 'evolucao';
       if (el.id === 'consultoria') return 'consultoria';
       if (el.id === 'planoCons' || el.id === 'tarefas') return 'tarefas';
+      if (el.id === 'avaliacao') return 'avaliacao';
+      if (el.id === 'historico') return 'historico';
       const h = el.querySelector && el.querySelector('h2'); const t = h ? h.textContent : '';
       if (/Lista de resgate/i.test(t)) return 'clientes';
       if (/prateleira|Sobrando parado|Posição de estoque|Compras e fornecedores/i.test(t)) return 'estoque';
@@ -333,7 +460,8 @@
       avisarPai();
     };
     document.querySelectorAll('.abas .aba').forEach(b => b.onclick = () => ir(b.dataset.aba, true));
-    ir(atual || (['diag', 'tarefas', 'clientes', 'estoque', 'evolucao', 'consultoria'].includes(pedida) ? pedida : 'diag'), false);
+    const bA = $('abaAvalN'); if (bA) bA.style.display = (EH_FRANQ && window.__avalPendente) ? '' : 'none';
+    ir(atual || (['diag', 'tarefas', 'clientes', 'estoque', 'evolucao', 'consultoria', 'avaliacao', 'historico'].includes(pedida) ? pedida : (EH_FRANQ && window.__avalPendente ? 'avaliacao' : 'diag')), false);
     const ex = $('exportar');
     if (ex && !ex.dataset.ligado) { ex.dataset.ligado = '1'; $('btnExportar').onclick = () => ex.classList.toggle('on'); document.addEventListener('click', e => { if (!ex.contains(e.target)) ex.classList.remove('on'); }); }
   }

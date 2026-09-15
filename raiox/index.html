@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Raio-X POP · Central POP</title>
+<!-- Raio-X POP v3.0 · 15/09/2026 · papel franqueado (vê só as lojas dele), logins de franqueado pelo admin, avaliação semanal, resultado da consultoria. -->
 <!-- Raio-X POP v2.1 · 14/09/2026 · diagnóstico de lucratividade por loja dentro da Central POP. Relatório completo em relatorio.html (motor visual original da máquina) + evolução + consultoria.
      Mesmo login da Central (projeto agenda.suporte). O cálculo roda no banco de compras pela rotina
      rede-pop-jobs e grava só o resultado nas tabelas raiox_*. Esta página lê, mostra e inicia a
@@ -168,7 +169,10 @@ table.lista td.r,table.lista th.r{text-align:right}
     <button class="aba" data-v="loja" id="abaLoja">Loja</button>
     <button class="aba" data-v="consult">Consultorias <span id="cntCons" class="st roxo" style="display:none"></span></button>
     <button class="aba" data-v="arquivos">Arquivos de estoque</button>
+    <button class="aba" data-v="franq" id="abaFranq" style="display:none">Franqueados</button>
   </div>
+  <!-- modo franqueado: só as lojas dele -->
+  <div class="barra" id="fqBarra" style="display:none"><b style="font-size:14px">Minhas lojas:</b><div class="pills" id="fqLojas"></div><span class="esp"></span><span style="font-size:12.5px;color:var(--tinta-suave)">Você vê o raio-x, o plano da consultoria e avalia a semana. A equipe da franqueadora responde por aqui e pela agenda.</span></div>
 
   <!-- ===== REDE ===== -->
   <div class="vista ativa" id="v-rede">
@@ -215,10 +219,16 @@ table.lista td.r,table.lista th.r{text-align:right}
   </div>
 </div>
 
+  <!-- ===== FRANQUEADOS (admin) ===== -->
+  <div class="vista" id="v-franq">
+    <div class="painel"><h3>Logins de franqueado <small>cada login vê só o raio-x e a consultoria das lojas ligadas a ele; nada mais da Central</small><span style="flex:1"></span><button class="btn laranja" id="btnNovoFranq" type="button">+ Novo franqueado</button></h3><div id="fqLista"></div></div>
+    <p class="aviso">A senha inicial é definida aqui e mostrada uma vez — anote e envie ao franqueado. O e-mail precisa ser único no sistema. Desativar bloqueia o login e desliga as lojas; o histórico de avaliações fica.</p>
+  </div>
+
 <div id="mBg"><div id="mBox"></div></div>
 <div class="toast" id="toast">salvo ✓</div>
 
 <script src="motor.js?v=2.1"></script>
-<script src="app.js?v=2.1.2"></script>
+<script src="app.js?v=3.0"></script>
 </body>
 </html>

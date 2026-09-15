@@ -163,6 +163,11 @@ td.num,th.num{text-align:right}
 
 /* ===== LISTA DE RESGATE ===== */
 .filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.num th.ord,#tbResgate th.ord{cursor:pointer;user-select:none;white-space:nowrap}
+#tbResgate th.ord:hover{color:var(--verde-900);text-decoration:underline}
+#tbResgate th.ord.asc::after{content:' ▲';font-size:.7em}
+#tbResgate th.ord.desc::after{content:' ▼';font-size:.7em}
+#tbResgate th.ord.asc,#tbResgate th.ord.desc{color:var(--verde-900)}
 .fchipf{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:6px 12px;font-size:.73rem;font-weight:700;color:var(--ink-2)}
 .fchipf b{color:var(--verde-900)}
 .fchipf.ativo{background:var(--verde-900);border-color:var(--verde-900);color:#fff}
@@ -258,6 +263,16 @@ footer{margin-top:44px;padding:22px 0 34px;border-top:1px solid var(--linha);fon
 .item-plano .acao{margin-left:auto;flex:0 0 auto}
 .item-plano .acao button{border:1.5px solid var(--verde-600);background:#fff;color:var(--verde-900);border-radius:8px;padding:5px 10px;font-size:.74rem;font-weight:700}
 .item-plano .acao button.feita{border-color:var(--linha);color:var(--ink-2)}
+.edit-tarefa{background:#fff;border:1.5px dashed var(--verde-600);border-radius:10px;padding:12px 14px;margin:-2px 0 10px}
+.edit-tarefa.nova{border-style:solid;border-color:var(--linha);margin:0}
+.ft-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px}
+.ft-grid label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2)}
+.ft-grid label.full{grid-column:1/-1}
+.ft-grid input,.ft-grid select,.ft-grid textarea{display:block;width:100%;margin-top:4px;border:1.5px solid var(--linha);border-radius:8px;padding:7px 10px;font:inherit;font-size:.84rem;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink)}
+.ft-acoes{text-align:right}
+.ft-acoes button{border:1.5px solid var(--verde-600);background:var(--verde-900);color:#fff;border-radius:8px;padding:7px 14px;font-size:.78rem;font-weight:700}
+.ft-acoes button.ft-cancelar{background:#fff;color:var(--ink-2);border-color:var(--linha)}
+@media (max-width:640px){.ft-grid{grid-template-columns:1fr 1fr}.ft-grid label:first-child{grid-column:1/-1}}
 .resumo-tarefas{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
 @media (max-width:560px){.resumo-tarefas{grid-template-columns:repeat(2,1fr)}}
 .estrelas{display:inline-flex;gap:4px}.estrelas button{border:none;background:none;font-size:1.7rem;line-height:1;cursor:pointer;color:#D9E3DD;padding:0}.estrelas button.on{color:var(--amarelo)}
@@ -1278,8 +1293,32 @@ const fmtDataHora = v => { const d = v instanceof Date ? v : new Date(v); return
 function ordenaResgate(clientes) {
   return [...clientes].sort((a, b) => (PRIO[a.banda] - PRIO[b.banda]) || (b.gastoMes - a.gastoMes));
 }
-function buildResgateRows(clientes, filtro, busca) {
-  let lista = ordenaResgate(clientes);
+/* ordenação escolhida no cabeçalho da tabela: {col, dir}; sem escolha, vale a prioridade de resgate */
+function ordenaPorColuna(lista, ord) {
+  if (!ord || !ord.col) return lista;
+  const dir = ord.dir === 'asc' ? 1 : -1;
+  const val = c => {
+    switch (ord.col) {
+      case 'status': return PRIO[c.banda] ?? 99;
+      case 'nome': return String(c.nome || '').toLocaleLowerCase('pt-BR');
+      case 'tel': return telWhats(c.tel) ? 1 : (c.tel ? 0.5 : 0);
+      case 'ultima': return c.ultima instanceof Date ? c.ultima.getTime() : 0;
+      case 'dias': return +c.dias || 0;
+      case 'compras': return +c.compras || 0;
+      case 'gastoMes': return +c.gastoMes || 0;
+      case 'racao': return c.racao ? 1 : 0;
+      case 'contato': return c.contato ? 1 : 0;
+      default: return 0;
+    }
+  };
+  return [...lista].sort((a, b) => {
+    const va = val(a), vb = val(b);
+    const r = typeof va === 'string' ? va.localeCompare(vb, 'pt-BR') : (va - vb);
+    return r ? r * dir : (b.gastoMes - a.gastoMes);   // empate: cliente de maior valor primeiro
+  });
+}
+function buildResgateRows(clientes, filtro, busca, ord) {
+  let lista = ordenaPorColuna(ordenaResgate(clientes), ord);
   if (filtro && filtro !== 'todos') lista = lista.filter(c => c.banda === filtro);
   if (busca) { const q = busca.toLowerCase(); lista = lista.filter(c => (c.nome + ' ' + c.tel).toLowerCase().includes(q)); }
   if (window.__rxSoAFazer) lista = lista.filter(c => !c.contato);
@@ -1428,7 +1467,8 @@ function buildReportHTML(R, cfg) {
     <div class="card">
       <div class="filtros no-print">${chipsFiltro}<button class="fchipf" id="chipSoAFazer" title="Esconde os clientes já contatados">Só a fazer</button><input type="search" id="buscaCli" placeholder="Buscar nome ou telefone…" aria-label="Buscar cliente"><button class="btn btn-sec" id="btnCSV2">⬇ Baixar CSV</button></div>
       <div class="legenda-cores">${legenda}</div>
-      <div class="tbl-scroll"><table class="num" id="tbResgate"><thead><tr><th>Status</th><th>Cliente</th><th class="num">Telefone</th><th class="num">Últ. compra</th><th class="num">Dias</th><th class="num">Compras</th><th class="num">Gasto/mês</th><th style="text-align:center">Ração</th><th style="text-align:center" class="no-print">Contato</th></tr></thead><tbody id="resgateBody"></tbody></table></div>
+      <div class="tbl-scroll"><table class="num" id="tbResgate"><thead><tr><th class="ord" data-ord="status" title="Ordenar por prioridade de resgate">Status</th><th class="ord" data-ord="nome" title="Ordenar por nome">Cliente</th><th class="num ord" data-ord="tel" title="Com telefone primeiro">Telefone</th><th class="num ord" data-ord="ultima" title="Ordenar pela última compra">Últ. compra</th><th class="num ord" data-ord="dias" title="Ordenar por dias sem comprar">Dias</th><th class="num ord" data-ord="compras" title="Ordenar por número de compras">Compras</th><th class="num ord" data-ord="gastoMes" title="Ordenar por gasto mensal">Gasto/mês</th><th style="text-align:center" class="ord" data-ord="racao" title="Quem compra ração primeiro">Ração</th><th style="text-align:center" class="no-print ord" data-ord="contato" title="A fazer primeiro">Contato</th></tr></thead><tbody id="resgateBody"></tbody></table>
+      <div class="hint no-print" style="display:block;margin-top:6px;font-size:.72rem">Clique no título de uma coluna para ordenar a lista por ela; clique de novo para inverter. Sem coluna escolhida, a ordem é por prioridade de resgate e valor do cliente.</div></div>
       <div id="resgateInfo" class="note num" style="margin-top:8px"></div>
       <div class="print-note">No PDF são impressos os 30 primeiros por prioridade — a lista completa sai no botão "Baixar CSV".</div>
     </div>
@@ -1838,7 +1878,7 @@ function baixarCSV(){
 
 function initResgate(R){
   const body = $('resgateBody'), info = $('resgateInfo');
-  let filtro = 'todos', busca = '';
+  let filtro = 'todos', busca = '', ord = { col: null, dir: 'desc' };
   window.__rxSoAFazer = false;
   // contatos feitos: dentro da Central vêm do banco (relatorio.js define window.__rxContatos); fora, ficam só neste navegador
   const lsKey = 'raiox_contatos_' + ((R.filial || 'loja') + '').replace(/[^a-z0-9]+/gi, '_');
@@ -1848,8 +1888,9 @@ function initResgate(R){
     window.__rxContatos = { marcar: async (cli, feito) => { if (feito) feitos[cli] = new Date().toISOString(); else delete feitos[cli]; try { localStorage.setItem(lsKey, JSON.stringify(feitos)); } catch (e) {} return { em: feitos[cli] }; } };
   }
   function draw(){
-    const { html, n } = buildResgateRows(R.clientes, filtro, busca);
+    const { html, n } = buildResgateRows(R.clientes, filtro, busca, ord);
     body.innerHTML = html;
+    document.querySelectorAll('#tbResgate th.ord').forEach(th => { th.classList.remove('asc', 'desc'); if (th.dataset.ord === ord.col) th.classList.add(ord.dir); });
     const nFeitos = R.clientes.filter(c => c.contato).length;
     info.textContent = n + ' cliente(s) na visão atual · ' + br(nFeitos) + ' contato(s) feito(s) · a Central guarda os ' + R.clientes.length + ' clientes inativos de maior valor (código, nome e telefone do One Pet); o CSV leva todos eles.';
     document.querySelectorAll('.fchipf[data-f]').forEach(bt => bt.classList.toggle('ativo', bt.dataset.f === filtro));
@@ -1873,6 +1914,15 @@ function initResgate(R){
   document.querySelectorAll('.fchipf[data-f]').forEach(btn => btn.addEventListener('click', () => { filtro = btn.dataset.f; draw(); }));
   const chipAF = $('chipSoAFazer'); if (chipAF) chipAF.addEventListener('click', () => { window.__rxSoAFazer = !window.__rxSoAFazer; draw(); });
   $('buscaCli').addEventListener('input', e => { busca = e.target.value; draw(); });
+  // clique no cabeçalho: 1º clique ordena (números do maior pro menor, nome A→Z, status mais urgente primeiro), 2º inverte, 3º volta à ordem padrão
+  const primeiroSentido = { nome: 'asc', status: 'asc', ultima: 'asc', contato: 'asc' };
+  document.querySelectorAll('#tbResgate th.ord').forEach(th => th.addEventListener('click', () => {
+    const col = th.dataset.ord;
+    if (ord.col !== col) ord = { col, dir: primeiroSentido[col] || 'desc' };
+    else if (ord.dir === (primeiroSentido[col] || 'desc')) ord.dir = ord.dir === 'asc' ? 'desc' : 'asc';
+    else ord = { col: null, dir: 'desc' };
+    draw();
+  }));
   $('btnCSV2').addEventListener('click', baixarCSV);
   draw();
 }
@@ -2006,6 +2056,6 @@ $('btnNova').addEventListener('click', () => {
 });
 })();
 </script>
-<script src="relatorio.js?v=3.2"></script>
+<script src="relatorio.js?v=3.3"></script>
 </body>
 </html>

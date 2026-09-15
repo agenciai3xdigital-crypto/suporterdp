@@ -1,9 +1,9 @@
-/* Raio-X POP · app.js · v3.2 · 15/09/2026
+/* Raio-X POP · app.js · v3.3 · 15/09/2026
    Lê as tabelas raiox_* da Central POP e a agenda; inicia a consultoria de faturamento. */
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.2';
+const VERSAO = 'v3.3';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -228,16 +228,21 @@ window.addEventListener('message', ev => {
   if (ev.origin !== location.origin || !ev.data || ev.data.fra !== lojaAtual) return;
   const fr = $('ljFrame'); if (!fr) return;
   if (ev.data.raiox === 'altura') fr.style.height = Math.max(400, ev.data.altura + 24) + 'px';
-  if (ev.data.raiox === 'topo') window.scrollTo({ top: Math.max(0, fr.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' });
+  if (ev.data.raiox === 'topo') rolarInicioLoja();
   if (ev.data.raiox === 'abas') desenharAbasPai(ev.data);
 });
+// ao trocar de aba o conteúdo muda de tamanho; a página volta ao início da ficha da loja (nota, cabeçalho), logo abaixo da barra fixa de abas
+function rolarInicioLoja() {
+  const box = $('ljConteudo'); if (!box) return;
+  window.scrollTo({ top: Math.max(0, box.getBoundingClientRect().top + window.scrollY - 12), behavior: 'smooth' });
+}
 const ABAS_REL = [['diag', 'Diagnóstico'], ['tarefas', 'Tarefas'], ['clientes', 'Clientes'], ['estoque', 'Estoque'], ['evolucao', 'Evolução'], ['consultoria', 'Consultoria'], ['avaliacao', 'Avaliação'], ['historico', 'Histórico']];
 const EXPORTS_REL = [['btnPDF', '⬇ Relatório em PDF'], ['btnCSV', '⬇ Lista de resgate (CSV)'], ['btnTarefasCSV', '⬇ Achados do raio-x (CSV)'], ['btnPlanoCSV', '⬇ Plano da consultoria (CSV)'], ['btnEvolucaoCSV', '⬇ Evolução mensal (CSV)'], ['btnSnapshot', '⬇ Instantâneo (JSON)']];
 function desenharAbasPai(d) {
   const box = $('ljAbas'), fr = $('ljFrame'); if (!box || !fr) return;
   const bd = d.badges || {};
   box.innerHTML = `<div class="abas-pai-in">${ABAS_REL.map(([k, t]) => `<button type="button" class="aba-rel${d.atual === k ? ' on' : ''}" data-aba="${k}">${t}${k === 'tarefas' && bd.tarefas ? ` <b class="bd">${bd.tarefas}</b>` : ''}${k === 'avaliacao' && bd.avaliacao ? ' <b class="bd">!</b>' : ''}</button>`).join('')}<span style="flex:1"></span><div class="exp-pai"><button type="button" class="btn claro" id="btnExpPai">⬇ Exportar ▾</button><div class="menu" id="menuExpPai">${EXPORTS_REL.map(([id, t]) => `<button type="button" data-exp="${id}">${t}</button>`).join('')}</div></div></div>`;
-  box.querySelectorAll('.aba-rel').forEach(b => b.onclick = () => { fr.contentWindow.postMessage({ raiox: 'aba', aba: b.dataset.aba }, location.origin); box.querySelectorAll('.aba-rel').forEach(x => x.classList.toggle('on', x === b)); window.scrollTo({ top: Math.max(0, box.getBoundingClientRect().top + window.scrollY - 70), behavior: 'smooth' }); });
+  box.querySelectorAll('.aba-rel').forEach(b => b.onclick = () => { fr.contentWindow.postMessage({ raiox: 'aba', aba: b.dataset.aba }, location.origin); box.querySelectorAll('.aba-rel').forEach(x => x.classList.toggle('on', x === b)); rolarInicioLoja(); });
   const m = $('menuExpPai'); $('btnExpPai').onclick = ev => { ev.stopPropagation(); m.classList.toggle('on'); };
   box.querySelectorAll('[data-exp]').forEach(b => b.onclick = () => { m.classList.remove('on'); fr.contentWindow.postMessage({ raiox: 'exportar', botao: b.dataset.exp }, location.origin); });
   document.addEventListener('click', () => m.classList.remove('on'), { once: true });

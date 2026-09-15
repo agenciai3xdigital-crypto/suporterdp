@@ -170,6 +170,10 @@ td.num,th.num{text-align:right}
 #buscaCli{flex:1;min-width:170px;border:1.5px solid var(--linha);border-radius:99px;padding:7px 14px;font-size:.8rem}
 .legenda-cores{display:flex;flex-wrap:wrap;gap:12px;font-size:.7rem;color:var(--ink-2);margin-bottom:10px}
 .leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.wa{color:var(--verde-900);font-weight:700;text-decoration:none;white-space:nowrap;border-bottom:1.5px dashed var(--verde-900)}.wa:hover{color:#128C7E}
+tr.contatado td{background:#E6F4EC}tr.contatado td:nth-child(2){color:#1B5E3F}
+.ctt{border:1.5px solid var(--linha);background:#fff;border-radius:99px;padding:3px 9px;font-size:.62rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;cursor:pointer;color:var(--ink-2)}
+.ctt.feito{background:#1B8A4C;border-color:#1B8A4C;color:#fff}.ctt:disabled{opacity:.5;cursor:wait}
 .stbadge{display:inline-block;padding:3px 9px;border-radius:99px;font-size:.64rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
 .tbl-scroll{max-height:520px;overflow:auto;border:1px solid var(--linha);border-radius:10px}
 .tbl-scroll table{font-size:.76rem}
@@ -757,7 +761,7 @@ function analyze(biRowsArr, abcProd, estoqueNativo, entradaRowsArr, abcCompras, 
   });
   const clientes = Object.values(cliMap).map(c => {
     const dias = Math.floor((ref - c.ultima) / 864e5);
-    return { nome: c.nome, tel: c.tel, ultima: c.ultima, primeiro: c.primeiro, dias, banda: bandaDe(dias).id,
+    return { cli: c.cli, nome: c.nome, tel: c.tel, ultima: c.ultima, primeiro: c.primeiro, dias, banda: bandaDe(dias).id,
       compras: c.peds.size, gasto: c.gasto, gastoMes: c.gasto / c.mks.size,
       racao: c.racao, bt: c.bt, pacote: c.pacote,
       gastoBTmes: c.gastoBT / c.mks.size, btAtivo: c.ultimaBT ? c.ultimaBT >= d60 : false,
@@ -1251,6 +1255,26 @@ window.abrirGateInfo = function (idx) {
 }
 
 /* ---------- Lista de resgate ---------- */
+/* mensagem universal de retomada (sem emoji): pergunta aberta para o cliente responder; depois o franqueado segue o resgate */
+const MSG_RETOMADA = 'Oi {nome}, tudo bem? Aqui e da POP Pet Center. Faz um tempo que voce nao aparece por aqui e lembrei de voce. Como esta o seu pet? Se estiver precisando de alguma coisa pra ele, me fala que eu separo aqui pra voce.';
+function primeiroNome(nome) {
+  const p = String(nome || '').trim().split(/\s+/)[0] || '';
+  if (!p || /^c[oó]d\.?$/i.test(p) || /\d/.test(p)) return '';
+  return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+}
+function telWhats(tel) {
+  let d = String(tel || '').replace(/\D/g, '');
+  if (d.startsWith('0')) d = d.replace(/^0+/, '');
+  if (d.length === 10 || d.length === 11) d = '55' + d;
+  return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d : '';
+}
+function linkWhats(c) {
+  const d = telWhats(c.tel); if (!d) return '';
+  const nome = primeiroNome(c.nome);
+  const msg = MSG_RETOMADA.replace('{nome}', nome).replace(/\s+,/, ',');
+  return 'https://wa.me/' + d + '?text=' + encodeURIComponent(msg);
+}
+const fmtDataHora = v => { const d = v instanceof Date ? v : new Date(v); return isNaN(d) ? '' : d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 function ordenaResgate(clientes) {
   return [...clientes].sort((a, b) => (PRIO[a.banda] - PRIO[b.banda]) || (b.gastoMes - a.gastoMes));
 }
@@ -1258,25 +1282,30 @@ function buildResgateRows(clientes, filtro, busca) {
   let lista = ordenaResgate(clientes);
   if (filtro && filtro !== 'todos') lista = lista.filter(c => c.banda === filtro);
   if (busca) { const q = busca.toLowerCase(); lista = lista.filter(c => (c.nome + ' ' + c.tel).toLowerCase().includes(q)); }
+  if (window.__rxSoAFazer) lista = lista.filter(c => !c.contato);
   const html = lista.map((c, i) => {
     const b = BANDAS.find(x => x.id === c.banda);
-    return `<tr class="${i >= 30 ? 'extra' : ''}">
+    const wa = linkWhats(c);
+    const telHtml = wa ? `<a class="wa" href="${wa}" target="_blank" rel="noopener" data-cli="${esc(String(c.cli || ''))}" title="Abrir WhatsApp com mensagem de retomada">${esc(c.tel)}</a>` : esc(c.tel || '—');
+    const ctt = c.contato ? `<button class="ctt feito" data-cli="${esc(String(c.cli || ''))}" title="Contato feito${c.contato.em ? ' em ' + fmtDataHora(c.contato.em) : ''}${c.contato.por_nome ? ' por ' + esc(c.contato.por_nome) : ''} · clique para desfazer">✓ feito</button>`
+                         : `<button class="ctt" data-cli="${esc(String(c.cli || ''))}" title="Marcar contato como feito">a fazer</button>`;
+    return `<tr class="${i >= 30 ? 'extra' : ''}${c.contato ? ' contatado' : ''}" data-cli="${esc(String(c.cli || ''))}">
 <td><span class="stbadge" style="background:${b.cor};color:${BADGE_TXT[c.banda]}">${b.rot}</span></td>
-<td>${esc(c.nome)}</td><td class="num">${esc(c.tel || '—')}</td>
+<td>${esc(c.nome)}</td><td class="num">${telHtml}</td>
 <td class="num">${fmtData(c.ultima)}</td><td class="num"><b>${br(c.dias)}</b></td>
 <td class="num">${br(c.compras)}</td><td class="num">${money(c.gastoMes)}</td>
-<td style="text-align:center">${c.racao ? '✓' : '—'}</td></tr>`;
+<td style="text-align:center">${c.racao ? '✓' : '—'}</td><td style="text-align:center" class="no-print">${ctt}</td></tr>`;
   }).join('');
   return { html, n: lista.length };
 }
 const segCSV = v => { const t = String(v == null ? '' : v); return /^[=+\-@\t\r]/.test(t) ? "'" + t : t; };
 function buildClientesCSV(R) {
-  const linhas = ['status;cliente;telefone;ultima_compra;dias_sem_comprar;compras;gasto_total;gasto_mensal;compra_racao;usa_banho_tosa;tem_pacote'];
+  const linhas = ['status;cliente;telefone;ultima_compra;dias_sem_comprar;compras;gasto_total;gasto_mensal;compra_racao;usa_banho_tosa;tem_pacote;contato_feito_em'];
   ordenaResgate(R.clientes).forEach(c => {
     const b = BANDAS.find(x => x.id === c.banda);
     linhas.push([b.rot + ' (' + c.banda + 'd)', '"' + segCSV(c.nome).replace(/"/g, '""') + '"', segCSV(c.tel),
       fmtData(c.ultima), c.dias, c.compras, br(c.gasto, 2), br(c.gastoMes, 2),
-      c.racao ? 'SIM' : 'NAO', c.bt ? 'SIM' : 'NAO', c.pacote ? 'SIM' : 'NAO'].join(';'));
+      c.racao ? 'SIM' : 'NAO', c.bt ? 'SIM' : 'NAO', c.pacote ? 'SIM' : 'NAO', c.contato ? fmtDataHora(c.contato.em) : ''].join(';'));
   });
   return '\ufeff' + linhas.join('\r\n');
 }
@@ -1397,9 +1426,9 @@ function buildReportHTML(R, cfg) {
     <div class="sec-head"><h2>Lista de resgate de clientes</h2><span class="hint num">${br(R.cliTot)} clientes identificados · cor conforme o tempo sem comprar (qualquer item), dias contados até ${fmtData(R.ref)} (última venda carregada) · ordenada por prioridade de resgate e valor do cliente${R.semTel ? ' · ' + br(R.semTel) + ' sem telefone no cadastro' : ''}</span></div>
     <div class="total-tag num" style="background:var(--alerta);color:#fff"><div class="big">${br(R.churnGeral.inativos90)}</div><div class="desc" style="color:#fff">clientes sem comprar nada há 90+ dias, de qualquer categoria — ${br(R.churnGeral.naoRacaoInativo)} deles nunca compraram ração e por isso não apareceriam em nenhuma régua pensada só pra ração.</div></div>
     <div class="card">
-      <div class="filtros no-print">${chipsFiltro}<input type="search" id="buscaCli" placeholder="Buscar nome ou telefone…" aria-label="Buscar cliente"><button class="btn btn-sec" id="btnCSV2">⬇ Baixar CSV</button></div>
+      <div class="filtros no-print">${chipsFiltro}<button class="fchipf" id="chipSoAFazer" title="Esconde os clientes já contatados">Só a fazer</button><input type="search" id="buscaCli" placeholder="Buscar nome ou telefone…" aria-label="Buscar cliente"><button class="btn btn-sec" id="btnCSV2">⬇ Baixar CSV</button></div>
       <div class="legenda-cores">${legenda}</div>
-      <div class="tbl-scroll"><table class="num" id="tbResgate"><thead><tr><th>Status</th><th>Cliente</th><th class="num">Telefone</th><th class="num">Últ. compra</th><th class="num">Dias</th><th class="num">Compras</th><th class="num">Gasto/mês</th><th style="text-align:center">Ração</th></tr></thead><tbody id="resgateBody"></tbody></table></div>
+      <div class="tbl-scroll"><table class="num" id="tbResgate"><thead><tr><th>Status</th><th>Cliente</th><th class="num">Telefone</th><th class="num">Últ. compra</th><th class="num">Dias</th><th class="num">Compras</th><th class="num">Gasto/mês</th><th style="text-align:center">Ração</th><th style="text-align:center" class="no-print">Contato</th></tr></thead><tbody id="resgateBody"></tbody></table></div>
       <div id="resgateInfo" class="note num" style="margin-top:8px"></div>
       <div class="print-note">No PDF são impressos os 30 primeiros por prioridade — a lista completa sai no botão "Baixar CSV".</div>
     </div>
@@ -1810,13 +1839,39 @@ function baixarCSV(){
 function initResgate(R){
   const body = $('resgateBody'), info = $('resgateInfo');
   let filtro = 'todos', busca = '';
+  window.__rxSoAFazer = false;
+  // contatos feitos: dentro da Central vêm do banco (relatorio.js define window.__rxContatos); fora, ficam só neste navegador
+  const lsKey = 'raiox_contatos_' + ((R.filial || 'loja') + '').replace(/[^a-z0-9]+/gi, '_');
+  if (!window.__rxContatos) {
+    let feitos = {}; try { feitos = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch (e) {}
+    R.clientes.forEach(c => { if (feitos[c.cli]) c.contato = { em: feitos[c.cli] }; });
+    window.__rxContatos = { marcar: async (cli, feito) => { if (feito) feitos[cli] = new Date().toISOString(); else delete feitos[cli]; try { localStorage.setItem(lsKey, JSON.stringify(feitos)); } catch (e) {} return { em: feitos[cli] }; } };
+  }
   function draw(){
     const { html, n } = buildResgateRows(R.clientes, filtro, busca);
     body.innerHTML = html;
-    info.textContent = n + ' cliente(s) na visão atual · a Central guarda os ' + R.clientes.length + ' clientes inativos de maior valor (código, nome e telefone do One Pet); o CSV leva todos eles.';
-    document.querySelectorAll('.fchipf').forEach(bt => bt.classList.toggle('ativo', bt.dataset.f === filtro));
+    const nFeitos = R.clientes.filter(c => c.contato).length;
+    info.textContent = n + ' cliente(s) na visão atual · ' + br(nFeitos) + ' contato(s) feito(s) · a Central guarda os ' + R.clientes.length + ' clientes inativos de maior valor (código, nome e telefone do One Pet); o CSV leva todos eles.';
+    document.querySelectorAll('.fchipf[data-f]').forEach(bt => bt.classList.toggle('ativo', bt.dataset.f === filtro));
+    const chip = $('chipSoAFazer'); if (chip) chip.classList.toggle('ativo', !!window.__rxSoAFazer);
   }
-  document.querySelectorAll('.fchipf').forEach(btn => btn.addEventListener('click', () => { filtro = btn.dataset.f; draw(); }));
+  async function marcar(cli, feito, btn) {
+    const c = R.clientes.find(x => String(x.cli) === String(cli)); if (!c) return;
+    if (btn) btn.disabled = true;
+    try {
+      const r = await window.__rxContatos.marcar(cli, feito);
+      c.contato = feito ? Object.assign({ em: new Date().toISOString() }, r || {}) : null;
+    } catch (e) { alert('Não salvou o contato: ' + (e.message || e)); }
+    draw();
+  }
+  body.addEventListener('click', ev => {
+    const a = ev.target.closest('a.wa');
+    if (a) { const cli = a.dataset.cli; const c = R.clientes.find(x => String(x.cli) === cli); if (c && !c.contato) marcar(cli, true, null); return; }   // abre o WhatsApp (link) e marca como feito
+    const b = ev.target.closest('button.ctt');
+    if (b) { ev.preventDefault(); marcar(b.dataset.cli, !b.classList.contains('feito'), b); }
+  });
+  document.querySelectorAll('.fchipf[data-f]').forEach(btn => btn.addEventListener('click', () => { filtro = btn.dataset.f; draw(); }));
+  const chipAF = $('chipSoAFazer'); if (chipAF) chipAF.addEventListener('click', () => { window.__rxSoAFazer = !window.__rxSoAFazer; draw(); });
   $('buscaCli').addEventListener('input', e => { busca = e.target.value; draw(); });
   $('btnCSV2').addEventListener('click', baixarCSV);
   draw();
@@ -1951,6 +2006,6 @@ $('btnNova').addEventListener('click', () => {
 });
 })();
 </script>
-<script src="relatorio.js?v=3.0"></script>
+<script src="relatorio.js?v=3.2"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
-/* Raio-X POP · app.js · v3.1 · 15/09/2026
+/* Raio-X POP · app.js · v3.2 · 15/09/2026
    Lê as tabelas raiox_* da Central POP e a agenda; inicia a consultoria de faturamento. */
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.1';
+const VERSAO = 'v3.2';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -314,8 +314,8 @@ function abrirModalConsultoria(f, s, R) {
   const prev = async () => {
     const { data: modelo } = await sb.from('raiox_plano_modelo').select('*').eq('ativo', true).order('ordem');
     const itens = (modelo || []).filter(m => !m.chave || keys.has(m.chave));
-    const nR = itens.filter(m => m.tipo === 'reuniao').length, nT = itens.length - nR;
-    $('csPrev').innerHTML = `Vai criar <b>${nR} reuniões</b> e <b>${nT} tarefas</b> na agenda de ${esc(nomeDe($('csCons').value))}, de ${dBR($('csInicio').value)} a ${dBR(addDias($('csInicio').value, 90))}. Só admin edita ou cancela depois.`;
+    const nR = itens.filter(m => m.tipo === 'reuniao').length, nF = itens.filter(m => m.tipo !== 'reuniao' && m.responsavel === 'franqueado').length, nT = itens.length - nR - nF;
+    $('csPrev').innerHTML = `Vai criar <b>${nR} reuniões</b>, <b>${nT} tarefas do consultor</b> e <b>${nF} tarefas do franqueado</b> na agenda de ${esc(nomeDe($('csCons').value))}, de ${dBR($('csInicio').value)} a ${dBR(addDias($('csInicio').value, 90))}. Só admin edita ou cancela depois.`;
     $('csOk').onclick = () => criarConsultoria(f, s, R, itens); $('csOk').disabled = false;
   };
   $('csCons').onchange = prev; $('csInicio').onchange = prev; prev();
@@ -343,7 +343,7 @@ async function criarConsultoria(f, s, R, itens) {
         const h1 = String(+h0.slice(0, 2) + 1).padStart(2, '0') + ':' + h0.slice(3);
         return { titulo: m.titulo, data: dia, ini: h0, fim: h1, tipo: 'compromisso', descricao };
       }
-      return { titulo: m.titulo, data: inicio, tipo: 'tarefa', descricao, prazo: dia };
+      return { titulo: m.titulo, data: inicio, tipo: 'tarefa', descricao, prazo: dia, responsavel: m.responsavel === 'franqueado' ? 'franqueado' : 'consultor' };
     });
     // uma transação no servidor: consultoria + itens da agenda, ou nada
     const { error: e2 } = await sb.rpc('raiox_iniciar_consultoria', { p_fra: f.fra, p_consultor: consultor, p_inicio: inicio, p_obs: obs, p_score_inicial: s.score, p_mes_ref: s.mes_ref, p_itens: linhas });
@@ -474,10 +474,12 @@ async function desenharFranqueados() {
   const franqs = PERFIS.filter(p => !p.is_admin && (p.papeis || []).includes('franqueado'));
   const ULT = {}; if (franqs.length) { const { data: ac } = await sb.from('acessos').select('user_id,em').in('user_id', franqs.map(p => p.id)).order('em', { ascending: false }).limit(2000); (ac || []).forEach(a => { const o = ULT[a.user_id] = ULT[a.user_id] || { ult: a.em, n30: 0 }; if (diasDesde(a.em) <= 30) o.n30++; }); }
   const box = $('fqLista');
-  box.innerHTML = franqs.length ? `<table class="lista"><tr><th>Nome</th><th>Último acesso</th><th>Lojas</th><th></th></tr>` + franqs.map(p => { const lojas = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).sort((a, b) => a - b); const u = ULT[p.id];
-    return `<tr><td><div class="t">${esc(p.nome)}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}…</div></td><td>${u ? `<div class="t">${dBR(u.ult)}</div><div class="s">${u.n30} acesso(s) em 30 dias</div>` : '<span class="st lar">nunca entrou</span>'}</td><td>${lojas.length ? lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)}">FRA ${f}</span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
+  const nPorLoja = {}; FQ_MAPA.forEach(x => { nPorLoja[x.fra] = (nPorLoja[x.fra] || 0) + 1; });
+  const cheias = Object.keys(nPorLoja).filter(f => nPorLoja[f] >= 3).map(Number).sort((a, b) => a - b);
+  box.innerHTML = (cheias.length ? `<div class="s" style="margin-bottom:8px">Limite: <b>3 usuários por loja</b>. Lojas no limite: ${cheias.map(f => 'FRA ' + f).join(', ')}.</div>` : `<div class="s" style="margin-bottom:8px">Limite: <b>3 usuários por loja</b> (dono + até 2 pessoas da equipe, todos com a mesma visão).</div>`) + (franqs.length ? `<table class="lista"><tr><th>Nome</th><th>Último acesso</th><th>Lojas</th><th></th></tr>` + franqs.map(p => { const lojas = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).sort((a, b) => a - b); const u = ULT[p.id];
+    return `<tr><td><div class="t">${esc(p.nome)}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}…</div></td><td>${u ? `<div class="t">${dBR(u.ult)}</div><div class="s">${u.n30} acesso(s) em 30 dias</div>` : '<span class="st lar">nunca entrou</span>'}</td><td>${lojas.length ? lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)} · ${nPorLoja[f] || 0}/3 usuários">FRA ${f} <small>${nPorLoja[f] || 0}/3</small></span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
       <td style="white-space:nowrap"><button class="btn claro" data-fqlojas="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Lojas</button> <button class="btn claro" data-fqsenha="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Senha</button> <button class="btn verm" data-fqdes="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Desativar</button></td></tr>`; }).join('') + '</table>'
-    : '<div class="vazio">Nenhum franqueado cadastrado. Use "+ Novo franqueado".</div>';
+    : '<div class="vazio">Nenhum franqueado cadastrado. Use "+ Novo franqueado".</div>');
   box.querySelectorAll('[data-fqlojas]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqlojas); const atuais = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).join(', ');
     const v = prompt('Lojas de ' + p.nome + ' (números de FRA separados por vírgula):', atuais); if (v === null) return;
     chamarFranq({ acao: 'lojas', user_id: p.id, fras: v.split(/[,\s;]+/).filter(Boolean) }).then(() => { toast('lojas atualizadas'); desenharFranqueados(); }).catch(erro); });

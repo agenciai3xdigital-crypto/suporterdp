@@ -64,9 +64,10 @@
   ]);
   const S = atualQ.data;
   if (!S) return aviso('Esta loja ainda não tem raio-x calculado. Depois da carga do BI de vendas, a rotina noturna calcula sozinha.');
-  const [fullQ, resgQ] = await Promise.all([
+  const [fullQ, resgQ, cttQ] = await Promise.all([
     sb.from('raiox_snapshots').select('dados,tarefas').eq('fra', FRA).eq('mes_ref', S.mes_ref).single(),
-    sb.from('raiox_resgate').select('cliente_cod,nome,telefone,dias,banda,compras,gasto,gasto_mes,racao,bt,ultima').eq('fra', FRA).eq('mes_ref', S.mes_ref).order('gasto_mes', { ascending: false })
+    sb.from('raiox_resgate').select('cliente_cod,nome,telefone,dias,banda,compras,gasto,gasto_mes,racao,bt,ultima').eq('fra', FRA).eq('mes_ref', S.mes_ref).order('gasto_mes', { ascending: false }),
+    sb.from('raiox_resgate_contatos').select('cliente_cod,por,em').eq('fra', FRA)
   ]);
   if (fullQ.error) return aviso('Não consegui ler o diagnóstico: ' + fullQ.error.message);
   const F = frqQ.data || { fra: FRA, nome: 'FRA ' + FRA };
@@ -85,10 +86,24 @@
     (R.compras.custoSubindo || []).forEach(i => { i.dataIni = reviver(i.dataIni); i.dataFim = reviver(i.dataFim); });
   }
   // lista de resgate: a Central guarda todos os clientes identificados da loja (código, nome, telefone); quem vê é regra do banco (carteira do consultor, franqueado da loja, admin/supervisão)
+  // contatos de resgate já feitos (clique no WhatsApp): gravados na Central por loja + cliente, com quem clicou e quando
+  const CTT = {}; (cttQ.data || []).forEach(x => { CTT[x.cliente_cod] = { em: x.em, por: x.por }; });
+  const porIds = [...new Set(Object.values(CTT).map(x => x.por).filter(Boolean))];
+  const NOMES = {};
+  if (porIds.length) { const { data: pf } = await sb.from('perfis').select('id,nome').in('id', porIds); (pf || []).forEach(p => { NOMES[p.id] = p.nome; }); }
+  Object.values(CTT).forEach(x => { x.por_nome = NOMES[x.por] || (x.por === session.user.id ? (PERFIL && PERFIL.nome) || 'você' : ''); });
   R.clientes = (resgQ.data || []).map(c => ({
     cli: c.cliente_cod, nome: c.nome || ('Cód. ' + c.cliente_cod), tel: c.telefone || '', ultima: c.ultima ? new Date(c.ultima + 'T12:00:00') : R.ref,
-    dias: c.dias, banda: c.banda, compras: c.compras, gasto: +c.gasto || 0, gastoMes: +c.gasto_mes || 0, racao: !!c.racao, bt: !!c.bt, pacote: false
+    dias: c.dias, banda: c.banda, compras: c.compras, gasto: +c.gasto || 0, gastoMes: +c.gasto_mes || 0, racao: !!c.racao, bt: !!c.bt, pacote: false,
+    contato: CTT[c.cliente_cod] || null
   }));
+  window.__rxContatos = {
+    marcar: async (cli, feito) => {
+      const { data, error } = await sb.rpc('raiox_marcar_contato', { p_fra: FRA, p_cliente_cod: String(cli), p_feito: !!feito });
+      if (error) throw new Error(error.message);
+      return { em: data && data.em, por: session.user.id, por_nome: (PERFIL && PERFIL.nome) || 'você' };
+    }
+  };
   // arquivos de estoque enviados na aba "Arquivos de estoque" entram como se tivessem sido anexados
   const estPar = EST.estoqueparado && EST.estoqueparado.resumo, estAbc = EST.abcprod && EST.abcprod.resumo, estAtu = EST.estoqueatual && EST.estoqueatual.resumo;
   if (estPar && estPar.fonte) R.estoqueParado = estPar;

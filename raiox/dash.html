@@ -22,7 +22,7 @@ header a,header button{color:#fff}
 .btn.verm{background:var(--verm)}
 .btn.ghost{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
 .btn:disabled{opacity:.5;cursor:default}
-.btn.mini{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn.mini{padding:4px 9px;font-size:12px;border-radius:7px;width:auto;height:auto;overflow:visible;margin-right:0}
 main{max-width:1320px;margin:0 auto;padding:16px 20px 60px}
 #login{max-width:380px;margin:60px auto;background:var(--papel);border:1px solid var(--linha);border-radius:14px;padding:26px}
 #login label{display:block;font-size:12px;font-weight:600;color:var(--tinta-suave);margin:10px 0 4px}
@@ -76,7 +76,7 @@ tr.lk{cursor:pointer}tr.lk:hover td{background:#f3f8f5}
 .st.cinza{background:var(--claro);color:var(--tinta-suave)}
 .score{display:inline-block;min-width:34px;text-align:center;padding:2px 6px;border-radius:7px;font-weight:800;font-family:Archivo}
 .score.q1{background:#d9f1e3;color:#0b6b3a}.score.q2{background:#e6f3ea;color:#2a6b45}.score.q3{background:#ffe9d6;color:#a34608}.score.q4{background:#fbe0dc;color:#9a2b1f}.score.sn{background:var(--claro);color:var(--tinta-suave);font-weight:600;font-size:11px}
-.mini{display:inline-block;width:70px;height:8px;background:var(--claro);border-radius:4px;vertical-align:middle;margin-right:6px;overflow:hidden}
+.mini:not(.btn){display:inline-block;width:70px;height:8px;background:var(--claro);border-radius:4px;vertical-align:middle;margin-right:6px;overflow:hidden}
 .mini i{display:block;height:100%;background:var(--verde);border-radius:4px}
 .mini.r i{background:var(--verm)}.mini.m i{background:var(--amarelo)}
 .vazio{padding:16px;border:1px dashed var(--linha);border-radius:10px;color:var(--tinta-suave);font-size:13px;background:#fbfdfc}
@@ -107,6 +107,14 @@ svg.g .grade{stroke:var(--claro);stroke-width:1}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--verde2);color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;z-index:50}
 #toast.on{opacity:1;transform:translateX(-50%)}
 .negado{max-width:560px;margin:60px auto;background:#fff;border:1px solid var(--linha);border-radius:14px;padding:26px}
+.mBg{position:fixed;inset:0;background:rgba(0,40,25,.45);display:none;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto;z-index:50}
+.mBg.on{display:flex}
+.mBox{background:var(--papel);border-radius:14px;padding:18px 20px;max-width:1100px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.mBox input,.mBox select,.mBox textarea{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--linha);border-radius:8px;background:#fff;color:inherit}
+.mBox input.edT,.mBox input.plT{width:100%;min-width:220px}
+.edNova{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.edNova input:first-child{flex:1;min-width:240px}
+h2 .acoes{margin-left:8px}
+@media print{.mBg{display:none!important}}
 @media print{header,.nav,.filtros,.acoes,.btn{display:none!important}main{max-width:none;padding:0}section{break-inside:avoid}.painel{break-inside:avoid;border:0;padding:6px 0}body{background:#fff}}
 </style>
 </head>
@@ -146,6 +154,7 @@ svg.g .grade{stroke:var(--claro);stroke-width:1}
       <a href="#s-alertas">🔔 Agir hoje <b id="nAlertas" style="display:none"></b></a>
       <a href="#s-rede">Rede</a>
       <a href="#s-exec">Execução das tarefas</a>
+      <a href="#s-tarefas">Gestão de tarefas</a>
       <a href="#s-satisf">Satisfação do franqueado</a>
       <a href="#s-result">Resultado e equipe</a>
       <a href="#s-evol">Evolução no tempo</a>
@@ -156,6 +165,7 @@ svg.g .grade{stroke:var(--claro);stroke-width:1}
 </main>
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="dash.js"></script>
+<div id="mBg" class="mBg"><div id="mBox" class="mBox"></div></div>
+<script src="dash.js?v=1.2"></script>
 </body>
 </html>

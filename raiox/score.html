@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entenda seu score · Raio-X POP</title>
+<!-- Raio-X POP · score.html v1.0 · 17/09/2026 · explicação do score da loja para franqueado e consultor.
+     Página estática: não lê o banco. As cinco notas chegam pela URL (?fra=&loja=&mes=&receita=&margem=&mix=&ret=&dado=)
+     a partir do botão "Entenda aqui seu score" da ficha da loja (app.js); sem parâmetros vira simulador manual. -->
+<meta name="description" content="O franqueado da Rede POP entende o que puxou o score da loja para baixo e o que fazer primeiro.">
+<link rel="icon" href="../icone-192.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --porcelana:#EEF3F0; --papel:#FFFFFF; --papel-2:#F6FAF7; --tinta:#14332A; --tinta-suave:#5A7268; --tinta-3:#8AA095; --linha:#D3DFD8; --linha-2:#BFCFC6;
+  --laranja:#FF6B15; --laranja-suave:#FFEDE1; --petroleo:#00573F; --petroleo-suave:#E0EFE9;
+  --ambar:#B97E10; --ambar-suave:#FBF1DC; --verde:#009150; --verde-suave:#E2F2EA; --verm:#C0392B; --verm-suave:#FBECEA;
+  --sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--porcelana);color:var(--tinta);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5}
+button{font:inherit;cursor:pointer}
+input{font:inherit;color:inherit}
+a{color:var(--petroleo)}
+[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+.wrap{max-width:900px;margin:0 auto;padding:0 18px 60px}
+.topo{background:var(--papel);border-bottom:1px solid var(--linha);margin-bottom:22px}
+.topo .in{max-width:900px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.topo img{height:40px}
+.topo h1{font-family:'Archivo',sans-serif;font-weight:900;font-size:19px;line-height:1.1}
+.topo h1 small{display:block;font-family:'Inter';font-weight:500;font-size:12px;color:var(--tinta-suave)}
+.topo .esp{flex:1}
+.btn{border:none;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn.laranja{background:var(--laranja);color:#fff}
+.btn.claro{background:#fff;border:1.5px solid var(--linha);color:var(--tinta)}
+.btn.verde{background:var(--verde);color:#fff}
+h2{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.06em}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--petroleo)}
+.titulo{font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(1.6rem,4.5vw,2.2rem);line-height:1.1;margin:4px 0 8px}
+.intro{color:var(--tinta-suave);max-width:62ch}
+.contexto{display:inline-flex;align-items:center;gap:8px;background:var(--petroleo-suave);color:var(--petroleo);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:700;margin-top:10px}
+
+/* formulário */
+.painel{background:var(--papel);border:1px solid var(--linha);border-radius:14px;padding:16px 18px;margin-top:18px;box-shadow:var(--sombra)}
+.howto{background:var(--papel-2);border:1px solid var(--linha);border-radius:10px;padding:10px 14px;font-size:13.5px;color:var(--tinta-suave);margin-bottom:14px}
+.howto b{color:var(--tinta)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--tinta-suave)}
+.f input{font-family:'Archivo',sans-serif;font-size:1.3rem;font-weight:800;text-align:center;padding:9px 8px;border:1.5px solid var(--linha-2);border-radius:9px;background:var(--papel-2);width:100%}
+.f input:focus-visible{outline:2px solid var(--laranja);outline-offset:1px;border-color:var(--laranja)}
+.f .peso{font-size:11px;color:var(--tinta-3);text-align:center}
+.acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.aviso{font-size:13px;color:var(--verm);font-weight:700;margin-top:8px}
+.nota-ex{font-size:12.5px;color:var(--tinta-3);margin-top:8px}
+
+/* resultado */
+#res{margin-top:22px}
+.top{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;background:var(--papel);border:1px solid var(--linha);border-radius:14px;padding:20px;box-shadow:var(--sombra)}
+@media (max-width:560px){.top{grid-template-columns:1fr;gap:14px}}
+.dial .n{font-family:'Archivo',sans-serif;font-weight:900;font-size:4.4rem;line-height:.9;letter-spacing:-.02em}
+.dial .of{color:var(--tinta-3);font-size:.95rem;font-weight:600}
+.faixa{display:inline-block;font-weight:800;font-size:12px;padding:4px 12px;border-radius:99px;margin-bottom:8px}
+.resumo{color:var(--tinta-suave);max-width:50ch}
+.resumo b{color:var(--tinta)}
+.stack{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--porcelana);border:1px solid var(--linha);margin-top:12px}
+.stack i{display:block}
+.stack .perdido{background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--linha-2) 4px,var(--linha-2) 8px)}
+.legenda{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:12px;color:var(--tinta-suave)}
+.legenda span{display:flex;align-items:center;gap:5px}
+.legenda i{width:9px;height:9px;border-radius:2px;display:block}
+
+.sechead{margin:30px 0 2px}
+.sub-t{font-size:13.5px;color:var(--tinta-suave)}
+.cards{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.card{background:var(--papel);border:1px solid var(--linha);border-radius:14px;box-shadow:var(--sombra);overflow:hidden}
+.card .hd{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.card .rank{font-family:'Archivo',sans-serif;font-weight:900;font-size:1rem;width:32px;height:32px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--porcelana);color:var(--tinta-suave)}
+.card.p1 .rank{background:var(--laranja);color:#fff}
+.card .hd .t{flex:1 1 auto;min-width:0}
+.card .hd .t .k{font-family:'Archivo',sans-serif;font-weight:800;font-size:1.05rem}
+.card .hd .t .d{font-size:12.5px;color:var(--tinta-suave)}
+.card .hd .sc{text-align:right;flex:0 0 auto}
+.card .hd .sc .nn{font-family:'Archivo',sans-serif;font-weight:900;font-size:1.3rem}
+.card .hd .sc .pp{font-size:11.5px;color:var(--tinta-suave);white-space:nowrap}
+.meter{height:6px;background:var(--porcelana)}
+.meter i{display:block;height:100%}
+.card .bd{padding:14px 16px;border-top:1px solid var(--linha);display:grid;gap:12px}
+.blk .lab{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-3);margin-bottom:3px}
+.blk ul{margin:.2em 0;padding-left:1.2em}
+.blk li{margin:.25em 0}
+.vale{background:var(--papel-2);border-radius:10px;padding:10px 14px;font-size:13.5px;border-left:3px solid var(--verde)}
+.tagfx{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;letter-spacing:.03em}
+
+.rodape{margin-top:34px;padding-top:16px;border-top:1px solid var(--linha-2);font-size:13.5px;color:var(--tinta-suave)}
+.pesos{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.pesos th,.pesos td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--linha)}
+.pesos th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--tinta-suave)}
+.pesos td.n,.pesos th.n{text-align:right;font-variant-numeric:tabular-nums}
+@media print{
+  body{background:#fff}
+  .topo,.form-painel,.acoes,.noprint{display:none!important}
+  .card,.top{box-shadow:none;break-inside:avoid}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="topo"><div class="in">
+  <img src="../logo-pop.png" alt="Rede POP Pet Center">
+  <h1>Entenda seu score<small>Raio-X POP · Central POP</small></h1>
+  <span class="esp"></span>
+  <a class="btn claro" id="btnVoltar" href="./">← Voltar ao Raio-X</a>
+</div></div>
+
+<div class="wrap">
+
+<div>
+  <div class="eyebrow">Rede POP Pet Center · Diagnóstico de loja</div>
+  <div class="titulo" id="h1">Entenda o score da sua loja</div>
+  <p class="intro" id="intro">O score vai de 0 a 100 e é a soma de cinco notas. Esta página mostra quantos pontos cada uma tirou de você, por que isso acontece na prática da loja e o que fazer primeiro.</p>
+  <div class="contexto" id="contexto" hidden></div>
+</div>
+
+<div class="painel form-painel">
+  <p class="howto" id="howto">No seu raio-x, logo abaixo do número grande do score, aparecem as cinco notas de 0 a 10 (<b>Crescimento · Margem · Serviços · Retenção · Dado</b>). Copie cada uma no campo correspondente.</p>
+  <div class="fields">
+    <div class="f"><label for="iReceita">Receita (crescimento)</label><input id="iReceita" type="text" autocomplete="off" value="6,2" inputmode="decimal"><span class="peso">vale até 25 pts</span></div>
+    <div class="f"><label for="iMargem">Margem</label><input id="iMargem" type="text" autocomplete="off" value="3,1" inputmode="decimal"><span class="peso">vale até 20 pts</span></div>
+    <div class="f"><label for="iMix">Mix (serviços)</label><input id="iMix" type="text" autocomplete="off" value="4,2" inputmode="decimal"><span class="peso">vale até 15 pts</span></div>
+    <div class="f"><label for="iRet">Retenção</label><input id="iRet" type="text" autocomplete="off" value="5,4" inputmode="decimal"><span class="peso">vale até 25 pts</span></div>
+    <div class="f"><label for="iDado">Dado</label><input id="iDado" type="text" autocomplete="off" value="4,8" inputmode="decimal"><span class="peso">vale até 15 pts</span></div>
+  </div>
+  <div class="acoes">
+    <button class="btn laranja" id="btnVer" type="button">Ver explicação</button>
+    <button class="btn claro" id="btnLoja" type="button" hidden>↺ Voltar às notas da loja</button>
+    <button class="btn claro" id="btnEx" type="button">Usar exemplo</button>
+    <button class="btn claro" id="btnImp" type="button">🖨 Imprimir / PDF</button>
+  </div>
+  <div class="aviso" id="aviso" hidden>As notas vão de 0 a 10 — confira os números digitados.</div>
+  <p class="nota-ex" id="notaEx">Os valores já preenchidos são um <b>exemplo</b>, não os da sua loja.</p>
+</div>
+
+<div id="res">
+  <div class="top">
+    <div class="dial">
+      <div class="faixa" id="faixa">Exemplo</div>
+      <div><span class="n num" id="total">—</span> <span class="of">/100</span></div>
+    </div>
+    <div>
+      <p class="resumo" id="resumo"></p>
+      <div class="stack" id="stack"></div>
+      <div class="legenda">
+        <span><i style="background:var(--petroleo)"></i>Receita</span>
+        <span><i style="background:var(--verde)"></i>Margem</span>
+        <span><i style="background:var(--ambar)"></i>Mix</span>
+        <span><i style="background:var(--laranja)"></i>Retenção</span>
+        <span><i style="background:var(--tinta-3)"></i>Dado</span>
+        <span><i class="perdido" style="background:var(--porcelana);border:1px solid var(--linha-2)"></i>Pontos que faltaram</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sechead"><h2>Por onde começar</h2></div>
+  <p class="sub-t">Em ordem de quantos pontos cada eixo está tirando do seu score. O primeiro é onde o esforço rende mais.</p>
+  <div class="cards" id="cards"></div>
+</div>
+
+<div class="rodape noprint">
+  <h2 style="margin-bottom:6px">Quanto cada eixo pesa</h2>
+  <p>O score é a soma dos cinco eixos. Cada um vale no máximo 10 de nota, e cada nota vira pontos conforme o peso abaixo — por isso a mesma nota 5 pesa diferente em cada linha.</p>
+  <table class="pesos">
+    <thead><tr><th>Eixo</th><th>O que mede</th><th class="n">Vale até</th><th class="n">Cada +1,0 de nota</th></tr></thead>
+    <tbody>
+      <tr><td>Receita (crescimento)</td><td>Crescimento do primeiro ao último mês</td><td class="n">25 pts</td><td class="n">+2,5</td></tr>
+      <tr><td>Margem</td><td>Margem real, sem os itens sem custo cadastrado</td><td class="n">20 pts</td><td class="n">+2,0</td></tr>
+      <tr><td>Mix (serviços)</td><td>Quanto do faturamento é serviço</td><td class="n">15 pts</td><td class="n">+1,5</td></tr>
+      <tr><td>Retenção</td><td>Clientes de ração voltando em até 45 dias</td><td class="n">25 pts</td><td class="n">+2,5</td></tr>
+      <tr><td>Dado</td><td>Cliente identificado e custo cadastrado</td><td class="n">15 pts</td><td class="n">+1,5</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:14px">O score mede a <b>lucratividade da venda</b> — não entra aluguel, folha nem despesa fixa. Ele existe para mostrar onde a loja tem dinheiro parado na própria operação, e para comparar a sua unidade com o resto da rede na mesma régua.</p>
+</div>
+
+</div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var br=function(v,d){return v.toFixed(d===undefined?1:d).replace('.',',')};
+  var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+  var EIXOS=[
+    {id:'Receita',rot:'Receita (crescimento)',peso:2.5,cor:'var(--petroleo)',desc:'Crescimento do primeiro ao último mês do período',
+     mede:'Compara o último mês do seu raio-x com o primeiro, em faturamento e em número de cupons. Loja que ficou igual tira exatamente 5,0 — a nota só sobe de 5 se a loja cresceu.',
+     bad:'Sua loja vendeu menos no fim do período do que no começo. Antes de qualquer ação comercial, confira se o primeiro ou o último mês da carga está incompleto — isso sozinho derruba essa nota. Se os meses estão fechados, a queda é real e normalmente vem de fluxo: menos gente entrando na loja, não ticket menor.',
+     mid:'Sua loja está praticamente parada — faturando hoje o que faturava no começo do período. Não é queda, mas nenhum ponto de crescimento entrou no score.',
+     ok:'Sua loja cresceu no período. Esse é o eixo de maior peso junto com retenção, e ele está trabalhando a seu favor.',
+     acoes:['Abra o gráfico de receita mês a mês do raio-x e veja se a queda é de cupons (menos clientes) ou de ticket (mesmo cliente comprando menos).','Confira a lista de ruptura: item classe A com estoque zerado é venda que o cliente foi buscar no concorrente.','Crescimento sustentável vem de cliente voltando, não de promoção — por isso retenção e mix normalmente sobem esse eixo junto.']},
+    {id:'Margem',rot:'Margem',peso:2.0,cor:'var(--verde)',desc:'Margem real da venda, sem os itens sem custo cadastrado',
+     mede:'É o lucro sobre a venda, calculado só nas linhas que têm custo cadastrado no sistema. A escala é dura de propósito: 20% de margem é nota 0 e 52% é nota 10.',
+     bad:'Sua margem está perto do piso da escala. Na prática isso quase sempre é uma destas três coisas: produto sendo vendido abaixo do custo, desconto liberado demais no balcão, ou custo desatualizado no cadastro fazendo você achar que ganha mais do que ganha.',
+     mid:'Margem dentro do que se espera de uma loja com peso grande de ração. Esse é o eixo mais difícil da fórmula — poucas lojas passam de 5 aqui sem serviço e farmácia fortes.',
+     ok:'Margem acima da média da rede. Vale olhar se ela se mantém em todos os meses ou se veio de um mês atípico.',
+     acoes:['Rode a lista de itens com preço abaixo do custo no raio-x (aba Estoque) e corrija os preços ainda esta semana.','Compare a margem por vendedor: diferença acima de 3 pontos entre um vendedor e os outros costuma ser desconto no balcão, não negociação.','Farmácia (medicamentos e antiparasitários) e acessórios puxam a margem para cima muito mais rápido que ração.']},
+    {id:'Mix',rot:'Mix (serviços)',peso:1.5,cor:'var(--ambar)',desc:'Quanto do seu faturamento vem de serviço',
+     mede:'Soma banho e tosa, pacotes, consultório veterinário e transporte, dividido pelo faturamento total. Um terço da receita em serviço é nota 10.',
+     bad:'Sua loja é essencialmente revenda de produto. Serviço é o que segura o cliente na sua unidade quando abre um concorrente mais barato na esquina — sem ele, a disputa é só de preço.',
+     mid:'Você já tem serviço, mas ele ainda é minoria do faturamento. Cada ponto percentual a mais de serviço puxa também a margem e a frequência de visita.',
+     ok:'Boa participação de serviço. Confira se banho e tosa está com agenda cheia nos horários de pico do seu raio-x.',
+     acoes:['Transforme banho avulso em pacote: o raio-x já lista quantos clientes tomaram banho nos últimos 60 dias e não têm pacote.','Confira se todo serviço está sendo lançado no grupo certo do sistema — serviço lançado em grupo errado não conta aqui.','Veterinário e transporte (leva e traz) são as duas alavancas mais rápidas depois do pacote de banho.']},
+    {id:'Retenção',rot:'Retenção',peso:2.5,cor:'var(--laranja)',desc:'Clientes de ração voltando em até 45 dias',
+     mede:'De todos os clientes cadastrados que compraram ração no período, quantos compraram de novo há 45 dias ou menos. Cada 10% da sua carteira em dia vale 1,0 de nota.',
+     bad:'Mais da metade da sua carteira de ração está atrasada. Esse cliente não parou de comprar ração — ele está comprando em outro lugar. É o dinheiro mais barato de recuperar que existe na loja, porque ele já foi seu.',
+     mid:'Boa parte da carteira volta, mas uma fatia relevante passa dos 45 dias. Como esse eixo empata com receita em peso, cada 10% de carteira resgatada vale 2,5 pontos no seu score.',
+     ok:'Sua carteira de ração está girando bem. Mantenha a rotina de contato — esse número cai rápido se o acompanhamento para.',
+     acoes:['Use a lista de resgate do seu raio-x (aba Clientes): ela já traz nome, telefone e há quantos dias cada cliente sumiu, em ordem de valor.','Comece pela faixa de 46 a 60 dias — quem passou de 90 dias já comprou em outro lugar e é bem mais difícil de trazer de volta.','Combine o resgate com o ciclo de ração do cliente: avisar antes de acabar funciona muito melhor que ligar depois que ele já sumiu.']},
+    {id:'Dado',rot:'Dado',peso:1.5,cor:'var(--tinta-3)',desc:'Cliente identificado na venda e custo cadastrado no produto',
+     mede:'Perde ponto por venda feita sem identificar o cliente, por produto vendido sem custo cadastrado e por item classe A com estoque negativo. Venda sem cadastro é o que mais pesa aqui.',
+     bad:'Sua loja está vendendo às cegas. Sem cadastro no cupom, a loja não sabe quem é o cliente, não consegue avisar quando a ração dele acaba e não aparece em nenhuma lista de resgate. E sem custo cadastrado, a margem que o sistema mostra não é a real.',
+     mid:'O cadastro funciona, mas ainda escapa venda sem identificação ou produto sem custo. Esse eixo é o mais rápido de corrigir de todos — depende de rotina de caixa e de entrada de nota, não de investimento.',
+     ok:'Cadastro em ordem. É o que torna todo o resto do raio-x confiável para a sua loja.',
+     acoes:['Peça telefone ou CPF em todo atendimento — a meta é que praticamente todo o faturamento saia identificado.','Cadastre o custo na entrada da nota, sempre. Produto sem custo entra no sistema como se fosse 100% de lucro e engana o seu resultado.','Recontagem física dos itens com estoque negativo, principalmente os de maior giro.']}
+  ];
+  var CAMPOS=['iReceita','iMargem','iMix','iRet','iDado'];
+  var EX={iReceita:'6,2',iMargem:'3,1',iMix:'4,2',iRet:'5,4',iDado:'4,8'};
+
+  /* ---- notas da loja vindas da URL (botão da ficha no app.js) ---- */
+  var qs=new URLSearchParams(location.search);
+  var LOJA=null;
+  (function(){
+    var num=function(k){var v=parseFloat(String(qs.get(k)||'').replace(',','.'));return isNaN(v)?null:Math.max(0,Math.min(10,v))};
+    var n={iReceita:num('receita'),iMargem:num('margem'),iMix:num('mix'),iRet:num('ret'),iDado:num('dado')};
+    if(CAMPOS.every(function(k){return n[k]!==null})){
+      LOJA={notas:n,nome:(qs.get('loja')||'').slice(0,80),fra:(qs.get('fra')||'').replace(/\D/g,'').slice(0,6),mes:(qs.get('mes')||'').slice(0,40)};
+    }
+  })();
+
+  function faixaDe(s){
+    if(s>=70) return {t:'Referência da rede',bg:'var(--verde-suave)',c:'var(--verde)'};
+    if(s>=55) return {t:'Loja saudável',bg:'var(--petroleo-suave)',c:'var(--petroleo)'};
+    if(s>=40) return {t:'Precisa de atenção',bg:'var(--ambar-suave)',c:'var(--ambar)'};
+    return {t:'Prioridade de acompanhamento',bg:'var(--verm-suave)',c:'var(--verm)'};
+  }
+  function nivel(n){return n<4?'bad':(n<7?'mid':'ok')}
+  function corNivel(n){return n<4?'var(--verm)':(n<7?'var(--ambar)':'var(--verde)')}
+  function rotNivel(n){return n<4?'Crítico':(n<7?'Atenção':'Bom')}
+  function bgNivel(n){return n<4?'var(--verm-suave)':(n<7?'var(--ambar-suave)':'var(--verde-suave)')}
+
+  function ler(id){
+    var el=$(id), v=parseFloat(String(el.value).replace(',','.'));
+    return isNaN(v)?null:v;
+  }
+  function iguaisALoja(){
+    if(!LOJA) return false;
+    return CAMPOS.every(function(k){var v=ler(k);return v!==null&&Math.abs(v-LOJA.notas[k])<0.05});
+  }
+
+  function render(){
+    var vals={},erro=false;
+    CAMPOS.forEach(function(k,i){
+      var v=ler(k);
+      if(v===null||v<0||v>10) erro=true;
+      vals[EIXOS[i].id]=v===null?0:Math.max(0,Math.min(10,v));
+    });
+    $('aviso').hidden=!erro;
+    if(erro) return;
+
+    var itens=EIXOS.map(function(e){
+      var nota=vals[e.id], pts=nota*e.peso, max=10*e.peso;
+      return {e:e,nota:nota,pts:pts,max:max,perda:max-pts};
+    });
+    var total=Math.round(itens.reduce(function(a,b){return a+b.pts},0));
+    $('total').textContent=total;
+    var f=faixaDe(total);
+    var fx=$('faixa'); fx.textContent=f.t; fx.style.background=f.bg; fx.style.color=f.c;
+
+    var simulando=LOJA&&!iguaisALoja();
+    $('btnLoja').hidden=!simulando;
+    var ord=itens.slice().sort(function(a,b){return b.perda-a.perda});
+    var pior=ord[0];
+    $('resumo').innerHTML=(simulando?'<b>Simulação:</b> com essas notas a loja faria ':'Você fez ')+'<b>'+total+' de 100</b>. Faltaram '+br(100-total,0)+' pontos, e <b>'+br(pior.perda,0)+' deles estão em '+pior.e.id.toLowerCase()+'</b> — é por aí que o esforço rende mais.';
+
+    $('stack').innerHTML=itens.map(function(it){
+      return '<i style="width:'+it.pts+'%;background:'+it.e.cor+'"></i>';
+    }).join('')+'<i class="perdido" style="width:'+(100-itens.reduce(function(a,b){return a+b.pts},0))+'%"></i>';
+
+    $('cards').innerHTML=ord.map(function(it,i){
+      var e=it.e,nv=nivel(it.nota),cor=corNivel(it.nota);
+      return '<div class="card'+(i===0?' p1':'')+'">'+
+        '<div class="hd"><div class="rank">'+(i+1)+'</div>'+
+        '<div class="t"><div class="k">'+e.rot+'</div><div class="d">'+e.desc+'</div></div>'+
+        '<div class="sc"><div class="nn num" style="color:'+cor+'">'+br(it.nota)+'</div>'+
+        '<div class="pp num">'+br(it.pts)+' de '+br(it.max,0)+' pts</div></div></div>'+
+        '<div class="meter"><i style="width:'+(it.nota*10)+'%;background:'+cor+'"></i></div>'+
+        '<div class="bd">'+
+          '<div><span class="tagfx" style="background:'+bgNivel(it.nota)+';color:'+cor+'">'+rotNivel(it.nota)+'</span>'+
+          '<span class="tagfx" style="background:var(--porcelana);color:var(--tinta-suave);margin-left:6px">faltaram '+br(it.perda)+' pts</span></div>'+
+          '<div class="blk"><div class="lab">O que esse número mede</div><p>'+e.mede+'</p></div>'+
+          '<div class="blk"><div class="lab">O que isso diz da sua loja</div><p>'+e[nv]+'</p></div>'+
+          '<div class="blk"><div class="lab">O que fazer</div><ul><li>'+e.acoes.join('</li><li>')+'</li></ul></div>'+
+          '<div class="vale">Cada <b>+1,0</b> nesta nota vale <b>+'+br(e.peso)+' pontos</b> no seu score. Chegar a 10 aqui somaria '+br(it.perda,0)+' pontos e levaria você a '+Math.round(total+it.perda)+'.</div>'+
+        '</div></div>';
+    }).join('');
+  }
+
+  function preencherLoja(){
+    for(var k in LOJA.notas) $(k).value=br(LOJA.notas[k]);
+    render();
+  }
+
+  if(LOJA){
+    var quem=LOJA.nome||(LOJA.fra?'FRA '+LOJA.fra:'sua loja');
+    $('h1').textContent='Entenda o score de '+quem;
+    $('contexto').hidden=false;
+    $('contexto').innerHTML='🩻 Notas do raio-x'+(LOJA.fra?' · FRA '+esc(LOJA.fra):'')+(LOJA.mes?' · '+esc(LOJA.mes):'');
+    $('howto').innerHTML='As notas abaixo já são as da <b>'+esc(quem)+'</b>, como estão no raio-x. Se quiser, altere qualquer uma para <b>simular</b> quanto o score sobe — e volte às notas reais com o botão ao lado.';
+    $('notaEx').hidden=true;
+    $('btnEx').hidden=true;
+    if(LOJA.fra) $('btnVoltar').href='./?fra='+encodeURIComponent(LOJA.fra);
+    preencherLoja();
+  } else {
+    render();
+  }
+
+  $('btnVer').addEventListener('click',render);
+  $('btnImp').addEventListener('click',function(){window.print()});
+  $('btnLoja').addEventListener('click',preencherLoja);
+  $('btnEx').addEventListener('click',function(){
+    for(var k in EX) $(k).value=EX[k];
+    render();
+  });
+  CAMPOS.forEach(function(id){
+    $(id).addEventListener('input',render);
+    $(id).addEventListener('keydown',function(ev){if(ev.key==='Enter')render()});
+  });
+})();
+</script>
+</body>
+</html>

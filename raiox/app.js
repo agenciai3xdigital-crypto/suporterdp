@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.3';
+const VERSAO = 'v3.4';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -247,6 +247,12 @@ function desenharAbasPai(d) {
   box.querySelectorAll('[data-exp]').forEach(b => b.onclick = () => { m.classList.remove('on'); fr.contentWindow.postMessage({ raiox: 'exportar', botao: b.dataset.exp }, location.origin); });
   document.addEventListener('click', () => m.classList.remove('on'), { once: true });
 }
+// v3.4: link para score.html (explicação do score) com as cinco notas da loja já preenchidas — vale para consultor e franqueado
+function linkScore(f, s) {
+  const q = new URLSearchParams({ fra: f.fra, loja: f.nome || '', mes: mesBR(s.kpis && s.kpis.mes_ini) + ' a ' + mesBR(s.mes_ref),
+    receita: s.sub.receita, margem: s.sub.margem, mix: s.sub.mix, ret: s.sub.ret, dado: s.sub.dado });
+  return 'score.html?' + q.toString();
+}
 function cabecaLoja(f, s) {
   const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDoConsultor(f.consultor);
   const podeIniciar = !c && !ehFranq() && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
@@ -262,6 +268,7 @@ function cabecaLoja(f, s) {
         ${c ? `<span class="st roxo" style="align-self:center">consultoria ativa desde ${dBR(c.inicio)} · ${esc(primeiro(nomeDe(c.consultor_id)))}</span>` : (podeIniciar && s ? '<button class="btn laranja" id="btnIniciarCons">▶ Iniciar consultoria de faturamento</button>' : '')}
         ${s && !ehFranq() ? `<button class="btn claro" id="btnRecalc"${FILA.has(f.fra) ? ' disabled' : ''}>${FILA.has(f.fra) ? '↻ na fila' : '↻ Recalcular'}</button>` : ''}
         ${s ? '<button class="btn claro" id="btnImprimir">🖨 Imprimir / PDF</button>' : ''}
+        ${s && s.score != null && s.sub ? `<a class="btn verde" id="btnScore" href="${linkScore(f, s)}" target="_blank" rel="noopener" title="O que cada nota mede, o que ela diz da loja e o que fazer primeiro">💡 Entenda aqui seu score (nota)</a>` : ''}
       </div>
     </div>
     ${s && s.sub ? `<div class="subs">${[['receita', 'Crescimento'], ['margem', 'Margem'], ['mix', 'Serviços'], ['ret', 'Retenção'], ['dado', 'Dado']].map(([k, t]) => `<div class="sub"><b>${br(s.sub[k], 1)}</b><span>${t} · de 10</span><div class="bar"><i style="width:${Math.round(s.sub[k] * 10)}%"></i></div></div>`).join('')}</div>` : ''}

@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.4';
+const VERSAO = 'v3.5';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -21,9 +21,13 @@ function toast(t) { const el = $('toast'); el.textContent = t || 'salvo ✓'; el
 function erro(e) { console.error(e); alert('Erro: ' + (e.message || e)); }
 
 let sb, usuario, perfil, PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ITENS = [], ESTQ = {}, FILA = new Set(), FQ_LOJAS = [], FQ_MAPA = [];
+let FQ_CARTEIRA = [], FQ_PAPEL = '', FQ_LISTA = {};
 let rdFiltro = 'todas', lojaAtual = null, rdOrd = { k: 'score', asc: true };
 const ehAdmin = () => !!(perfil && perfil.is_admin);
 const ehFranq = () => !!(perfil && !perfil.is_admin && (perfil.papeis || []).includes('franqueado'));
+const ehConsultor = () => !!(perfil && !perfil.is_admin && (perfil.papeis || []).includes('consultor'));
+const podeFranq = () => ehAdmin() || ehConsultor();   // quem pode abrir a aba Franqueados
+const carteiraFras = () => FRQ.filter(f => f.consultor_id === usuario.id).map(f => f.fra);
 const nomeDe = uid => ((PERFIS.find(p => p.id === uid) || {}).nome || '—');
 const primeiro = n => String(n || '').split(' ')[0];
 const frqDe = fra => FRQ.find(f => f.fra === fra) || { fra, nome: 'FRA ' + fra };
@@ -33,7 +37,9 @@ function perfilDoConsultor(txt) {
   const t = semAcento(txt); if (!t) return null;
   return PERFIS.find(p => semAcento(primeiro(p.nome_sults || p.nome)) === t.split(' ')[0]) || null;
 }
-const minhaCarteira = fra => { const p = perfilDoConsultor(frqDe(fra).consultor); return p && p.id === usuario.id; };
+// consultor da loja: vale o vinculo (franquias.consultor_id); o texto do cadastro e so fallback
+const perfilDaLoja = fra => { const f = frqDe(fra); return (f.consultor_id ? PERFIS.find(p => p.id === f.consultor_id) : null) || perfilDoConsultor(f.consultor); };
+const minhaCarteira = fra => { const p = perfilDaLoja(fra); return !!(p && p.id === usuario.id); };
 
 /* ================= login ================= */
 async function iniciar() {
@@ -49,11 +55,12 @@ async function entrou(session) {
   $('quem').textContent = perfil.nome + (perfil.is_admin ? ' · admin' : ehFranq() ? ' · franqueado' : '') + ' · ' + VERSAO;
   $('login').style.display = 'none'; $('app').style.display = ''; $('btnSair').style.display = '';
   sb.from('acessos').insert({ user_id: usuario.id, origem: 'raiox' }).then(() => {});
-  if (ehAdmin()) { $('btnRecalcRede').style.display = ''; $('abaFranq').style.display = ''; }
+  if (ehAdmin()) $('btnRecalcRede').style.display = '';
+  if (podeFranq()) $('abaFranq').style.display = '';   // admin ve a rede; consultor ve a carteira dele
   if (ehAdmin() || (perfil.papeis || []).some(p => ['supervisor', 'diretoria'].includes(p))) { const bd = $('btnDash'); if (bd) bd.style.display = ''; }
   const qs = new URLSearchParams(location.search), fraUrl = qs.get('fra');
   if (ehFranq()) { await entrouFranqueado(fraUrl ? +fraUrl : null, qs.get('aba')); return; }
-  try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); if (ehAdmin()) desenharFranqueados(); }
+  try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); if (podeFranq()) desenharFranqueados(); }
   catch (e) { erro(e); }
   if (fraUrl) abrirLoja(+fraUrl, qs.get('aba'));
 }
@@ -100,7 +107,7 @@ async function fetchAll(builder, step = 1000) {
 async function carregarTudo() {
   const [pf, fq, sn, cs, es, fl, it] = await Promise.all([
     sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor').order('criado_em'),
-    sb.from('franquias').select('fra,nome,cidade,estado,consultor,ativo').order('fra'),
+    sb.from('franquias').select('fra,nome,cidade,estado,consultor,consultor_id,ativo').order('fra'),
     fetchAll(() => sb.from('raiox_snapshots_atual').select('fra,mes_ref,janela_meses,perfil,calculado_em,score,sem_nota_motivo,sub,kpis,tarefas').order('fra')),
     sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }),
     fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')),
@@ -254,7 +261,7 @@ function linkScore(f, s) {
   return 'score.html?' + q.toString();
 }
 function cabecaLoja(f, s) {
-  const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDoConsultor(f.consultor);
+  const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDaLoja(f.fra);
   const podeIniciar = !c && !ehFranq() && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
   return `<div class="painel"><div class="ficha-topo">
     <div class="big">${s ? (s.score == null ? '<span style="font-size:22px;color:var(--tinta-suave)">sem nota</span>' : `<span class="score ${classeScore(s.score, Q)}" style="font-size:44px;height:auto;padding:6px 14px">${s.score}</span>`) : '—'}<small>nota · ${s ? mesBR(s.kpis.mes_ini) + ' a ' + mesBR(s.mes_ref) : 'sem raio-x'}</small></div>
@@ -309,7 +316,7 @@ function ligarFicha(f, s, R) {
 /* ================= CONSULTORIA ================= */
 function abrirModalConsultoria(f, s, R) {
   const consultores = PERFIS.filter(p => p.is_admin || (p.papeis || []).includes('consultor'));
-  const sugerido = perfilDoConsultor(f.consultor) || perfil;
+  const sugerido = perfilDaLoja(f.fra) || perfil;
   const keys = new Set(R.tarefas.map(t => t.chave));
   $('mBox').innerHTML = `<h3>▶ Iniciar consultoria de faturamento</h3>
     <p style="font-size:13px;color:var(--tinta-suave)">${esc(f.nome)} · nota ${s.score == null ? 'sem nota' : s.score} · ${R.tarefas.length} achado(s). O plano de 90 dias nasce na agenda: 8 reuniões de alinhamento (abertura, quinzenais e fechamento) e as tarefas ligadas aos achados desta loja, espaçadas por gravidade.</p>
@@ -473,7 +480,7 @@ async function calcularResultado(c) {
     avaliacoes: notas.length, avaliacao_media: mediaAv, calculado_em: new Date().toISOString() };
 }
 
-/* ================= FRANQUEADOS (admin) ================= */
+/* ===== FRANQUEADOS (admin = rede toda; consultor = carteira dele) ===== */
 async function chamarFranq(corpo) {
   const { data: { session } } = await sb.auth.getSession();
   const r = await fetch(FN_FRANQ, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + session.access_token }, body: JSON.stringify(corpo) });
@@ -482,34 +489,52 @@ async function chamarFranq(corpo) {
   return j;
 }
 async function desenharFranqueados() {
-  const { data: fl } = await sb.from('franqueado_lojas').select('user_id,fra,criado_em'); FQ_MAPA = fl || [];
-  const franqs = PERFIS.filter(p => !p.is_admin && (p.papeis || []).includes('franqueado'));
-  const ULT = {}; if (franqs.length) { const { data: ac } = await sb.from('acessos').select('user_id,em').in('user_id', franqs.map(p => p.id)).order('em', { ascending: false }).limit(2000); (ac || []).forEach(a => { const o = ULT[a.user_id] = ULT[a.user_id] || { ult: a.em, n30: 0 }; if (diasDesde(a.em) <= 30) o.n30++; }); }
   const box = $('fqLista');
-  const nPorLoja = {}; FQ_MAPA.forEach(x => { nPorLoja[x.fra] = (nPorLoja[x.fra] || 0) + 1; });
-  const cheias = Object.keys(nPorLoja).filter(f => nPorLoja[f] >= 3).map(Number).sort((a, b) => a - b);
-  box.innerHTML = (cheias.length ? `<div class="s" style="margin-bottom:8px">Limite: <b>3 usuários por loja</b>. Lojas no limite: ${cheias.map(f => 'FRA ' + f).join(', ')}.</div>` : `<div class="s" style="margin-bottom:8px">Limite: <b>3 usuários por loja</b> (dono + até 2 pessoas da equipe, todos com a mesma visão).</div>`) + (franqs.length ? `<table class="lista"><tr><th>Nome</th><th>Último acesso</th><th>Lojas</th><th></th></tr>` + franqs.map(p => { const lojas = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).sort((a, b) => a - b); const u = ULT[p.id];
-    return `<tr><td><div class="t">${esc(p.nome)}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}…</div></td><td>${u ? `<div class="t">${dBR(u.ult)}</div><div class="s">${u.n30} acesso(s) em 30 dias</div>` : '<span class="st lar">nunca entrou</span>'}</td><td>${lojas.length ? lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)} · ${nPorLoja[f] || 0}/3 usuários">FRA ${f} <small>${nPorLoja[f] || 0}/3</small></span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
-      <td style="white-space:nowrap"><button class="btn claro" data-fqlojas="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Lojas</button> <button class="btn claro" data-fqsenha="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Senha</button> <button class="btn verm" data-fqdes="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Desativar</button></td></tr>`; }).join('') + '</table>'
-    : '<div class="vazio">Nenhum franqueado cadastrado. Use "+ Novo franqueado".</div>');
-  box.querySelectorAll('[data-fqlojas]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqlojas); const atuais = FQ_MAPA.filter(x => x.user_id === p.id).map(x => x.fra).join(', ');
-    const v = prompt('Lojas de ' + p.nome + ' (números de FRA separados por vírgula):', atuais); if (v === null) return;
+  box.innerHTML = '<div class="vazio">carregando\u2026</div>';
+  let d;
+  try { d = await chamarFranq({ acao: 'listar' }); }
+  catch (e) { box.innerHTML = '<div class="vazio">N\u00e3o deu para carregar a lista: ' + esc(e.message || e) + '</div>'; return; }
+  FQ_PAPEL = d.papel; FQ_CARTEIRA = d.carteira || []; FQ_LISTA = {};
+  const lista = d.franqueados || [], oc = d.ocupacao || {};
+  lista.forEach(p => { FQ_LISTA[p.id] = p; });
+  const sub = $('fqSub');
+  if (sub) sub.textContent = FQ_PAPEL === 'admin'
+    ? 'cada login v\u00ea s\u00f3 o raio-x e a consultoria das lojas ligadas a ele; nada mais da Central'
+    : 'voc\u00ea cadastra e gerencia apenas franqueados das ' + FQ_CARTEIRA.length + ' lojas da sua carteira';
+  const cheias = Object.keys(oc).filter(f => oc[f] >= 3).map(Number).sort((a, b) => a - b);
+  const topo = cheias.length
+    ? `<div class="s" style="margin-bottom:8px">Limite: <b>3 usu\u00e1rios por loja</b>. Lojas no limite: ${cheias.map(f => 'FRA ' + f).join(', ')}.</div>`
+    : `<div class="s" style="margin-bottom:8px">Limite: <b>3 usu\u00e1rios por loja</b> (dono + at\u00e9 2 pessoas da equipe, todos com a mesma vis\u00e3o).</div>`;
+  box.innerHTML = topo + (lista.length
+    ? `<table class="lista"><tr><th>Nome</th><th>E-mail (login)</th><th>\u00daltimo acesso</th><th>Lojas</th><th></th></tr>` + lista.map(p => `<tr>
+        <td><div class="t">${esc(p.nome)}${p.banido ? ' <span class="st verm">desativado</span>' : ''}</div><div class="s" style="font-family:monospace">${p.id.slice(0, 8)}\u2026</div></td>
+        <td><div class="t" style="font-family:monospace;font-size:12.5px;word-break:break-all">${p.email ? esc(p.email) : '<span class="st lar">sem e-mail</span>'}</div></td>
+        <td>${p.ult ? `<div class="t">${dBR(p.ult)}</div><div class="s">${p.n30} acesso(s) em 30 dias</div>` : '<span class="st lar">nunca entrou</span>'}</td>
+        <td>${p.lojas.length ? p.lojas.map(f => `<span class="st cinza" title="${esc(frqDe(f).nome)} \u00b7 ${oc[f] || 0}/3 usu\u00e1rios">FRA ${f} <small>${oc[f] || 0}/3</small></span>`).join(' ') : '<span class="st lar">sem loja</span>'}</td>
+        <td style="white-space:nowrap"><button class="btn claro" data-fqlojas="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Lojas</button> <button class="btn claro" data-fqsenha="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Senha</button> <button class="btn verm" data-fqdes="${p.id}" type="button" style="padding:4px 10px;font-size:12px">Desativar</button></td></tr>`).join('') + '</table>'
+    : `<div class="vazio">${FQ_PAPEL === 'admin' ? 'Nenhum franqueado cadastrado.' : 'Nenhum franqueado nas lojas da sua carteira ainda.'} Use "+ Novo franqueado".</div>`);
+  box.querySelectorAll('[data-fqlojas]').forEach(b => b.onclick = () => { const p = FQ_LISTA[b.dataset.fqlojas];
+    const v = prompt('Lojas de ' + p.nome + ' (n\u00fameros de FRA separados por v\u00edrgula)' + (FQ_PAPEL === 'admin' ? '' : ' \u2014 s\u00f3 FRAs da sua carteira') + ':', p.lojas.join(', ')); if (v === null) return;
     chamarFranq({ acao: 'lojas', user_id: p.id, fras: v.split(/[,\s;]+/).filter(Boolean) }).then(() => { toast('lojas atualizadas'); desenharFranqueados(); }).catch(erro); });
-  box.querySelectorAll('[data-fqsenha]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqsenha); const v = prompt('Nova senha para ' + p.nome + ' (mínimo 8 caracteres):'); if (!v) return;
-    chamarFranq({ acao: 'senha', user_id: p.id, senha: v }).then(() => toast('senha redefinida')).catch(erro); });
-  box.querySelectorAll('[data-fqdes]').forEach(b => b.onclick = () => { const p = PERFIS.find(x => x.id === b.dataset.fqdes); if (!confirm('Desativar o login de ' + p.nome + '? Ele não consegue mais entrar e as lojas são desligadas.')) return;
+  box.querySelectorAll('[data-fqsenha]').forEach(b => b.onclick = () => { const p = FQ_LISTA[b.dataset.fqsenha];
+    const v = prompt('Nova senha para ' + p.nome + (p.email ? ' (' + p.email + ')' : '') + ' \u2014 m\u00ednimo 8 caracteres:', senhaInicial()); if (!v) return;
+    chamarFranq({ acao: 'senha', user_id: p.id, senha: v }).then(() => alert('Senha redefinida.\n\nE-mail: ' + (p.email || '\u2014') + '\nSenha: ' + v + '\n\nAnote \u2014 ela n\u00e3o aparece de novo.')).catch(erro); });
+  box.querySelectorAll('[data-fqdes]').forEach(b => b.onclick = () => { const p = FQ_LISTA[b.dataset.fqdes];
+    if (!confirm('Desativar o login de ' + p.nome + (p.email ? ' (' + p.email + ')' : '') + '? Ele n\u00e3o consegue mais entrar e as lojas s\u00e3o desligadas.')) return;
     chamarFranq({ acao: 'desativar', user_id: p.id }).then(() => { toast('desativado'); desenharFranqueados(); }).catch(erro); });
 }
 function senhaInicial() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; const u = new Uint32Array(10); crypto.getRandomValues(u); return 'Pop' + [...u].map(x => A[x % A.length]).join('') + '!'; }
 $('btnNovoFranq').onclick = () => {
-  const lojas = FRQ.filter(f => f.fra > 0 && f.ativo !== false).sort((a, b) => a.fra - b.fra);
+  const daCarteira = ehAdmin() ? null : new Set(FQ_CARTEIRA.length ? FQ_CARTEIRA : carteiraFras());
+  const lojas = FRQ.filter(f => f.fra > 0 && f.ativo !== false && (!daCarteira || daCarteira.has(f.fra))).sort((a, b) => a.fra - b.fra);
+  if (!lojas.length) { alert('Voc\u00ea n\u00e3o tem lojas na sua carteira \u2014 fale com a franqueadora.'); return; }
   $('mBox').innerHTML = `<h3>+ Novo login de franqueado</h3>
     <div class="form">
       <label>Nome</label><input id="nfNome" placeholder="Nome do franqueado">
       <label>E-mail (login)</label><input id="nfEmail" type="email" placeholder="franqueado@email.com">
       <label>Senha inicial</label><input id="nfSenha" type="text" value="${senhaInicial()}">
       <label>Lojas (FRA)</label><select id="nfLojas" multiple size="8">${lojas.map(f => `<option value="${f.fra}">FRA ${f.fra} · ${esc(f.nome)}</option>`).join('')}</select>
-      <p style="font-size:12px;color:var(--tinta-suave)">Segure Ctrl/Cmd para escolher mais de uma loja. O franqueado entra no mesmo endereço do Raio-X e vê só essas lojas.</p>
+      <p style="font-size:12px;color:var(--tinta-suave)">Segure Ctrl/Cmd para escolher mais de uma loja. O franqueado entra no mesmo endereço do Raio-X e vê só essas lojas.${daCarteira ? ' Aparecem apenas as lojas da sua carteira.' : ''}</p>
     </div>
     <div class="acoes"><button class="btn claro" id="mFechar" type="button">Cancelar</button><button class="btn laranja" id="nfOk" type="button">Criar login</button></div>`;
   $('mBg').classList.add('on'); $('mFechar').onclick = fecharModal;
@@ -518,7 +543,7 @@ $('btnNovoFranq').onclick = () => {
     $('nfOk').disabled = true;
     try { await chamarFranq({ acao: 'criar', nome: $('nfNome').value.trim(), email: $('nfEmail').value.trim(), senha: $('nfSenha').value, fras });
       const senha = $('nfSenha').value, email = $('nfEmail').value.trim();
-      fecharModal(); const { data: pf } = await sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor').order('criado_em'); PERFIS = (pf || []).filter(p => !/robo\.raiox/i.test(p.nome || '')); desenharFranqueados();
+      fecharModal(); const { data: pf } = await sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor').order('criado_em'); PERFIS = (pf || []).filter(p => !/robo\.raiox/i.test(p.nome || '')); await desenharFranqueados();
       alert('Login criado.\n\nE-mail: ' + email + '\nSenha: ' + senha + '\nEndereço: ' + location.origin + location.pathname + '\n\nAnote — a senha não aparece de novo (dá para redefinir).');
     } catch (e) { erro(e); $('nfOk').disabled = false; }
   };

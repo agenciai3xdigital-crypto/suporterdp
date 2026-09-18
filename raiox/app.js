@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.5';
+const VERSAO = 'v3.6';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -142,23 +142,30 @@ const consAtiva = fra => CONS.find(c => c.fra === fra && c.status === 'ativa');
 /* ================= REDE ================= */
 function desenharRede() {
   const Q = quartis();
-  const snaps = Object.values(SNAPS);
   const lojasAtivas = FRQ.filter(f => f.ativo !== false && f.fra > 0);
-  const comRaiox = snaps.length, semNota = snaps.filter(s => s.score == null).length;
-  const defasadas = snaps.filter(s => (s.kpis.defasagem_meses || 0) >= 2).length;
+  // cada card do topo e um filtro: o numero do card e a quantidade de linhas que ele abre
+  const media = Q ? Q.media : null;
+  const comRaiox = lojasAtivas.filter(f => SNAPS[f.fra]).length;
+  const semNota = lojasAtivas.filter(f => SNAPS[f.fra] && SNAPS[f.fra].score == null).length;
+  const abaixo = media == null ? 0 : lojasAtivas.filter(f => SNAPS[f.fra] && SNAPS[f.fra].score != null && SNAPS[f.fra].score < media).length;
+  const defasadas = lojasAtivas.filter(f => SNAPS[f.fra] && (SNAPS[f.fra].kpis.defasagem_meses || 0) >= 2).length;
   const semDado = lojasAtivas.filter(f => !SNAPS[f.fra]).length;
-  const ativas = CONS.filter(c => c.status === 'ativa').length;
+  const ativas = lojasAtivas.filter(f => consAtiva(f.fra)).length;
+  const card = (f, n, l, cls, dica) => `<button type="button" class="kpi${cls ? ' ' + cls : ''}${rdFiltro === f ? ' on' : ''}" data-f="${f}" title="${esc(dica)}"><div class="n">${n}</div><div class="l">${l}</div></button>`;
   $('rdResumo').innerHTML =
-    `<div class="kpi"><div class="n">${comRaiox}</div><div class="l">Lojas com raio-x</div></div>`
-    + `<div class="kpi${Q ? '' : ''}"><div class="n">${Q ? br(Q.media, 0) : '—'}</div><div class="l">Nota média da rede</div></div>`
-    + `<div class="kpi${semNota ? ' alerta' : ''}"><div class="n">${semNota}</div><div class="l">Sem nota (custo sem cadastro)</div></div>`
-    + `<div class="kpi${defasadas ? ' atencao' : ''}"><div class="n">${defasadas}</div><div class="l">Com dado defasado (2+ meses)</div></div>`
-    + `<div class="kpi"><div class="n">${semDado}</div><div class="l">Aguardando carga</div></div>`
-    + `<div class="kpi${ativas ? ' ok' : ''}"><div class="n">${ativas}</div><div class="l">Consultorias ativas</div></div>`;
+      card('comraiox', comRaiox, 'Lojas com raio-x', '', 'Ver as ' + comRaiox + ' lojas que j\u00e1 t\u00eam raio-x calculado')
+    + card('abaixo', Q ? br(Q.media, 0) : '\u2014', 'Nota m\u00e9dia da rede', '', Q ? 'Ver as ' + abaixo + ' lojas com nota abaixo da m\u00e9dia (' + br(Q.media, 0) + ')' : 'Nenhuma nota calculada ainda')
+    + card('semnota', semNota, 'Sem nota (custo sem cadastro)', semNota ? 'alerta' : '', 'Ver as lojas sem nota por falta de custo cadastrado')
+    + card('defasadas', defasadas, 'Com dado defasado (2+ meses)', defasadas ? 'atencao' : '', 'Ver as lojas cujo \u00faltimo m\u00eas com venda j\u00e1 tem 2 meses ou mais')
+    + card('semraiox', semDado, 'Aguardando carga', '', 'Ver as lojas que ainda n\u00e3o t\u00eam raio-x')
+    + card('consult', ativas, 'Consultorias ativas', ativas ? 'ok' : '', 'Ver as lojas em consultoria');
+  $('rdResumo').querySelectorAll('.kpi[data-f]').forEach(b => b.onclick = () => { rdFiltro = rdFiltro === b.dataset.f ? 'todas' : b.dataset.f; desenharRede(); });
 
-  const PF = { todas: 'Todas', minha: 'Minha carteira', piores: 'Q4 (piores)', semnota: 'Sem nota', consult: 'Em consultoria', semraiox: 'Aguardando carga' };
-  $('rdPills').innerHTML = Object.keys(PF).map(k => `<button class="pill${rdFiltro === k ? ' on' : ''}" data-f="${k}" type="button">${PF[k]}</button>`).join('');
-  $('rdPills').querySelectorAll('.pill').forEach(b => b.onclick = () => { rdFiltro = b.dataset.f; desenharRede(); });
+  const PF = { todas: 'Todas', minha: 'Minha carteira', piores: 'Q4 (piores)', semnota: 'Sem nota', consult: 'Em consultoria', semraiox: 'Aguardando carga', comraiox: 'Com raio-x', abaixo: 'Abaixo da m\u00e9dia', defasadas: 'Dado defasado' };
+  const PILL_FIXAS = ['todas', 'minha', 'piores', 'semnota', 'consult', 'semraiox'];   // as demais so aparecem quando ligadas por um card
+  const pills = PILL_FIXAS.includes(rdFiltro) ? PILL_FIXAS : PILL_FIXAS.concat([rdFiltro]);
+  $('rdPills').innerHTML = pills.map(k => `<button class="pill${rdFiltro === k ? ' on' : ''}" data-f="${k}" type="button">${PF[k]}${rdFiltro === k && k !== 'todas' ? ' \u00d7' : ''}</button>`).join('');
+  $('rdPills').querySelectorAll('.pill').forEach(b => b.onclick = () => { rdFiltro = (rdFiltro === b.dataset.f && b.dataset.f !== 'todas') ? 'todas' : b.dataset.f; desenharRede(); });
   const sc = $('rdCons'); if (sc.options.length <= 1) { const cs = [...new Set(FRQ.map(f => (f.consultor || '').trim()).filter(Boolean))].sort(); sc.innerHTML = '<option value="">Todos os consultores</option>' + cs.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join(''); }
   const su = $('rdUf'); if (su.options.length <= 1) { const ufs = [...new Set(FRQ.map(f => f.estado).filter(Boolean))].sort(); su.innerHTML = '<option value="">Todas as UFs</option>' + ufs.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join(''); }
   const busca = ($('rdBusca').value || '').trim().toLowerCase(), cons = sc.value, uf = su.value;
@@ -173,6 +180,9 @@ function desenharRede() {
     if (rdFiltro === 'semnota') return s && s.score == null;
     if (rdFiltro === 'consult') return !!consAtiva(f.fra);
     if (rdFiltro === 'semraiox') return !s;
+    if (rdFiltro === 'comraiox') return !!s;
+    if (rdFiltro === 'abaixo') return !!(s && s.score != null && Q && s.score < Q.media);
+    if (rdFiltro === 'defasadas') return !!(s && (s.kpis.defasagem_meses || 0) >= 2);
     return true;
   });
   const val = (x, k) => {

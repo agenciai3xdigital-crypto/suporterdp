@@ -244,14 +244,14 @@
     const c = CONS.find(x => x.status === 'ativa') || CONS[0];
     if (!c) return;
     const [itensQ, perfQ, baseQ, avQ] = await Promise.all([
-      sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id,responsavel,descricao').eq('consultoria_id', c.id).order('data').order('id'),
+      sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id,responsavel,descricao').eq('consultoria_id', c.id).is('cancelado_em', null).order('data').order('id'),
       sb.from('perfis').select('id,nome').in('id', [c.consultor_id, c.franqueado_id, session.user.id].filter(Boolean)),
       c.mes_ref_base ? sb.from('raiox_snapshots').select('fra,mes_ref,calculado_em,score,sub,kpis,dados->metas,dados->governanca,dados->churnGeral,tarefas').eq('fra', FRA).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null }),
       sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false })
     ]);
     const AVS = avQ.data || [];
     const itens = itensQ.data || [], nomes = {}; (perfQ.data || []).forEach(p => { nomes[p.id] = p.nome; });
-    const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
+    const tarefas = itens.filter(i => i.tipo === 'tarefa' && !/^Avalia/.test(i.titulo || '')), reunioes = itens.filter(i => i.tipo !== 'tarefa' && !/^Avalia/.test(i.titulo || ''));
     const tConcl = tarefas.filter(t => t.concluida), tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO), tProx = tarefas.filter(t => !t.concluida && (!t.prazo || t.prazo >= hojeISO));
     const rPass = reunioes.filter(r => r.data < hojeISO), rFeitas = rPass.filter(r => r.concluida), rPend = rPass.filter(r => !r.concluida), rProx = reunioes.filter(r => r.data >= hojeISO);
     const total = Math.max(1, diasEntre(c.inicio, c.fim_previsto || c.inicio)), decorrido = Math.max(0, Math.min(total, diasEntre(c.inicio, hojeISO)));
@@ -267,12 +267,12 @@
     if (AVS.length) {
       const ult = AVS[0], duasPiorou = AVS.length >= 2 && AVS[0].andamento === 'piorou' && AVS[1].andamento === 'piorou';
       const semResposta = AVS.filter(a => (a.sugestao || a.nota <= 2 || a.andamento === 'piorou') && !a.resposta).length;
-      if (duasPiorou) gargalos.push(`<b>Franqueado diz que piorou duas semanas seguidas</b> (notas ${AVS[1].nota} e ${AVS[0].nota}/5). Conversar antes da próxima reunião — a percepção dele é parte do resultado.`);
+      if (duasPiorou) gargalos.push(`<b>Franqueado diz que piorou duas avaliações seguidas</b> (notas ${AVS[1].nota} e ${AVS[0].nota}/5). Conversar antes da próxima reunião — a percepção dele é parte do resultado.`);
       else if (ult.nota <= 2) gargalos.push(`<b>Última avaliação do franqueado: ${ult.nota}/5 (${esc(ult.andamento)})</b>${ult.comentario ? ' — "' + esc(ult.comentario.slice(0, 140)) + '"' : ''}.`);
       if (semResposta) gargalos.push(`<b>${br(semResposta)} avaliação(ões) do franqueado sem resposta</b> — sugestão ou nota baixa esperando retorno na aba Avaliação.`);
       const diasSem = diasEntre(AVS[0].semana, hojeISO);
-      if (c.status === 'ativa' && diasSem > 14) gargalos.push(`<b>Franqueado sem avaliar há ${br(diasSem)} dias</b> — última semana avaliada: ${dBR(AVS[0].semana)}.`);
-    } else if (c.status === 'ativa' && decorrido >= 10) gargalos.push('<b>O franqueado ainda não avaliou nenhuma semana</b> — confirmar se ele tem o login do Raio-X e sabe da aba Avaliação.');
+      if (c.status === 'ativa' && diasSem >= 21) gargalos.push(`<b>Franqueado sem avaliar há ${br(diasSem)} dias</b> — última referência: ${dBR(AVS[0].semana)}. Marcar a reunião como realizada abre a avaliação dele.`);
+    } else if (c.status === 'ativa' && decorrido >= 10) gargalos.push('<b>O franqueado ainda não avaliou nenhuma reunião</b> — confirmar se ele tem o login do Raio-X e se as reuniões estão sendo marcadas como realizadas.');
     if (!gargalos.length) gargalos.push('<b>Nenhum gargalo identificado</b> — plano dentro do prazo e reuniões em dia.');
 
     let cmp = '';
@@ -367,7 +367,7 @@
       if (error || !data) { b.disabled = false; alert(error ? error.message : 'Sem permissão para marcar este item.'); return; }
       const it = itens.find(x => x.id === id); if (it) { it.concluida = feito; it.concluida_em = feito ? new Date().toISOString() : null; it.concluida_por = feito ? session.user.id : null; }
       if (!nomes[session.user.id] && PERFIL) nomes[session.user.id] = PERFIL.nome;
-      const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
+      const tarefas = itens.filter(i => i.tipo === 'tarefa' && !/^Avalia/.test(i.titulo || '')), reunioes = itens.filter(i => i.tipo !== 'tarefa' && !/^Avalia/.test(i.titulo || ''));
       cc.tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO); cc.rPend = reunioes.filter(r => r.data < hojeISO && !r.concluida);
       cc.pctTarefas = tarefas.length ? 100 * tarefas.filter(t => t.concluida).length / tarefas.length : 0;
       cc.ritmo = cc.pctTarefas >= cc.pctTempo - 10 ? { l: 'No ritmo', c: '#009150' } : cc.pctTarefas >= cc.pctTempo - 30 ? { l: 'Atrasando', c: '#E67E22' } : { l: 'Travada', c: '#C0392B' };
@@ -376,9 +376,9 @@
     if (!PODE_GERIR) return;
     /* --- gestão de tarefas (admin): criar / editar / remover via RPC raiox_tarefa_gerir --- */
     const recarregar = async () => {
-      const { data } = await sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id,responsavel,descricao').eq('consultoria_id', c.id).order('data').order('id');
+      const { data } = await sb.from('agenda_eventos').select('id,titulo,tipo,data,ini,prazo,concluida,concluida_em,concluida_por,user_id,responsavel,descricao').eq('consultoria_id', c.id).is('cancelado_em', null).order('data').order('id');
       itens.length = 0; (data || []).forEach(i => itens.push(i));
-      const tarefas = itens.filter(i => i.tipo === 'tarefa'), reunioes = itens.filter(i => i.tipo !== 'tarefa');
+      const tarefas = itens.filter(i => i.tipo === 'tarefa' && !/^Avalia/.test(i.titulo || '')), reunioes = itens.filter(i => i.tipo !== 'tarefa' && !/^Avalia/.test(i.titulo || ''));
       cc.tarefas = tarefas; cc.reunioes = reunioes;
       cc.tAtras = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hojeISO); cc.rPend = reunioes.filter(r => r.data < hojeISO && !r.concluida);
       cc.pctTarefas = tarefas.length ? 100 * tarefas.filter(t => t.concluida).length / tarefas.length : 0;
@@ -443,57 +443,101 @@
   function buildAvaliacaoTab() {
     const cc = window.__consultoria;
     const sec = document.createElement('section'); sec.id = 'avaliacao';
-    const semanaAtual = segundaDe(hoje);
     const ROT = { melhorou: 'Melhorou', igual: 'Na mesma', piorou: 'Piorou' };
+    const ROTC = { sim: 'Sim', mais_ou_menos: 'Mais ou menos', nao: 'Não' };
+    const PISO = 21;   // dias sem avaliar que abrem uma avaliação avulsa
     const nomeDe = uid => (cc && cc.nomes && cc.nomes[uid]) || (PERFIL && PERFIL.id === uid ? PERFIL.nome : 'franqueado');
     if (!cc) {
-      sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Avaliação semanal</h2></div><div class="card"><div class="callout">A avaliação semanal começa quando a consultoria de faturamento é iniciada.</div></div></div>`;
+      sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Avaliação da consultoria</h2></div><div class="card"><div class="callout">A avaliação começa quando a consultoria de faturamento é iniciada: a cada reunião realizada, você diz como foi.</div></div></div>`;
       rep.appendChild(sec); return;
     }
-    const { c, avs } = cc;
-    const minha = avs.find(a => a.semana === semanaAtual && a.user_id === session.user.id);
-    window.__avalPendente = EH_FRANQ && c.status === 'ativa' && !minha;
-    const item = a => `<div class="av-item" data-av="${esc(a.id)}"><div class="top"><b style="color:var(--ink)">Semana de ${dBR(a.semana)}</b><span style="color:var(--amarelo);font-size:1rem;letter-spacing:1px">${'★'.repeat(a.nota)}<span style="color:#D9E3DD">${'★'.repeat(5 - a.nota)}</span></span><span class="stbadge" style="background:${a.andamento === 'melhorou' ? '#009150' : a.andamento === 'piorou' ? '#C0392B' : '#FDAE25'};color:${a.andamento === 'igual' ? '#10231C' : '#fff'}">${ROT[a.andamento] || a.andamento}</span><span>${esc(nomeDe(a.user_id))} · ${dBR(a.criado_em)}</span></div>
+    const { c, avs, itens } = cc;
+    const minhas = avs.filter(a => a.user_id === session.user.id);
+    const jaAvaliadas = new Set(minhas.map(a => a.evento_id).filter(Boolean));
+    const realizadas = itens.filter(i => i.tipo !== 'tarefa' && i.concluida && !/^Avalia/.test(i.titulo)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
+    const pendentes = c.status === 'ativa' ? realizadas.filter(r => !jaAvaliadas.has(r.id)) : [];
+    const ultimaMinha = minhas.map(a => a.semana).sort().pop() || null;
+    const diasSem = diasEntre(ultimaMinha || c.inicio, hojeISO);
+    const semanaAtual = segundaDe(hoje);
+    const cabeAvulsa = c.status === 'ativa' && !pendentes.length && diasSem >= PISO && !minhas.some(a => !a.evento_id && a.semana === semanaAtual);
+    // dá para corrigir a última avaliação enquanto ela não foi respondida
+    const ultAv = minhas.slice().sort((x, y) => String(y.criado_em).localeCompare(String(x.criado_em)))[0];
+    const editando = !!(EH_FRANQ && window.__avalEditar && ultAv && window.__avalEditar === ultAv.id && !ultAv.resposta);
+    const alvoEv = editando ? (realizadas.find(r => r.id === ultAv.evento_id) || null) : (pendentes[0] || null);
+    const temForm = EH_FRANQ && c.status === 'ativa' && (editando || pendentes.length > 0 || cabeAvulsa);
+    window.__avalPendente = EH_FRANQ && c.status === 'ativa' && (pendentes.length > 0 || cabeAvulsa);
+    const base = editando ? ultAv : null;
+
+    const tituloEv = {}; itens.forEach(i => { tituloEv[i.id] = i.titulo; });
+    const item = a => `<div class="av-item" data-av="${esc(a.id)}"><div class="top"><b style="color:var(--ink)">${a.evento_id ? 'Reunião de ' + dBR(a.semana) : 'Avaliação avulsa · semana de ' + dBR(a.semana)}</b><span style="color:var(--amarelo);font-size:1rem;letter-spacing:1px">${'★'.repeat(a.nota)}<span style="color:#D9E3DD">${'★'.repeat(5 - a.nota)}</span></span></div>
+      <div class="sub">${a.evento_id && tituloEv[a.evento_id] ? esc(tituloEv[a.evento_id]) + ' · ' : ''}a loja ${ROT[a.andamento] ? ROT[a.andamento].toLowerCase() : esc(a.andamento)}${a.clareza ? ' · saiu sabendo o que fazer: ' + (ROTC[a.clareza] || a.clareza).toLowerCase() : ''} · ${esc(nomeDe(a.user_id))}</div>
       ${a.comentario ? `<p style="font-size:.86rem;margin-top:8px">${esc(a.comentario)}</p>` : ''}
       ${a.sugestao ? `<p style="font-size:.86rem;margin-top:6px"><b>Sugestão:</b> ${esc(a.sugestao)}</p>` : ''}
-      ${a.resposta ? `<div class="resp"><b>Resposta${a.respondido_por ? ' de ' + esc(nomeDe(a.respondido_por)) : ''}${a.respondido_em ? ' · ' + dBR(a.respondido_em) : ''}:</b> ${esc(a.resposta)}</div>` : (EH_EQUIPE ? `<div style="margin-top:8px"><textarea class="resp-txt" placeholder="Responder ao franqueado…" style="width:100%;border:1.5px solid var(--linha);border-radius:8px;padding:8px;font:inherit;font-size:.84rem;min-height:50px"></textarea><button type="button" class="btn btn-sec" data-resp="${esc(a.id)}" style="margin-top:6px">Responder</button></div>` : '')}
+      ${a.resposta ? `<div class="resp"><b>Resposta${a.respondido_por ? ' de ' + esc(nomeDe(a.respondido_por)) : ''}${a.respondido_em ? ' · ' + dBR(a.respondido_em) : ''}:</b> ${esc(a.resposta)}</div>`
+        : (EH_EQUIPE ? `<div style="margin-top:8px"><textarea class="resp-txt" placeholder="Responder ao franqueado…" style="min-height:60px"></textarea><button type="button" class="btn btn-pdf" data-resp="${esc(a.id)}" style="margin-top:6px">Responder</button></div>`
+        : (EH_FRANQ && ultAv && a.id === ultAv.id ? `<div style="margin-top:6px"><button type="button" class="btn" data-editar="${esc(a.id)}" style="font-size:.78rem;padding:4px 10px">Corrigir esta avaliação</button></div>` : ''))}
     </div>`;
-    const form = EH_FRANQ && c.status === 'ativa' ? `<div class="card form-av" id="formAv"><h3>${minha ? 'Sua avaliação desta semana' : 'Como foi esta semana?'} <span class="note" style="display:inline">· semana de ${dBR(semanaAtual)}</span></h3>
-      <label>Nota para a semana da consultoria</label><div class="estrelas" id="avEstrelas">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${minha && n <= minha.nota ? 'on' : ''}">★</button>`).join('')}</div>
-      <label>A loja, nesta semana</label><div class="opc" id="avAnd">${['melhorou', 'igual', 'piorou'].map(k => `<button type="button" data-k="${k}" class="${minha && minha.andamento === k ? 'on' : ''}">${ROT[k]}</button>`).join('')}</div>
-      <label>O que aconteceu (opcional)</label><textarea id="avCom" placeholder="O que funcionou, o que travou, o que a equipe sentiu…">${minha ? esc(minha.comentario || '') : ''}</textarea>
-      <label>Sugestão ou pedido de mudança (opcional)</label><textarea id="avSug" placeholder="Ex.: trocar a reunião para terça; mandar modelo de mensagem para a régua…">${minha ? esc(minha.sugestao || '') : ''}</textarea>
-      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-pdf" id="avSalvar">${minha ? 'Atualizar avaliação' : 'Enviar avaliação'}</button><span class="note" id="avMsg" style="margin:0">Sugestão, nota baixa ou "piorou" viram tarefa na agenda do consultor, com prazo de 2 dias para responder.</span></div></div>` : '';
-    sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Avaliação semanal</h2><span class="hint">${EH_FRANQ ? 'Sua leitura do processo, toda semana — é o que mostra se a consultoria está fazendo diferença para você' : 'O que o franqueado está achando do processo, semana a semana · responda aqui; a resposta fica registrada'}</span></div>
-      ${form}
-      <div class="card" style="margin-top:16px"><h3>Histórico de avaliações</h3><div class="note">${avs.length ? br(avs.length) + ' semana(s) avaliada(s) · média ' + br(avs.reduce((x, a) => x + a.nota, 0) / avs.length, 1) + '/5' : 'Nenhuma avaliação ainda.'}</div>${avs.map(item).join('')}</div></div>`;
+
+    const cabecalho = alvoEv
+      ? `<h3>Como foi a reunião de ${dBR(alvoEv.data)}? <span class="note" style="display:inline">· ${esc(alvoEv.titulo)}</span></h3>`
+      : `<h3>Como estão as últimas semanas? <span class="note" style="display:inline">· avaliação avulsa, ${br(diasSem)} dias sem avaliar</span></h3>`;
+    const form = temForm ? `<div class="card form-av" id="formAv">${cabecalho}
+      ${pendentes.length > 1 ? `<div class="callout" style="margin-bottom:10px">Faltam <b>${br(pendentes.length)}</b> reuniões para avaliar. Depois desta, a próxima aparece aqui.</div>` : ''}
+      <label>Nota para ${alvoEv ? 'esta reunião' : 'este período'}</label><div class="estrelas" id="avEstrelas">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" class="${base && n <= base.nota ? 'on' : ''}">★</button>`).join('')}</div>
+      <label>A loja, desde o último contato</label><div class="opc" id="avAnd">${['melhorou', 'igual', 'piorou'].map(k => `<button type="button" data-k="${k}" class="${base && base.andamento === k ? 'on' : ''}">${ROT[k]}</button>`).join('')}</div>
+      ${alvoEv ? `<label>Saiu da reunião sabendo o que fazer?</label><div class="opc" id="avClar">${['sim', 'mais_ou_menos', 'nao'].map(k => `<button type="button" data-k="${k}" class="${base && base.clareza === k ? 'on' : ''}">${ROTC[k]}</button>`).join('')}</div>` : ''}
+      <label>O que aconteceu (opcional)</label><textarea id="avCom" placeholder="O que funcionou, o que travou, o que a equipe sentiu…">${base ? esc(base.comentario || '') : ''}</textarea>
+      <label>Sugestão ou pedido de mudança (opcional)</label><textarea id="avSug" placeholder="Ex.: trocar a reunião para terça; mandar modelo de mensagem para a régua…">${base ? esc(base.sugestao || '') : ''}</textarea>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn btn-pdf" id="avSalvar">${editando ? 'Salvar correção' : 'Enviar avaliação'}</button>${editando ? '<button type="button" class="btn" id="avCancelar">Cancelar</button>' : ''}<span class="note" id="avMsg" style="margin:0">Vai para o consultor e para o painel da franqueadora.</span></div></div>`
+      : (EH_FRANQ && c.status === 'ativa'
+        ? `<div class="card"><div class="callout">Nada para avaliar agora. A próxima avaliação abre quando o consultor marcar a próxima reunião como realizada${diasSem >= 0 ? ' — ou sozinha, se passarem ' + PISO + ' dias sem nenhuma' : ''}.</div></div>`
+        : '');
+
+    const naoAvaliadas = realizadas.filter(r => !avs.some(a => a.evento_id === r.id));
+    const cobertura = EH_EQUIPE ? `<div class="card" style="margin-top:16px"><h3>Cobertura</h3>
+      <div class="note">${br(realizadas.length - naoAvaliadas.length)} de ${br(realizadas.length)} reunião(ões) realizada(s) foram avaliadas${ultimaMinha || avs.length ? ' · último retorno há ' + br(diasEntre(avs.map(a => a.semana).sort().pop(), hojeISO)) + ' dia(s)' : ''}.</div>
+      ${naoAvaliadas.length ? `<div class="note" style="margin-top:6px">Sem avaliação: ${naoAvaliadas.map(r => dBR(r.data)).join(' · ')}</div>` : ''}</div>` : '';
+
+    sec.innerHTML = `<div class="wrap"><div class="sec-head"><h2>Avaliação da consultoria</h2><span class="hint">${EH_FRANQ ? 'A cada reunião com o consultor, sua leitura de como foi — é o que mostra se a consultoria está fazendo diferença para você' : 'O que o franqueado respondeu depois de cada reunião'}</span></div>
+      ${form}${cobertura}
+      <div class="card" style="margin-top:16px"><h3>Histórico de avaliações</h3><div class="note">${avs.length ? br(avs.length) + ' avaliação(ões) · média ' + br(avs.reduce((x, a) => x + a.nota, 0) / avs.length, 1) + '/5' : 'Nenhuma avaliação ainda.'}</div>
+        <div style="margin-top:10px">${avs.map(item).join('') || ''}</div></div></div>`;
     rep.appendChild(sec);
+
     // interação
-    let nota = minha ? minha.nota : 0, andamento = minha ? minha.andamento : '';
+    let nota = base ? base.nota : 0, andamento = base ? base.andamento : '', clareza = base ? base.clareza : '';
     sec.querySelectorAll('#avEstrelas button').forEach(b => b.onclick = () => { nota = +b.dataset.n; sec.querySelectorAll('#avEstrelas button').forEach(x => x.classList.toggle('on', +x.dataset.n <= nota)); });
     sec.querySelectorAll('#avAnd button').forEach(b => b.onclick = () => { andamento = b.dataset.k; sec.querySelectorAll('#avAnd button').forEach(x => x.classList.toggle('on', x === b)); });
-    const bs = sec.querySelector('#avSalvar');
-    if (bs) bs.onclick = async () => {
-      const msg = sec.querySelector('#avMsg');
-      if (!nota || !andamento) { msg.textContent = 'Escolha a nota (estrelas) e diga se melhorou, ficou na mesma ou piorou.'; msg.style.color = 'var(--alerta)'; return; }
-      bs.disabled = true;
-      const linha = { consultoria_id: c.id, fra: FRA, user_id: session.user.id, semana: semanaAtual, nota, andamento, comentario: sec.querySelector('#avCom').value.trim() || null, sugestao: sec.querySelector('#avSug').value.trim() || null };
-      const { error } = minha ? await sb.from('raiox_avaliacoes').update({ nota, andamento, comentario: linha.comentario, sugestao: linha.sugestao }).eq('id', minha.id) : await sb.from('raiox_avaliacoes').insert(linha);
-      if (error) { bs.disabled = false; msg.textContent = 'Não salvou: ' + error.message; msg.style.color = 'var(--alerta)'; return; }
+    sec.querySelectorAll('#avClar button').forEach(b => b.onclick = () => { clareza = b.dataset.k; sec.querySelectorAll('#avClar button').forEach(x => x.classList.toggle('on', x === b)); });
+    const recarregar = async () => {
       const { data: novas } = await sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false });
       cc.avs = novas || []; sec.remove(); buildAvaliacaoTab(); montarAbas(true);
       const s2 = document.getElementById('avaliacao'); if (s2) s2.scrollIntoView({ behavior: 'smooth' });
+    };
+    const bc = sec.querySelector('#avCancelar'); if (bc) bc.onclick = () => { window.__avalEditar = null; sec.remove(); buildAvaliacaoTab(); montarAbas(true); };
+    sec.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => { window.__avalEditar = b.dataset.editar; sec.remove(); buildAvaliacaoTab(); montarAbas(true); const s2 = document.getElementById('avaliacao'); if (s2) s2.scrollIntoView({ behavior: 'smooth' }); });
+    const bs = sec.querySelector('#avSalvar');
+    if (bs) bs.onclick = async () => {
+      const msg = sec.querySelector('#avMsg');
+      const falta = !nota || !andamento || (alvoEv && !clareza);
+      if (falta) { msg.textContent = 'Escolha a nota, diga como a loja está e' + (alvoEv ? ' se saiu sabendo o que fazer.' : ' pronto.'); msg.style.color = 'var(--alerta)'; return; }
+      bs.disabled = true;
+      const comum = { nota, andamento, clareza: alvoEv ? clareza : null, comentario: sec.querySelector('#avCom').value.trim() || null, sugestao: sec.querySelector('#avSug').value.trim() || null };
+      const { error } = editando
+        ? await sb.from('raiox_avaliacoes').update(comum).eq('id', base.id)
+        : await sb.from('raiox_avaliacoes').insert(Object.assign({ consultoria_id: c.id, fra: FRA, user_id: session.user.id, semana: alvoEv ? alvoEv.data : semanaAtual, evento_id: alvoEv ? alvoEv.id : null }, comum));
+      if (error) { bs.disabled = false; msg.textContent = 'Não salvou: ' + error.message; msg.style.color = 'var(--alerta)'; return; }
+      window.__avalEditar = null;
+      await recarregar();
     };
     sec.querySelectorAll('[data-resp]').forEach(b => b.onclick = async () => {
       const box = b.closest('.av-item'), txt = box.querySelector('.resp-txt').value.trim(); if (!txt) return;
       b.disabled = true;
       const { data, error } = await sb.from('raiox_avaliacoes').update({ resposta: txt }).eq('id', b.dataset.resp).select('id');
       if (error || !data || !data.length) { b.disabled = false; alert(error ? error.message : 'Sem permissão para responder.'); return; }
-      // a tarefa "Avaliação semanal do franqueado" da agenda fecha junto
-      const avR = cc.avs.find(a => a.id === b.dataset.resp);
-      await sb.from('agenda_eventos').update({ concluida: true, concluida_em: new Date().toISOString(), concluida_por: session.user.id }).eq('consultoria_id', c.id).eq('concluida', false).like('titulo', 'Avaliação semanal do franqueado%').like('descricao', 'Semana de ' + (avR ? dBR(avR.semana) : '') + '%');
-      const { data: novas } = await sb.from('raiox_avaliacoes').select('*').eq('consultoria_id', c.id).order('semana', { ascending: false });
-      cc.avs = novas || []; sec.remove(); buildAvaliacaoTab(); montarAbas(true);
+      // a tarefa "Avaliação do franqueado" da agenda fecha junto
+      await sb.from('agenda_eventos').update({ concluida: true, concluida_em: new Date().toISOString(), concluida_por: session.user.id }).eq('consultoria_id', c.id).is('cancelado_em', null).eq('concluida', false).ilike('titulo', 'Avalia%do franqueado%');
+      await recarregar();
     });
   }
 
@@ -508,7 +552,7 @@
       if (c.encerrada_em) ev.push({ d: c.encerrada_em.slice(0, 10), cls: 'marco', t: 'Consultoria ' + c.status + (c.resultado ? ' · resultado: ' + c.resultado.veredito : ''), q: c.resultado ? 'nota ' + (c.resultado.score_ini ?? '—') + ' → ' + (c.resultado.score_fim ?? '—') : '' });
     });
     if (cc) {
-      cc.itens.forEach(i => { const v = i.tipo === 'tarefa' ? i.prazo : i.data; if (i.concluida) ev.push({ d: (i.concluida_em || v || '').slice(0, 10), cls: '', t: (i.tipo === 'tarefa' ? 'Tarefa feita: ' : 'Reunião realizada: ') + i.titulo, q: i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : dBR(v) }); else if (v && v < hojeISO && !/^Avaliação semanal/.test(i.titulo)) ev.push({ d: v, cls: 'venc', t: (i.tipo === 'tarefa' ? 'Tarefa vencida: ' : 'Reunião sem confirmação: ') + i.titulo, q: 'vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)' }); });
+      cc.itens.forEach(i => { const v = i.tipo === 'tarefa' ? i.prazo : i.data; if (i.concluida) ev.push({ d: (i.concluida_em || v || '').slice(0, 10), cls: '', t: (i.tipo === 'tarefa' ? 'Tarefa feita: ' : 'Reunião realizada: ') + i.titulo, q: i.tipo === 'tarefa' ? 'prazo ' + dBR(v) : dBR(v) }); else if (v && v < hojeISO && !/^Avalia/.test(i.titulo)) ev.push({ d: v, cls: 'venc', t: (i.tipo === 'tarefa' ? 'Tarefa vencida: ' : 'Reunião sem confirmação: ') + i.titulo, q: 'vencida há ' + br(diasEntre(v, hojeISO)) + ' dia(s)' }); });
       cc.avs.forEach(a => ev.push({ d: a.semana, cls: 'av', t: 'Avaliação do franqueado: ' + a.nota + '/5 · ' + a.andamento, q: (a.comentario ? a.comentario.slice(0, 120) : '') + (a.resposta ? ' · respondida' : '') }));
     }
     ev.sort((a, b) => String(b.d).localeCompare(String(a.d)));

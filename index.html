@@ -1203,7 +1203,7 @@ async function processarVendasBetta(e,file){
   alert('Vendas processadas ✓\n\nFaturamento direto: '+fmtReaisBetta(novoDados.faturamento_direto)+'\nFaturamento do carrinho completo: '+fmtReaisBetta(novoDados.faturamento_carrinho));
 }
 async function carregarAgenda(){
-  const data=await fetchAllSB(()=>sb.from('agenda_eventos').select('*').order('ini').order('id'));
+  const data=await fetchAllSB(()=>sb.from('agenda_eventos').select('*').is('cancelado_em',null).order('ini').order('id'));
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
     const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,demanda:e.demanda_id||null,consultoriaId:e.consultoria_id||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};

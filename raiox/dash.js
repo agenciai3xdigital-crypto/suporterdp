@@ -6,7 +6,7 @@ As regras de ritmo/gargalo são as mesmas do raiox/app.js (andamento). */
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'dash v1.2';
+const VERSAO = 'dash v1.3';
 const PAPEIS_OK = ['supervisor', 'diretoria'];
 
 const $ = id => document.getElementById(id);
@@ -89,8 +89,8 @@ async function carregarTudo() {
     sb.from('franquias').select('fra,nome,cidade,estado,consultor,ativo').order('fra'),
     fetchAll(() => sb.from('raiox_snapshots_atual').select('fra,mes_ref,calculado_em,score,sem_nota_motivo,sub,kpis').order('fra')),
     sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }),
-    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,concluida_por,user_id,franquia_fra,responsavel,descricao').not('consultoria_id', 'is', null).order('data')),
-    fetchAll(() => sb.from('raiox_avaliacoes').select('id,consultoria_id,fra,user_id,semana,nota,andamento,comentario,sugestao,resposta,respondido_por,respondido_em,criado_em').order('semana', { ascending: false })),
+    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,concluida_por,user_id,franquia_fra,responsavel,descricao').not('consultoria_id', 'is', null).is('cancelado_em', null).order('data')),
+    fetchAll(() => sb.from('raiox_avaliacoes').select('id,consultoria_id,fra,user_id,semana,evento_id,tipo,nota,andamento,clareza,comentario,sugestao,resposta,respondido_por,respondido_em,criado_em').order('semana', { ascending: false })),
     // histórico leve: só o que a curva precisa (sem `dados`)
     fetchAll(() => sb.from('raiox_snapshots').select('fra,mes_ref,score,receita:kpis->receita_mes,margem:kpis->margem_adj,lucro:kpis->lucro_mes').order('fra').order('mes_ref')),
     sb.from('franqueado_lojas').select('user_id,fra'),
@@ -132,7 +132,7 @@ function quartis(snaps) {
 }
 const classeScore = (s, Q) => s == null ? 'sn' : !Q ? 'q2' : s >= Q.q1 ? 'q1' : s >= Q.q2 ? 'q2' : s >= Q.q3 ? 'q3' : 'q4';
 function andamento(c) {
-  const its = ITENS.filter(i => i.consultoria_id === c.id);
+  const its = ITENS.filter(i => i.consultoria_id === c.id && !/^Avalia/.test(i.titulo || ''));
   const tarefas = its.filter(i => i.tipo === 'tarefa'), reunioes = its.filter(i => i.tipo !== 'tarefa');
   const tFeitas = tarefas.filter(t => t.concluida), tVenc = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < HOJE);
   const rPass = reunioes.filter(r => r.data < HOJE), rFeitas = rPass.filter(r => r.concluida), rPend = rPass.filter(r => !r.concluida), rProx = reunioes.filter(r => r.data >= HOJE);
@@ -146,7 +146,10 @@ function andamento(c) {
   const ultAv = avs[0] || null;
   const piorou2 = avs.length >= 2 && avs[0].andamento === 'piorou' && avs[1].andamento === 'piorou';
   const diasSemAvaliar = ultAv ? diasEntre(ultAv.semana, HOJE) : decorrido;
-  return { its, tarefas, reunioes, tFeitas, tVenc, rPass, rFeitas, rPend, rProx, total, decorrido, pctTempo, pctTarefas, dScore, ritmo, avs, ultAv, piorou2, diasSemAvaliar,
+  const rReal = reunioes.filter(r => r.concluida);                                  // reuniões que aconteceram
+  const rSemAval = rReal.filter(r => !avs.some(a => a.evento_id === r.id));          // ...e que o franqueado ainda não avaliou
+  const clarezaNao = avs.filter(a => a.clareza === 'nao').length;
+  return { its, tarefas, reunioes, tFeitas, tVenc, rPass, rFeitas, rPend, rProx, total, decorrido, pctTempo, pctTarefas, dScore, ritmo, avs, ultAv, piorou2, diasSemAvaliar, rReal, rSemAval, clarezaNao,
     semEvolucao: c.status === 'ativa' && decorrido >= 45 && dScore != null && dScore <= 0,
     semBI: c.status === 'ativa' && s && s.mes_ref === c.mes_ref_base && decorrido >= 40,
     temFranq: !!c.franqueado_id || FQL.some(x => x.fra === c.fra) };
@@ -192,13 +195,15 @@ function alertas(R) {
   R.ativas.forEach(c => {
     const a = R.AND[c.id];
     if (a.ritmo.cls === 'q4') add(1, c, 'tarefas', `Consultoria <b>${a.ritmo.l}</b>: ${a.tFeitas.length}/${a.tarefas.length} tarefas feitas no dia ${a.decorrido} de ${a.total}${a.rPend.length ? ' · ' + a.rPend.length + ' reunião(ões) passada(s) sem confirmação' : ''}`, a.decorrido);
-    if (a.ultAv && a.ultAv.nota <= 2) add(1, c, 'avaliacao', `Franqueado deu nota <b>${a.ultAv.nota}/5</b> na semana de ${dBR(a.ultAv.semana)}${a.ultAv.resposta ? '' : ' · <b>sem resposta do consultor</b>'}`, diasEntre(a.ultAv.semana, HOJE));
-    if (a.piorou2) add(1, c, 'avaliacao', `Franqueado diz que <b>piorou</b> duas semanas seguidas`, diasEntre(a.avs[1].semana, HOJE));
+    if (a.ultAv && a.ultAv.nota <= 2) add(1, c, 'avaliacao', `Franqueado deu nota <b>${a.ultAv.nota}/5</b> ${a.ultAv.evento_id ? 'na reunião de ' : 'na avaliação de '}${dBR(a.ultAv.semana)}${a.ultAv.resposta ? '' : ' · <b>sem resposta do consultor</b>'}`, diasEntre(a.ultAv.semana, HOJE));
+    if (a.piorou2) add(1, c, 'avaliacao', `Franqueado diz que <b>piorou</b> duas avaliações seguidas`, diasEntre(a.avs[1].semana, HOJE));
     const semResp = a.avs.filter(v => !v.resposta && (v.sugestao || v.nota <= 2 || v.andamento === 'piorou') && diasEntre(v.criado_em, HOJE) > 2);
     if (semResp.length) add(semResp.some(v => v.nota <= 2) ? 1 : 2, c, 'avaliacao', `${semResp.length} avaliação(ões) com sugestão ou nota baixa <b>sem resposta há mais de 2 dias</b>`, diasEntre(semResp[semResp.length - 1].criado_em, HOJE));
     if (a.tVenc.length) { const maisAntiga = Math.max(...a.tVenc.map(t => diasEntre(t.prazo, HOJE))); add(maisAntiga > 14 ? 1 : 2, c, 'tarefas', `<b>${a.tVenc.length} tarefa(s) vencida(s)</b> — a mais antiga há ${maisAntiga} dia(s): ${esc(a.tVenc.sort((x, y) => x.prazo.localeCompare(y.prazo))[0].titulo)}`, maisAntiga); }
     if (a.rPend.length === 1 && a.ritmo.cls !== 'q4') add(2, c, 'tarefas', `Reunião de ${dBR(a.rPend[0].data)} (${esc(a.rPend[0].titulo)}) <b>sem confirmação</b> de realizada`, diasEntre(a.rPend[0].data, HOJE));
-    if (a.temFranq && a.decorrido >= 10 && a.diasSemAvaliar >= 14) add(2, c, 'avaliacao', a.ultAv ? `Franqueado <b>não avalia há ${a.diasSemAvaliar} dias</b>` : `Franqueado <b>nunca avaliou</b> em ${a.decorrido} dias de consultoria`, a.diasSemAvaliar);
+    if (a.temFranq && a.decorrido >= 10 && a.diasSemAvaliar >= 21) add(2, c, 'avaliacao', a.ultAv ? `Franqueado <b>não avalia há ${a.diasSemAvaliar} dias</b>` : `Franqueado <b>nunca avaliou</b> em ${a.decorrido} dias de consultoria`, a.diasSemAvaliar);
+    if (a.rSemAval.length && a.temFranq) { const ra = a.rSemAval.slice().sort((x, y) => String(x.data).localeCompare(String(y.data)))[0]; add(2, c, 'avaliacao', `<b>${a.rSemAval.length} reunião(ões) realizada(s) sem avaliação</b> do franqueado — a mais antiga em ${dBR(ra.data)}`, diasEntre(ra.data, HOJE)); }
+    if (a.clarezaNao) add(2, c, 'avaliacao', `Franqueado saiu de <b>${a.clarezaNao} reunião(ões) sem saber o que fazer</b>`, 0);
     if (a.semEvolucao) add(2, c, 'consultoria', `45+ dias de consultoria e <b>nota não subiu</b> (${c.score_inicial} → ${SNAPS[c.fra].score})`, a.decorrido);
     if (a.semBI) add(2, c, 'consultoria', `40+ dias e o raio-x <b>ainda é do mês inicial</b> (${mesBR(c.mes_ref_base)}) — falta carregar o BI novo`, a.decorrido);
     const s = SNAPS[c.fra]; if (s && s.kpis.mes_parcial) add(2, c, 'diagnostico', `Loja em consultoria com <b>carga parcial</b> de ${mesBR(s.kpis.mes_parcial.mes)} — reenviar o BI completo`, 0);
@@ -371,12 +376,12 @@ ${kpi(L.filter(x => x.dica).length, 'Lojas com plano a ajustar', L.filter(x => x
 function abrirModal(html) { $('mBox').innerHTML = html; $('mBg').classList.add('on'); }
 function fecharModal() { $('mBg').classList.remove('on'); $('mBox').innerHTML = ''; }
 async function recarregarItens() {
-  ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,concluida_por,user_id,franquia_fra,responsavel,descricao').not('consultoria_id', 'is', null).order('data'));
+  ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,concluida_por,user_id,franquia_fra,responsavel,descricao').not('consultoria_id', 'is', null).is('cancelado_em', null).order('data'));
   desenhar();
 }
 function abrirEditorTarefas(cid) {
   const c = CONS.find(x => x.id === cid); if (!c) return;
-  const its = ITENS.filter(i => i.consultoria_id === cid && i.tipo === 'tarefa').sort((a, b) => (a.prazo || '').localeCompare(b.prazo || ''));
+  const its = ITENS.filter(i => i.consultoria_id === cid && i.tipo === 'tarefa' && !/^Avalia/.test(i.titulo || '')).sort((a, b) => (a.prazo || '').localeCompare(b.prazo || ''));
   const f = frqDe(c.fra);
   const linha = t => `<tr data-id="${t.id}"><td><input class="edT" value="${esc(t.titulo)}" maxlength="200" ${t.concluida ? 'disabled' : ''}></td><td><input class="edP" type="date" value="${t.prazo || ''}" ${t.concluida ? 'disabled' : ''}></td><td><select class="edR" ${t.concluida ? 'disabled' : ''}><option value="consultor"${ladoDe(t) === 'consultor' ? ' selected' : ''}>consultor</option><option value="franqueado"${ladoDe(t) === 'franqueado' ? ' selected' : ''}>franqueado</option></select></td><td>${t.concluida ? '<span class="st q1">feita ' + dBR(t.concluida_em) + (t.concluida_por ? ' · ' + esc(primeiro(nomeDe(t.concluida_por))) : '') + '</span>' : (t.prazo && t.prazo < HOJE ? '<span class="st q4">vencida há ' + diasEntre(t.prazo, HOJE) + ' d</span>' : '<span class="st cinza">a fazer</span>')}</td><td style="white-space:nowrap">${t.concluida ? '' : `<button class="btn claro mini" data-salvar="${t.id}" type="button">Salvar</button> <button class="btn verm mini" data-remover="${t.id}" type="button">Remover</button>`}</td></tr>`;
   abrirModal(`<h3 style="margin:0 0 4px">Tarefas · ${esc(f.nome)} <span class="s">FRA ${c.fra} · ${esc(primeiro(nomeDe(c.consultor_id)))} · dia ${diasEntre(c.inicio, HOJE)} de 90</span></h3>
@@ -416,38 +421,45 @@ function abrirEditorPlano() {
 function secSatisf(R) {
   const avs = R.avs;
   const comFranq = R.ativas.filter(c => R.AND[c.id].temFranq);
-  const semana = avs.filter(a => a.semana === SEMANA), ult4 = avs.filter(a => a.semana >= addDias(SEMANA, -21)), jan = avs.filter(a => a.semana >= R.desde);
-  const mSem = media(semana.map(a => a.nota)), m4 = media(ult4.map(a => a.nota)), mJan = media(jan.map(a => a.nota));
+  const d30 = avs.filter(a => a.semana >= addDias(HOJE, -30)), jan = avs.filter(a => a.semana >= R.desde);
+  const m30 = media(d30.map(a => a.nota)), mJan = media(jan.map(a => a.nota));
+  // cobertura: reuniões realizadas na janela x reuniões que o franqueado avaliou
+  const reunJan = [];
+  R.cons.forEach(c => { const a = R.AND[c.id]; if (!a) return; a.rReal.filter(r => r.data >= R.desde).forEach(r => reunJan.push({ c, r, aval: avs.find(v => v.evento_id === r.id) || null })); });
+  const semAval = reunJan.filter(x => !x.aval);
+  const cobertura = reunJan.length ? 100 * (reunJan.length - semAval.length) / reunJan.length : null;
+  const comClareza = jan.filter(a => a.clareza), clarezaSim = comClareza.filter(a => a.clareza === 'sim').length, clarezaNao = comClareza.filter(a => a.clareza === 'nao').length;
   const dist = [1, 2, 3, 4, 5].map(n => ({ l: n + ' ★', v: jan.filter(a => a.nota === n).length, cls: n <= 2 ? 'q4' : n === 3 ? 'q3' : 'q1' }));
   const and = { melhorou: 0, igual: 0, piorou: 0 }; jan.forEach(a => { if (and[a.andamento] != null) and[a.andamento]++; });
   const nJ = jan.length || 1;
   const pendentes = avs.filter(a => !a.resposta && (a.sugestao || a.nota <= 2 || a.andamento === 'piorou'));
   const tResp = avs.filter(a => a.resposta && a.respondido_em && a.criado_em).map(a => (new Date(a.respondido_em) - new Date(a.criado_em)) / 864e5);
-  const adesao = comFranq.length ? 100 * comFranq.filter(c => semana.some(a => a.consultoria_id === c.id)).length / comFranq.length : null;
   const ruins = R.ativas.map(c => ({ c, a: R.AND[c.id] })).filter(x => x.a.ultAv && (x.a.ultAv.nota <= 2 || x.a.piorou2));
   // série semanal: últimas 10 semanas
   const semanas = []; for (let i = 9; i >= 0; i--) semanas.push(addDias(SEMANA, -7 * i));
-  const serie = semanas.map(s => { const v = avs.filter(a => a.semana === s); return { l: dBR(s).slice(0, 5), v: media(v.map(a => a.nota)), n: v.length }; });
+  const serie = semanas.map(s => { const v = avs.filter(a => segunda(a.semana) === s); return { l: dBR(s).slice(0, 5), v: media(v.map(a => a.nota)), n: v.length }; });
   const sugest = avs.filter(a => (a.sugestao || a.comentario) && a.semana >= R.desde).sort((a, b) => b.criado_em.localeCompare(a.criado_em)).slice(0, 12);
   const semLogin = R.ativas.length - comFranq.length;
-  return `<section id="s-satisf"><h2>Satisfação do franqueado ${titAcao('satisf', 'avaliacoes')}</h2><div class="sub">Avaliação semanal (1–5, melhorou / igual / piorou, sugestão) feita pelo franqueado no Raio-X. Janela: ${F.per ? F.per + ' dias' : 'tudo'}.</div>
-${!avs.length ? `<div class="aviso verm">Nenhuma avaliação registrada ainda. ${comFranq.length ? comFranq.length + ' consultoria(s) já tem franqueado com login — o badge no Raio-X pede a avaliação toda semana.' : 'Nenhuma consultoria ativa tem franqueado com login: crie os logins na aba Franqueados do Raio-X, senão este bloco fica vazio para sempre.'}</div>` : ''}
+  return `<section id="s-satisf"><h2>Satisfação do franqueado ${titAcao('satisf', 'avaliacoes')}</h2><div class="sub">O franqueado avalia cada reunião realizada (nota 1–5, melhorou / igual / piorou, se saiu sabendo o que fazer, sugestão). Sem reunião por 21 dias, abre uma avaliação avulsa. Janela: ${F.per ? F.per + ' dias' : 'tudo'}.</div>
+${!avs.length ? `<div class="aviso verm">Nenhuma avaliação registrada ainda. ${comFranq.length ? comFranq.length + ' consultoria(s) já tem franqueado com login — a avaliação abre para ele quando o consultor marca a reunião como realizada.' : 'Nenhuma consultoria ativa tem franqueado com login: crie os logins na aba Franqueados do Raio-X, senão este bloco fica vazio para sempre.'}</div>` : ''}
 <div class="kpis">
-${kpi(mSem == null ? '—' : br(mSem, 1) + '<small>/5</small>', 'Nota média · semana atual', mSem == null ? '' : mSem >= 4 ? 'ok' : mSem >= 3 ? 'atencao' : 'alerta', semana.length + ' avaliação(ões) desde ' + dBR(SEMANA))}
-${kpi(m4 == null ? '—' : br(m4, 1) + '<small>/5</small>', 'Média · 4 últimas semanas', '', ult4.length + ' avaliação(ões)')}
-${kpi(adesao == null ? '—' : br(adesao, 0) + '%', 'Adesão nesta semana', adesao == null ? '' : adesao >= 70 ? 'ok' : 'atencao', comFranq.length + ' consultoria(s) com franqueado logado' + (semLogin ? ' · ' + semLogin + ' sem login' : ''))}
+${kpi(m30 == null ? '—' : br(m30, 1) + '<small>/5</small>', 'Nota média · 30 dias', m30 == null ? '' : m30 >= 4 ? 'ok' : m30 >= 3 ? 'atencao' : 'alerta', d30.length + ' avaliação(ões)')}
+${kpi(mJan == null ? '—' : br(mJan, 1) + '<small>/5</small>', 'Nota média · janela', '', jan.length + ' avaliação(ões)')}
+${kpi(cobertura == null ? '—' : br(cobertura, 0) + '%', 'Reuniões avaliadas', cobertura == null ? '' : cobertura >= 70 ? 'ok' : 'atencao', reunJan.length ? (reunJan.length - semAval.length) + ' de ' + reunJan.length + ' reunião(ões) realizada(s)' + (semLogin ? ' · ' + semLogin + ' consultoria(s) sem login' : '') : 'nenhuma reunião realizada na janela')}
+${kpi(comClareza.length ? br(100 * clarezaSim / comClareza.length, 0) + '%' : '—', 'Saiu sabendo o que fazer', clarezaNao ? 'alerta' : '', comClareza.length ? clarezaNao + ' disse(ram) que não · ' + comClareza.length + ' respondida(s)' : 'sem resposta ainda')}
 ${kpi(jan.length ? br(100 * and.melhorou / nJ, 0) + '%' : '—', 'Dizem que melhorou', '', jan.length ? br(100 * and.igual / nJ, 0) + '% igual · ' + br(100 * and.piorou / nJ, 0) + '% piorou' : '')}
 ${kpi(pendentes.length, 'Sem resposta do consultor', pendentes.length ? 'alerta' : 'ok', 'sugestão, nota ≤ 2 ou "piorou" esperando')}
 ${kpi(tResp.length ? br(media(tResp), 1) + '<small>d</small>' : '—', 'Tempo médio de resposta', tResp.length && media(tResp) > 2 ? 'atencao' : '', tResp.length + ' respondida(s) · meta 2 dias')}
 </div>
 <div class="grid2">
-<div class="painel"><h3>Nota média por semana</h3>${avs.length ? svgLinha(serie, { min: 1, max: 5, fmt: v => br(v, 1) }) : '<div class="vazio">Sem avaliações.</div>'}</div>
+<div class="painel"><h3>Nota média por semana <small class="s">(pela data da reunião)</small></h3>${avs.length ? svgLinha(serie, { min: 1, max: 5, fmt: v => br(v, 1) }) : '<div class="vazio">Sem avaliações.</div>'}</div>
 <div class="painel"><h3>Distribuição das notas na janela</h3>${jan.length ? svgBarras(dist, {}) : '<div class="vazio">Sem avaliações na janela.</div>'}</div>
 </div>
 <div class="grid2">
-<div class="painel"><h3>Lojas com nota ≤ 2 ou "piorou" 2 semanas</h3>${ruins.length ? `<div class="tw"><table><thead><tr><th>Loja</th><th>Última</th><th>Andamento</th><th></th></tr></thead><tbody>${ruins.map(x => `<tr class="lk" data-href="${linkLoja(x.c.fra, 'avaliacao')}"><td>${lojaCel(x.c.fra, x.c)}</td><td>${estrelas(x.a.ultAv.nota)} <span class="s">${dBR(x.a.ultAv.semana)}</span></td><td><span class="st ${x.a.ultAv.andamento === 'piorou' ? 'q4' : x.a.ultAv.andamento === 'melhorou' ? 'q1' : 'cinza'}">${esc(x.a.ultAv.andamento || '—')}</span>${x.a.piorou2 ? ' <span class="st q4">2 sem. piorando</span>' : ''}</td><td>${x.a.ultAv.resposta ? '<span class="st ok">respondida</span>' : '<span class="st verm">sem resposta</span>'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="vazio">Nenhuma loja nessa situação.</div>'}</div>
-<div class="painel"><h3>Consultorias em silêncio</h3>${(() => { const s = R.ativas.map(c => ({ c, a: R.AND[c.id] })).filter(x => x.a.temFranq && x.a.decorrido >= 10 && x.a.diasSemAvaliar >= 14); return s.length ? `<div class="tw"><table><thead><tr><th>Loja</th><th class="r">Dia da consultoria</th><th class="r">Sem avaliar há</th></tr></thead><tbody>${s.map(x => `<tr class="lk" data-href="${linkLoja(x.c.fra, 'avaliacao')}"><td>${lojaCel(x.c.fra, x.c)}</td><td class="r num">${x.a.decorrido}</td><td class="r num" style="font-weight:700">${x.a.ultAv ? x.a.diasSemAvaliar + ' d' : 'nunca avaliou'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="vazio">Todo franqueado com login avaliou nos últimos 14 dias' + (semLogin ? ' (' + semLogin + ' consultoria(s) sem login não entram aqui)' : '') + '.</div>'; })()}</div>
+<div class="painel"><h3>Lojas com nota ≤ 2 ou "piorou" 2 avaliações</h3>${ruins.length ? `<div class="tw"><table><thead><tr><th>Loja</th><th>Última</th><th>Andamento</th><th></th></tr></thead><tbody>${ruins.map(x => `<tr class="lk" data-href="${linkLoja(x.c.fra, 'avaliacao')}"><td>${lojaCel(x.c.fra, x.c)}</td><td>${estrelas(x.a.ultAv.nota)} <span class="s">${dBR(x.a.ultAv.semana)}</span></td><td><span class="st ${x.a.ultAv.andamento === 'piorou' ? 'q4' : x.a.ultAv.andamento === 'melhorou' ? 'q1' : 'cinza'}">${esc(x.a.ultAv.andamento || '—')}</span>${x.a.piorou2 ? ' <span class="st q4">2 avaliações piorando</span>' : ''}</td><td>${x.a.ultAv.resposta ? '<span class="st ok">respondida</span>' : '<span class="st verm">sem resposta</span>'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="vazio">Nenhuma loja nessa situação.</div>'}</div>
+<div class="painel"><h3>Consultorias em silêncio</h3>${(() => { const s = R.ativas.map(c => ({ c, a: R.AND[c.id] })).filter(x => x.a.temFranq && x.a.decorrido >= 10 && x.a.diasSemAvaliar >= 21); return s.length ? `<div class="tw"><table><thead><tr><th>Loja</th><th class="r">Dia da consultoria</th><th class="r">Sem avaliar há</th></tr></thead><tbody>${s.map(x => `<tr class="lk" data-href="${linkLoja(x.c.fra, 'avaliacao')}"><td>${lojaCel(x.c.fra, x.c)}</td><td class="r num">${x.a.decorrido}</td><td class="r num" style="font-weight:700">${x.a.ultAv ? x.a.diasSemAvaliar + ' d' : 'nunca avaliou'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="vazio">Todo franqueado com login avaliou nos últimos 21 dias' + (semLogin ? ' (' + semLogin + ' consultoria(s) sem login não entram aqui)' : '') + '.</div>'; })()}</div>
 </div>
+<div class="painel"><h3>Reuniões realizadas sem avaliação</h3>${semAval.length ? `<div class="tw"><table><thead><tr><th>Loja</th><th>Reunião</th><th>Quando</th><th class="r">Há</th></tr></thead><tbody>${semAval.slice().sort((x, y) => String(x.r.data).localeCompare(String(y.r.data))).slice(0, 20).map(x => `<tr class="lk" data-href="${linkLoja(x.c.fra, 'avaliacao')}"><td>${lojaCel(x.c.fra, x.c)}</td><td>${esc(x.r.titulo)}</td><td>${dBR(x.r.data)}</td><td class="r num">${br(diasEntre(x.r.data, HOJE))} d</td></tr>`).join('')}</tbody></table></div>` : '<div class="vazio">Toda reunião realizada na janela foi avaliada.</div>'}</div>
 <div class="painel"><h3>O que os franqueados estão dizendo</h3>${sugest.length ? sugest.map(a => { const c = R.cons.find(x => x.id === a.consultoria_id) || {}; return `<div class="sug"><div class="cab"><b style="color:var(--tinta)">${esc(frqDe(a.fra).nome)}</b> FRA ${a.fra} · ${esc(primeiro(nomeDe(c.consultor_id)))} · semana ${dBR(a.semana)} · ${estrelas(a.nota)} · <span class="st ${a.andamento === 'piorou' ? 'q4' : a.andamento === 'melhorou' ? 'q1' : 'cinza'}">${esc(a.andamento || '—')}</span> ${a.resposta ? '<span class="st ok">respondida' + (a.respondido_em ? ' em ' + br((new Date(a.respondido_em) - new Date(a.criado_em)) / 864e5, 1) + ' d' : '') + '</span>' : (a.sugestao || a.nota <= 2 || a.andamento === 'piorou') ? '<span class="st verm">sem resposta</span>' : ''} <a href="${linkLoja(a.fra, 'avaliacao')}" style="font-size:12px">abrir</a></div>${a.sugestao ? `<div class="tx">💡 ${esc(a.sugestao)}</div>` : ''}${a.comentario ? `<div class="tx" style="color:var(--tinta-suave)">${esc(a.comentario)}</div>` : ''}${a.resposta ? `<div class="rs">${esc(a.resposta)}</div>` : ''}</div>`; }).join('') : '<div class="vazio">Nenhuma sugestão ou comentário na janela.</div>'}</div>
 </section>`;
 }
@@ -591,7 +603,7 @@ function exportar(qual, R, AL) {
   if (qual === 'alertas') { L.push('prioridade;fra;loja;consultor;motivo;dias;link'); AL.forEach(a => { const c = R.cons.find(x => x.id === a.cid); L.push([a.p, a.fra, seg(frqDe(a.fra).nome), seg(nomeDe(c.consultor_id)), seg(a.motivo.replace(/<[^>]+>/g, '')), a.dias, location.origin + location.pathname.replace(/dash\.html$/, '') + linkLoja(a.fra, a.aba).slice(2)].join(';')); }); }
   if (qual === 'rede') { const Q = quartis(R.snaps); L.push('fra;loja;uf;consultor;nota;quartil;mes_ref;receita_mes;margem_adj;ident_pct;ret45;vaz_total;tarefas_alta;carga_parcial;defasagem_meses;consultoria'); R.lojas.forEach(f => { const s = SNAPS[f.fra], c = R.ativas.find(x => x.fra === f.fra); L.push([f.fra, seg(f.nome), f.estado || '', seg(f.consultor), s ? (s.score ?? '') : '', s ? classeScore(s.score, Q) : 'sem raio-x', s ? s.mes_ref : '', s ? (s.kpis.receita_mes ?? '') : '', s ? (s.kpis.margem_adj ?? '') : '', s ? (s.kpis.ident_pct ?? '') : '', s ? (s.kpis.ret45 ?? '') : '', s ? (s.kpis.vaz_total ?? '') : '', s ? (s.kpis.tarefas_alta ?? '') : '', s && s.kpis.mes_parcial ? s.kpis.mes_parcial.mes : '', s ? (s.kpis.defasagem_meses ?? '') : '', c ? c.status + ' desde ' + c.inicio : ''].join(';')); }); }
   if (qual === 'vencidas') { L.push('fra;loja;consultor;consultoria_status;tipo;titulo;data;prazo;concluida;concluida_em;dias_vencida'); R.itens.forEach(i => { const c = R.cons.find(x => x.id === i.consultoria_id); L.push([c.fra, seg(frqDe(c.fra).nome), seg(nomeDe(c.consultor_id)), c.status, i.tipo, seg(i.titulo), i.data || '', i.prazo || '', i.concluida ? 'sim' : 'não', i.concluida_em || '', !i.concluida && i.prazo && i.prazo < HOJE ? diasEntre(i.prazo, HOJE) : ''].join(';')); }); }
-  if (qual === 'avaliacoes') { L.push('fra;loja;consultor;semana;nota;andamento;comentario;sugestao;resposta;respondido_em;criado_em'); R.avs.forEach(a => { const c = R.cons.find(x => x.id === a.consultoria_id) || {}; L.push([a.fra, seg(frqDe(a.fra).nome), seg(nomeDe(c.consultor_id)), a.semana, a.nota, a.andamento || '', seg(String(a.comentario || '').replace(/[\r\n;]+/g, ' ')), seg(String(a.sugestao || '').replace(/[\r\n;]+/g, ' ')), seg(String(a.resposta || '').replace(/[\r\n;]+/g, ' ')), a.respondido_em || '', a.criado_em || ''].join(';')); }); }
+  if (qual === 'avaliacoes') { L.push('fra;loja;consultor;referencia;tipo;nota;andamento;clareza;comentario;sugestao;resposta;respondido_em;criado_em'); R.avs.forEach(a => { const c = R.cons.find(x => x.id === a.consultoria_id) || {}; L.push([a.fra, seg(frqDe(a.fra).nome), seg(nomeDe(c.consultor_id)), a.semana, a.tipo || '', a.nota, a.andamento || '', a.clareza || '', seg(String(a.comentario || '').replace(/[\r\n;]+/g, ' ')), seg(String(a.sugestao || '').replace(/[\r\n;]+/g, ' ')), seg(String(a.resposta || '').replace(/[\r\n;]+/g, ' ')), a.respondido_em || '', a.criado_em || ''].join(';')); }); }
   if (qual === 'consultores') { L.push('fra;loja;consultor;inicio;fim_previsto;status;dia;ritmo;tarefas;feitas;vencidas;reunioes;realizadas;sem_confirmacao;nota_inicial;nota_atual;avaliacoes;satisfacao_media;veredito;d_score;d_lucro_pct'); R.cons.forEach(c => { const a = R.AND[c.id], s = SNAPS[c.fra], r = c.resultado || {}; L.push([c.fra, seg(frqDe(c.fra).nome), seg(nomeDe(c.consultor_id)), c.inicio, c.fim_previsto, c.status, a.decorrido, a.ritmo.l, a.tarefas.length, a.tFeitas.length, a.tVenc.length, a.reunioes.length, a.rFeitas.length, a.rPend.length, c.score_inicial ?? '', s && s.score != null ? s.score : '', a.avs.length, a.avs.length ? br(media(a.avs.map(v => v.nota)), 2) : '', r.veredito || '', r.d_score ?? '', r.d_lucro_pct == null ? '' : br(r.d_lucro_pct, 2)].join(';')); }); }
   if (qual === 'acessos') { L.push('user_id;nome;papeis;em;origem'); ACESSOS.forEach(a => { const p = PERFIS.find(x => x.id === a.user_id) || {}; L.push([a.user_id, seg(p.nome || ''), (p.papeis || []).join('|'), a.em, a.origem || ''].join(';')); }); }
   if (qual === 'evolucao') { L.push('fra;loja;mes_ref;nota;receita_mes;margem_adj;lucro_mes;em_consultoria'); HIST.filter(h => R.fras.has(h.fra)).forEach(h => L.push([h.fra, seg(frqDe(h.fra).nome), h.mes_ref, h.score ?? '', h.receita ?? '', h.margem ?? '', h.lucro ?? '', R.cons.some(c => c.fra === h.fra && c.status !== 'cancelada') ? 'sim' : 'não'].join(';'))); }

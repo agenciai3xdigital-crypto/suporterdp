@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.6';
+const VERSAO = 'v3.8';
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -112,7 +112,7 @@ async function carregarTudo() {
     sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }),
     fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')),
     sb.from('raiox_fila').select('fra').is('processado_em', null),
-    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data').order('id'))
+    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).is('cancelado_em', null).order('data').order('id'))
   ]);
   ITENS = it || [];
   PERFIS = (pf.data || []).filter(p => !/robo\.raiox/i.test(p.nome || ''));
@@ -123,7 +123,7 @@ async function carregarTudo() {
   FILA = new Set((fl.data || []).map(f => f.fra));
 }
 async function recarregar(o) {
-  if (o === 'cons') { const { data } = await sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }); CONS = data || []; ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).order('data').order('id')); }
+  if (o === 'cons') { const { data } = await sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }); CONS = data || []; ITENS = await fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).is('cancelado_em', null).order('data').order('id')); }
   if (o === 'estoque') { const es = await fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')); ESTQ = {}; es.forEach(e => { const k = e.fra + '|' + e.tipo; if (!ESTQ[k]) ESTQ[k] = e; }); }
 }
 function quartis() {
@@ -360,7 +360,7 @@ async function criarConsultoria(f, s, R, itens) {
   $('csOk').disabled = true;
   try {
     // agenda do consultor no período, para não sobrepor reunião
-    const { data: ocup } = await sb.from('agenda_eventos').select('data,ini,fim').eq('user_id', consultor).neq('tipo', 'tarefa').gte('data', inicio).lte('data', addDias(inicio, 95));
+    const { data: ocup } = await sb.from('agenda_eventos').select('data,ini,fim').eq('user_id', consultor).is('cancelado_em', null).neq('tipo', 'tarefa').gte('data', inicio).lte('data', addDias(inicio, 95));
     const ocupado = new Set((ocup || []).map(o => o.data + '|' + String(o.ini).slice(0, 5)));
     const horas = [hora, '14:00', '16:00', '09:00', '11:00', '15:00'].filter((v, i, a) => a.indexOf(v) === i);
     const linhas = itens.map(m => {
@@ -383,7 +383,7 @@ async function criarConsultoria(f, s, R, itens) {
 }
 /* andamento de uma consultoria a partir dos itens da agenda */
 function andamento(c) {
-  const hj = hojeISO(), its = ITENS.filter(i => i.consultoria_id === c.id);
+  const hj = hojeISO(), its = ITENS.filter(i => i.consultoria_id === c.id && !/^Avalia/.test(i.titulo || ''));
   const tarefas = its.filter(i => i.tipo === 'tarefa'), reunioes = its.filter(i => i.tipo !== 'tarefa');
   const tFeitas = tarefas.filter(t => t.concluida), tVenc = tarefas.filter(t => !t.concluida && t.prazo && t.prazo < hj);
   const rPass = reunioes.filter(r => r.data < hj), rFeitas = rPass.filter(r => r.concluida), rPend = rPass.filter(r => !r.concluida), rProx = reunioes.filter(r => r.data >= hj);
@@ -426,10 +426,22 @@ function desenharConsultorias() {
   box.querySelectorAll('tr[data-fra]').forEach(tr => tr.onclick = ev => { if (ev.target.closest('button')) return; abrirLoja(+tr.dataset.fra); });
   box.querySelectorAll('[data-enc],[data-canc]').forEach(b => b.onclick = async () => {
     const id = b.dataset.enc || b.dataset.canc, status = b.dataset.enc ? 'concluida' : 'cancelada';
-    const c = CONS.find(x => x.id === id);
-    const obs = status === 'concluida' ? prompt('Encerrar a consultoria como concluída. Observação final (opcional):', '') : (confirm('Cancelar a consultoria? As tarefas e reuniões ficam na agenda para você apagar, se quiser.') ? '' : null);
+    const c = CONS.find(x => x.id === id), a_ = AND[id];
+    // CANCELAR: só admin, e leva junto as tarefas e reuniões pendentes (rpc faz tudo numa transação)
+    if (status === 'cancelada') {
+      if (!ehAdmin()) return alert('Consultoria já iniciada só a franqueadora cancela.');
+      const nT = a_.tarefas.length - a_.tFeitas.length, nR = a_.reunioes.length - a_.rFeitas.length;
+      if (!confirm('Cancelar a consultoria da FRA ' + c.fra + '?\n\n' + nT + ' tarefa(s) e ' + nR + ' reunião(ões) pendentes são canceladas junto e somem da agenda.\nO que já foi concluído fica no histórico.')) return;
+      b.disabled = true;
+      const { data: r, error: eC } = await sb.rpc('raiox_cancelar_consultoria', { p_consultoria: id, p_obs: null });
+      if (eC) { b.disabled = false; return erro(eC); }
+      await recarregar('cons'); desenharConsultorias(); desenharRede();
+      toast('cancelada · ' + ((r && r.tarefas) || 0) + ' tarefa(s) e ' + ((r && r.reunioes) || 0) + ' reunião(ões) canceladas');
+      return;
+    }
+    const obs = prompt('Encerrar a consultoria como concluída. Observação final (opcional):', '');
     if (obs === null) return;
-    const resultado = status === 'concluida' ? await calcularResultado(c) : null;
+    const resultado = await calcularResultado(c);
     const { error } = await sb.from('raiox_consultorias').update({ status, encerrada_em: new Date().toISOString(), encerrada_por: usuario.id, resultado, encerramento_obs: obs || null }).eq('id', id);
     if (error) return erro(error);
     // marco na agenda da franquia: fica no histórico da loja
@@ -466,7 +478,7 @@ async function calcularResultado(c) {
     c.mes_ref_base ? sb.from('raiox_snapshots').select('mes_ref,score,kpis').eq('fra', c.fra).eq('mes_ref', c.mes_ref_base).maybeSingle() : Promise.resolve({ data: null }),
     sb.from('raiox_snapshots_atual').select('mes_ref,score,kpis').eq('fra', c.fra).maybeSingle(),
     sb.from('raiox_avaliacoes').select('semana,nota,andamento').eq('consultoria_id', c.id).order('semana'),
-    sb.from('agenda_eventos').select('tipo,concluida,prazo,data').eq('consultoria_id', c.id)
+    sb.from('agenda_eventos').select('tipo,concluida,prazo,data').eq('consultoria_id', c.id).is('cancelado_em', null)
   ]);
   const d = (k) => (base && fim && base.kpis && fim.kpis && base.kpis[k] != null && fim.kpis[k] != null) ? fim.kpis[k] - base.kpis[k] : null;
   const dPct = (k) => (base && fim && base.kpis && base.kpis[k]) ? 100 * (fim.kpis[k] / base.kpis[k] - 1) : null;

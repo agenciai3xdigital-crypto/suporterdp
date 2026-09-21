@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- v8.1 · 21/09/2026 · Seu dia: card de tarefa abre o pop-up; no pop-up, responsável/criador/admin acrescentam subtarefas e anotações (coluna anotacoes); quem recebeu a tarefa de outra pessoa não edita a principal — trava também no banco (trg_agenda_trava_delegada). -->
+<!-- v8.0 · 21/09/2026 · Barra POP: cabeçalho único (logo → Central, trilha, relógio só no computador, sino, botão Sistemas com o catálogo do Painel Master para quem está em hub_acesso, Sair). Some com os links soltos Raio-X/Esteira/IC. Aba Admin → Equipe ganha "Botão Sistemas" para liberar pessoas. -->
 <!-- Central POP v7.0 · 02/09/2026 · frente Fluxos (demandas) -->
 <!-- v7.0.1 · 03/09/2026 · botão Reabrir tarefa no aviso de conclusão -->
 <!-- v7.0.2 · 03/09/2026 · reabrir também no sino + banner responsivo no mobile -->
@@ -79,8 +81,6 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 #telaLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-card{background:var(--papel);border:1px solid var(--linha);border-top:5px solid var(--verde);border-radius:18px;padding:28px;max-width:400px;width:100%;box-shadow:0 8px 30px rgba(0,87,63,.08)}
 .login-card .marca{margin-bottom:14px}.logo-login{height:54px;width:auto;display:block}
-.topo .marca{display:flex;align-items:center;gap:12px}.logo-topo{height:42px;width:auto;display:block}
-@media(max-width:600px){.logo-topo{height:34px}}
 .login-card .titulo{font-family:'Archivo',sans-serif;font-weight:850;font-size:30px;letter-spacing:-.5px;line-height:1.05;margin-bottom:2px}
 .login-card .titulo em{font-style:normal;color:var(--laranja)}
 .login-card .sub{color:var(--tinta-suave);font-size:13px;margin-bottom:18px}
@@ -91,12 +91,8 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 
 /* ===== APP SHELL ===== */
 #app{display:none}
-.topo{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-bottom:14px}
-.topo .titulo{font-family:'Archivo',sans-serif;font-weight:850;font-size:clamp(22px,3.4vw,30px);letter-spacing:-.5px}
-.topo .titulo em{font-style:normal;color:var(--laranja)}
-.topo .quem{font-size:13px;color:var(--tinta-suave)}
-.topo .relogio{margin-left:auto;font-family:'Archivo',sans-serif;font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
-.topo .sair{border:1.5px solid var(--linha);background:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600}
+/* v8.0: cabeçalho antigo (.topo/.sino) substituído pela Barra POP — estilos em #pb-css */
+#app .pb{padding-left:max(16px,calc((100% - 1080px)/2 + 16px));padding-right:max(16px,calc((100% - 1080px)/2 + 16px))}
 .abas{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--linha);overflow-x:auto;scrollbar-width:none}
 .abas::-webkit-scrollbar{display:none}
 .aba{border:none;border-bottom:2px solid transparent;background:none;border-radius:0;padding:10px 12px;margin-bottom:-1px;font-weight:600;font-size:14px;color:var(--tinta-suave);white-space:nowrap}
@@ -117,10 +113,6 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .ag-form.aberto{border:1.5px solid var(--laranja);background:var(--laranja-suave)}
 .nav-mobile{display:none}
 .fab{display:none}
-.sino{position:relative;border:1px solid var(--linha);background:#fff;border-radius:50%;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;color:var(--tinta);margin-left:8px;cursor:pointer}
-.sino svg{width:20px;height:20px}
-.sino-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;line-height:18px;padding:0 5px;border-radius:9px;background:var(--verm);color:#fff;font-size:11px;font-weight:700;text-align:center}
-.sino.tem{border-color:var(--laranja);color:var(--laranja)}
 .cn-bg{display:none;position:fixed;inset:0;background:rgba(22,51,61,.45);z-index:190;justify-content:flex-end}
 .cn-bg.on{display:flex}
 .cn-box{background:#fff;width:min(420px,100%);height:100%;overflow:auto;padding:14px 16px;box-shadow:-4px 0 16px rgba(0,0,0,.15)}
@@ -133,7 +125,7 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 .cn-item .m b.v{color:var(--verm)}
 .cn-vazio{color:var(--tinta-suave);font-size:13px;padding:20px 0;text-align:center}
 .rep-chip{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--petroleo-suave);color:var(--petroleo);margin-left:4px;vertical-align:1px}
-@media(max-width:760px){.cn-box{width:100%}.sino{width:34px;height:34px}}
+@media(max-width:760px){.cn-box{width:100%}}
 .al-bg{display:none;position:fixed;inset:0;background:rgba(22,51,61,.45);z-index:200;align-items:center;justify-content:center;padding:20px}
 .al-bg.on{display:flex}
 .al-box{background:#fff;border-radius:14px;padding:20px;max-width:420px;width:100%;font-size:14px;white-space:pre-wrap;line-height:1.5}
@@ -141,7 +133,6 @@ h2.sec{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-tran
 @media(max-width:760px){
   .wrap{padding:12px 12px 84px}
   .abas{display:none}
-  .topo .relogio{font-size:18px}
   .resumo{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grade{grid-template-columns:1fr}
   .rodizio{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -570,6 +561,11 @@ details.recolhe[open] summary{margin-bottom:8px}
 .evm-desc{white-space:pre-wrap;background:var(--porcelana);border-radius:8px;padding:8px 10px}
 .evm-sub{font-size:13px;margin:3px 0 0 2px}
 .evm-sub.feita{color:var(--tinta-suave);text-decoration:line-through}
+.evm-add{display:flex;gap:6px;align-items:flex-start}.evm-add input,.evm-add textarea{flex:1;font-size:13px}.evm-add textarea{resize:vertical;border:1.5px solid var(--linha);border-radius:8px;padding:7px 10px;font-family:inherit}
+.evm-add.col{flex-direction:column;align-items:stretch}.evm-add button{font-size:12.5px;font-weight:700;border-radius:8px;padding:7px 12px;border:1.5px solid var(--verde);background:#fff;color:var(--verde);cursor:pointer;white-space:nowrap;align-self:flex-end}
+.evm-rm{border:0;background:none;color:var(--tinta-suave);cursor:pointer;font-size:12px;padding:0 4px}.evm-rm:hover{color:var(--verm)}
+.evm-nota{font-size:13px;margin:6px 0 0;padding:7px 10px;background:var(--porcelana);border-radius:8px;white-space:pre-wrap}.evm-nota .q{display:block;font-size:11px;color:var(--tinta-suave);margin-bottom:2px}
+.ld-ev .txt{cursor:pointer}
 .evm-acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--linha)}
 .evm-acoes a.g,.evm-acoes button{font-size:12.5px;font-weight:700;border-radius:8px;padding:6px 12px;border:1.5px solid var(--linha);background:#fff;color:var(--tinta);text-decoration:none;cursor:pointer}
 .evm-acoes a.g{border-color:var(--petroleo);color:var(--petroleo)}
@@ -580,6 +576,189 @@ details.recolhe[open] summary{margin-bottom:8px}
 .bet-box b{font-size:12.5px}
 .bet-box .btn{font-size:12px;padding:4px 10px}
 </style>
+<!-- ===== BARRA POP v1.0 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+     Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
+     expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
+     Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
+     só para quem está em hub_acesso; para os outros mostra apenas os atalhos do papel (links) ou nada.
+     Para alterar o visual, altere aqui e cole o bloco inteiro nas outras páginas. ===== -->
+<style id="pb-css">
+.pb{--pb-bg:#fff;--pb-ink:#14332A;--pb-muted:#5A7268;--pb-line:#D3DFD8;--pb-soft:#EEF3F0;--pb-lar:#FF6B15;--pb-lar-soft:#FFEDE1;--pb-verde:#009150;--pb-verm:#C0392B;
+  display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--pb-bg);border-bottom:1px solid var(--pb-line);position:relative;flex-wrap:wrap;
+  font-family:'Inter',system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:var(--pb-ink);line-height:1.3;box-sizing:border-box}
+.pb *{box-sizing:border-box}
+.pb-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+.pb-logo{height:38px;width:auto;display:block}
+.pb-trilha{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:19px;letter-spacing:-.3px;line-height:1.1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pb-trilha a.pb-pai{color:var(--pb-muted);font-weight:600;font-size:14px;text-decoration:none;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
+.pb-trilha a.pb-pai:hover{color:var(--pb-lar)}
+.pb-sep{color:var(--pb-line);font-weight:400}
+.pb-trilha em{font-style:normal;color:var(--pb-lar)}
+.pb-trilha small{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:12px;color:var(--pb-muted);letter-spacing:0;margin-top:2px}
+.pb-esp{flex:1 1 8px}
+.pb-quem{font-size:12.5px;color:var(--pb-muted);text-align:right;line-height:1.25;max-width:220px}
+.pb-quem b{display:block;color:var(--pb-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-ico{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--pb-line);background:var(--pb-bg);display:grid;place-items:center;color:var(--pb-ink);cursor:pointer;position:relative;flex:none;padding:0;font:inherit}
+.pb-ico svg{width:19px;height:19px;display:block}
+.pb-ico:hover{border-color:var(--pb-muted)}
+.pb-ico.on,.pb-ico.tem{border-color:var(--pb-lar);color:var(--pb-lar)}
+.pb-ico.on{background:var(--pb-lar-soft)}
+.pb-ico:focus-visible,.pb-sair:focus-visible,.pb-item:focus-visible{outline:2px solid var(--pb-lar);outline-offset:2px}
+.pb-bd{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;line-height:17px;padding:0 4px;border-radius:9px;background:var(--pb-verm);color:#fff;font-size:10.5px;font-weight:700;text-align:center}
+.pb-sair{border:1.5px solid var(--pb-line);background:var(--pb-bg);color:var(--pb-ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.3}
+.pb-sair:hover{border-color:var(--pb-muted)}
+.pb-relogio{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;line-height:1;text-align:right}
+.pb-relogio .sync{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--pb-verde);margin-top:2px}
+.pb-veu{display:none;position:fixed;inset:0;background:rgba(20,51,42,.35);z-index:180}
+.pb-veu.on{display:block}
+.pb-pop{display:none;position:absolute;right:16px;top:calc(100% - 4px);width:min(560px,calc(100vw - 32px));background:var(--pb-bg);border:1px solid var(--pb-line);border-radius:14px;box-shadow:0 10px 30px rgba(20,51,42,.16);padding:14px;z-index:190;color:var(--pb-ink)}
+.pb-pop.on{display:block}
+.pb-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.pb-cab b{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:15px}
+.pb-cab span{font-size:12px;color:var(--pb-muted)}
+.pb-cab a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--pb-verde);text-decoration:none;white-space:nowrap}
+.pb-cab a:hover{text-decoration:underline}
+.pb-x{display:none;margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--pb-muted);cursor:pointer;padding:0 4px}
+.pb-grupo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--pb-muted);margin:10px 0 6px}
+.pb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.pb-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;text-decoration:none;color:var(--pb-ink);border:1px solid transparent;min-width:0}
+.pb-item:hover{background:var(--pb-soft)}
+.pb-item.atual{background:var(--pb-lar-soft);cursor:default}
+.pb-q{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:900;font-size:11px;flex:none;letter-spacing:.02em}
+.pb-t{font-size:13px;font-weight:600;line-height:1.15;min-width:0}
+.pb-t small{display:block;font-weight:500;font-size:11px;color:var(--pb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-item.ext .pb-t::after{content:" ↗";color:var(--pb-muted);font-weight:400}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chips a{font-size:12px;font-weight:600;color:var(--pb-muted);text-decoration:none;border:1px solid var(--pb-line);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.pb-chips a:hover{color:var(--pb-ink);border-color:var(--pb-muted)}
+.pb-aviso{font-size:11.5px;color:var(--pb-muted);margin-top:10px;border-top:1px solid var(--pb-line);padding-top:8px}
+@media(max-width:640px){
+  .pb{padding:8px 12px;gap:8px;flex-wrap:nowrap}.pb-logo{height:32px}
+  .pb-marca{flex:1 1 0;min-width:0}.pb-trilha{font-size:16px;flex-wrap:nowrap;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb-trilha a.pb-pai,.pb-sep,.pb-trilha small{display:none} /* no celular o logo já leva à Central */
+  .pb-esp{display:none}.pb-sair{padding:7px 10px}
+  .pb-quem,.pb-relogio{display:none}
+  .pb-pop{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;border-radius:18px 18px 0 0;max-height:80vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .pb-x{display:block}.pb-cab a{margin-left:0;flex-basis:100%}
+  .pb-grade{grid-template-columns:1fr 1fr}
+}
+@media print{.pb{display:none!important}}
+</style>
+<script id="pb-js">
+/* BarraPop — API: BarraPop.montar(opts) → depois BarraPop.sessao() quando houver login, BarraPop.quem(nome,sub), BarraPop.sairVisivel(bool). */
+window.BarraPop=(function(){
+  'use strict';
+  var SB_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+  var SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+  var HUB_URL='https://agenciai3xdigital-crypto.github.io/painel-master-pop/';
+  var GRID='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>';
+  var O=null, el={}, carregou=false;
+
+  function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.ref==='klcxavgxonpsbsbzqcil'&&p.role==='authenticated');}
+  /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
+  function tokenPadrao(){
+    var melhor=null;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v;
+        try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}
+        var c=v&&(typeof v.access_token==='string'?v:(v.currentSession||v.session));
+        if(!c||typeof c.access_token!=='string'||!doProjeto(c.access_token))continue;
+        var exp=Number(c.expires_at)||(jwtPayload(c.access_token)||{}).exp||0;
+        if(exp*1000<Date.now()+15000)continue;
+        if(!melhor||exp>melhor.exp)melhor={t:c.access_token,exp:exp};
+      }
+    }catch(e){}
+    return Promise.resolve(melhor?melhor.t:null);
+  }
+  function rpc(nome,token,corpo,keep){
+    return fetch(SB_URL+'/rest/v1/rpc/'+nome,{method:'POST',keepalive:!!keep,
+      headers:{'apikey':SB_ANON,'Authorization':'Bearer '+token,'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(corpo||{})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }
+  function h(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function iniciais(n){var p=String(n||'').replace(/[—–-].*$/,'').trim().split(/\s+/).filter(function(w){return w.length>2||/^[A-Z0-9]+$/.test(w);});return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase();}
+  function escura(hex){var m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));if(!m)return true;var n=parseInt(m[1],16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)<150;}
+  function urlOk(u){try{var x=new URL(u,location.href);return x.protocol==='https:'?x:null;}catch(e){return null;}}
+
+  function montar(o){
+    O=o||{};var raiz=typeof O.el==='string'?document.getElementById(O.el):O.el;if(!raiz)return;
+    var extras=[];while(raiz.firstChild){extras.push(raiz.firstChild);raiz.removeChild(raiz.firstChild);}
+    raiz.className='pb'+(O.classe?' '+O.classe:'');raiz.setAttribute('role','banner');
+    var marca=h('a','pb-marca');marca.href=O.logoHref||O.central||'./';marca.title='Ir para a Central POP';
+    var img=h('img','pb-logo');img.src=O.logo||'logo-pop.png';img.alt='Rede POP Pet Center';img.onerror=function(){img.style.display='none';};marca.appendChild(img);
+    var tr=h('div','pb-trilha');
+    (O.trilha||[]).forEach(function(t){var a=h('a','pb-pai',t.nome);a.href=t.href;tr.appendChild(a);tr.appendChild(h('span','pb-sep','/'));});
+    var tit=h('span');tit.innerHTML=O.titulo||'';if(O.sub){tit.appendChild(h('small',null,O.sub));}tr.appendChild(tit);
+    marca.appendChild(tr);raiz.appendChild(marca);
+    raiz.appendChild(h('span','pb-esp'));
+    extras.forEach(function(n){raiz.appendChild(n);});
+    el.quem=h('div','pb-quem');el.quemN=h('b');el.quemS=h('span');el.quem.appendChild(el.quemN);el.quem.appendChild(el.quemS);el.quem.style.display='none';raiz.appendChild(el.quem);
+    el.btn=h('button','pb-ico');el.btn.type='button';el.btn.title='Sistemas';el.btn.setAttribute('aria-label','Sistemas');el.btn.setAttribute('aria-expanded','false');el.btn.innerHTML=GRID;el.btn.style.display='none';raiz.appendChild(el.btn);
+    if(O.sair){el.sair=h('button','pb-sair','Sair');el.sair.type='button';el.sair.id=O.sairId||'pbSair';el.sair.onclick=function(){O.sair();};if(O.sairOculto)el.sair.style.display='none';raiz.appendChild(el.sair);}
+    el.veu=h('div','pb-veu');el.pop=h('div','pb-pop');el.pop.setAttribute('role','dialog');el.pop.setAttribute('aria-label','Sistemas');
+    raiz.appendChild(el.veu);raiz.appendChild(el.pop);
+    el.btn.onclick=function(){alternar();};el.veu.onclick=fechar;
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
+    document.addEventListener('click',function(e){if(el.pop.classList.contains('on')&&!el.pop.contains(e.target)&&!el.btn.contains(e.target))fechar();});
+    if(O.quem)quem(O.quem.nome,O.quem.sub);
+    if(O.auto!==false)sessao();
+  }
+  function alternar(){el.pop.classList.contains('on')?fechar():abrir();}
+  function abrir(){el.pop.classList.add('on');el.veu.classList.add('on');el.btn.classList.add('on');el.btn.setAttribute('aria-expanded','true');}
+  function fechar(){if(!el.pop)return;el.pop.classList.remove('on');el.veu.classList.remove('on');el.btn.classList.remove('on');el.btn.setAttribute('aria-expanded','false');}
+  function quem(nome,sub){if(!el.quem)return;el.quemN.textContent=nome||'';el.quemS.textContent=sub||'';el.quem.style.display=nome?'':'none';}
+  function sairVisivel(v){if(el.sair)el.sair.style.display=v?'':'none';}
+
+  /* Carrega o menu: catálogo completo para quem está em hub_acesso; senão só os atalhos do papel (O.links). */
+  function sessao(){
+    if(!O||!el.pop)return Promise.resolve();
+    var get=O.token||tokenPadrao;
+    return Promise.resolve().then(function(){return get();}).then(function(tok){
+      if(!tok)return desenhar(null,null);
+      return rpc('barra_sistemas',tok,{}).then(function(r){desenhar(r&&r.ok?r:null,tok);});
+    }).catch(function(){desenhar(null,null);});
+  }
+  function desenhar(r,tok){
+    el.pop.innerHTML='';carregou=true;
+    var itens=r?(r.paineis||[]):[];
+    var links=(O.links||[]).filter(function(l){return urlOk(l.url);});
+    var paineis=itens.filter(function(p){return p.grupo==='painel';});
+    var bastidor=itens.filter(function(p){return p.grupo!=='painel';});
+    if(!paineis.length&&!links.length){el.btn.style.display='none';return;}
+    var cab=h('div','pb-cab');cab.appendChild(h('b',null,'Sistemas'));
+    cab.appendChild(h('span',null,r?'catálogo do Painel Master':'atalhos do seu perfil'));
+    var x=h('button','pb-x','×');x.type='button';x.setAttribute('aria-label','Fechar');x.onclick=fechar;
+    if(r){var hub=h('a',null,'Abrir Painel Master →');hub.href=HUB_URL;hub.target='_blank';hub.rel='noopener';cab.appendChild(hub);}
+    cab.appendChild(x);el.pop.appendChild(cab);
+    el.pop.appendChild(h('div','pb-grupo','Painéis'));
+    var g=h('div','pb-grade');
+    (paineis.length?paineis:links).forEach(function(p){
+      var u=urlOk(p.url);if(!u)return;
+      var atual=(p.chave&&p.chave===O.sistema);
+      var a=h(atual?'span':'a','pb-item'+(atual?' atual':''));
+      if(!atual){a.href=u.href;if(u.origin!==location.origin){a.target='_blank';a.rel='noopener';a.classList.add('ext');}
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};}
+      var q=h('span','pb-q',iniciais(p.nome));var cor=/^#[0-9a-f]{6}$/i.test(p.cor||'')?p.cor:'#00573F';q.style.background=cor;q.style.color=escura(cor)?'#fff':'#14332A';
+      var t=h('span','pb-t',p.nome);var sub=atual?'você está aqui':(p.descricao||p.sub||'');if(sub)t.appendChild(h('small',null,sub));
+      if(p.aviso)a.title=p.aviso;
+      a.appendChild(q);a.appendChild(t);g.appendChild(a);
+    });
+    el.pop.appendChild(g);
+    if(bastidor.length){
+      el.pop.appendChild(h('div','pb-grupo','Bastidor'));var c=h('div','pb-chips');
+      bastidor.forEach(function(p){var u=urlOk(p.url);if(!u)return;var a=h('a',null,p.nome+' ↗');a.href=u.href;a.target='_blank';a.rel='noopener';if(p.aviso)a.title=p.aviso;
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};c.appendChild(a);});
+      el.pop.appendChild(c);
+    }
+    if(r)el.pop.appendChild(h('div','pb-aviso','Quem vê este botão é definido em Central POP → Admin → Equipe → "Botão Sistemas". Endereços e cards: pelo Painel Master.'));
+    el.btn.style.display='';
+  }
+  return {montar:montar,sessao:sessao,quem:quem,sairVisivel:sairVisivel,fechar:fechar,rpc:rpc,token:tokenPadrao};
+})();
+</script>
+<!-- ===== fim BARRA POP ===== -->
 </head>
 <body>
 
@@ -598,22 +777,14 @@ details.recolhe[open] summary{margin-bottom:8px}
 </div>
 
 <!-- ============ APP ============ -->
-<div id="app"><div class="wrap">
-  <div class="topo">
-    <div class="marca"><img src="logo-pop.png" alt="Rede POP Pet Center" class="logo-topo"><div>
-      <div class="titulo">Central <em>POP</em></div>
-      <div class="quem" id="quemSou">—</div>
-    </div></div>
-    <div style="margin-left:auto;text-align:right">
-      <div class="relogio" id="relogio">--:--</div>
-      <div class="sync" id="syncStatus">● tempo real</div>
-    </div>
-    <button class="sino" id="btnSino" title="Avisos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></svg><span class="sino-badge" id="sinoBadge" style="display:none"></span></button>
-    <a class="sair" id="btnRaiox" href="raiox/" style="display:none;text-decoration:none;color:inherit;border-color:var(--laranja)" title="Raio-X das lojas e consultoria de faturamento — mesmo login">Raio-X →</a>
-    <a class="sair" id="btnExpansao" href="expansao/" style="display:none;text-decoration:none;color:inherit" title="Esteira de expansão — mesmo login">Esteira de expansão →</a>
-    <a class="sair" id="btnIC" href="https://agenciai3xdigital-crypto.github.io/analise-geral-franquia/" target="_blank" rel="noopener" style="display:none;text-decoration:none;color:inherit" title="Painel de Inteligência Comercial — login separado (outro projeto)">Inteligência Comercial →</a>
-    <button class="sair" id="btnSair">Sair</button>
+<div id="app">
+  <!-- v8.0: Barra POP (cabeçalho único). Os filhos abaixo são os "extras" da Central (relógio e sino) que a barra reposiciona. -->
+  <div id="barraPop">
+    <div class="pb-relogio"><span id="relogio">--:--</span><span class="sync" id="syncStatus">● tempo real</span></div>
+    <button class="pb-ico" id="btnSino" title="Avisos" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0"/></svg><span class="pb-bd" id="sinoBadge" style="display:none"></span></button>
   </div>
+  <span id="quemSou" hidden></span>
+<div class="wrap">
   <div class="cn-bg" id="cnBg"><div class="cn-box"><div class="cn-cab"><strong>Avisos</strong><span class="esp"></span><button type="button" class="btn claro" id="cnPush" style="font-size:12px">Ativar no aparelho</button><button type="button" class="cn-x" id="cnX">×</button></div><div id="cnLista"></div></div></div>
 
   <div class="abas" id="barraAbas">
@@ -910,6 +1081,15 @@ details.recolhe[open] summary{margin-bottom:8px}
     <div class="adm-sec" id="adm-equipe">
       <table class="adm-tab" id="tabUsuarios"></table>
       <p style="font-size:12px;color:var(--tinta-suave);margin-top:6px">Criar e remover usuários (e redefinir senhas): painel do Supabase → Authentication → Users. O perfil aparece aqui automaticamente.</p>
+      <!-- v8.0: quem vê o botão "Sistemas" da Barra POP (lista hub_acesso, a mesma do Painel Master) -->
+      <h2 class="sec" style="margin-top:22px">Botão Sistemas</h2>
+      <p style="font-size:12px;color:var(--tinta-suave);margin:-4px 0 8px">Quem está nesta lista vê, no cabeçalho de todos os painéis, o botão com o catálogo completo (painéis e bastidor) — a mesma lista que abre o Painel Master. Quem não está vê só os atalhos do próprio papel.</p>
+      <table class="adm-tab" id="tabAcessoBarra"></table>
+      <div class="ag-topo" style="margin-top:8px;gap:8px;flex-wrap:wrap">
+        <select id="selAcessoBarra" style="min-width:240px"><option value="">Escolha uma pessoa…</option></select>
+        <button class="btn claro" id="btnAcessoBarra" type="button">+ Liberar o botão</button>
+        <span id="acessoBarraMsg" style="font-size:12px;color:var(--tinta-suave)"></span>
+      </div>
     </div>
     <div class="adm-sec" id="adm-franquias" style="display:none">
       <div class="ag-topo"><input id="frqBusca" placeholder="Buscar por nome, nº, cidade ou consultor" style="flex:1;max-width:420px"><span class="esp"></span><button class="btn claro" id="btnFrqNova">+ Nova franquia</button></div>
@@ -972,6 +1152,7 @@ const CORES={atend:'var(--petroleo)',pico:'#0B4750',plantao:'var(--ambar)',foco:
 const TIPOS=[['atend','Atendimento'],['pico','Pico'],['plantao','Almoço/Plantão'],['foco','Bloco livre'],['fecha','Fechamento']];
 const PALETA=['#0E5A64','#F5691D','#5B4A9E','#1E7F4F','#B97E10','#8E3B46','#2C6E91','#7A6F2B'];
 const $=id=>document.getElementById(id);
+const BARRA_LINKS=[]; // v8.0: atalhos do papel para o botão Sistemas (preenchido no login)
 const agora=()=>new Date();
 const chaveDia=d=>{const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}; // v7.9.3: data LOCAL (toISOString virava o dia seguinte após 21h em UTC-3)
 
@@ -1206,7 +1387,7 @@ async function carregarAgenda(){
   const data=await fetchAllSB(()=>sb.from('agenda_eventos').select('*').is('cancelado_em',null).order('ini').order('id'));
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,demanda:e.demanda_id||null,consultoriaId:e.consultoria_id||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],anotacoes:e.anotacoes||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,demanda:e.demanda_id||null,consultoriaId:e.consultoria_id||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -1361,9 +1542,13 @@ async function iniciarSessao(user){
   registrarSW();estadoPushInicial();
   $('telaLogin').style.display='none';$('app').style.display='block';
   $('abaAdmin').style.display=usuarioAtual.admin?'inline-block':'none';
-  $('btnExpansao').style.display=(usuarioAtual.admin||(usuarioAtual.papeis||[]).includes('expansao'))?'inline-block':'none';
-  $('btnRaiox').style.display=(usuarioAtual.admin||(usuarioAtual.papeis||[]).includes('consultor'))?'inline-block':'none';
-  $('btnIC').style.display=usuarioAtual.admin?'inline-block':'none';
+  // v8.0: os links do cabeçalho viraram o botão "Sistemas" da Barra POP. Quem está em hub_acesso vê o catálogo
+  // completo (Painel Master); os demais veem só os atalhos do papel — mesma regra dos botões antigos.
+  BARRA_LINKS.length=0;
+  if(usuarioAtual.admin||(usuarioAtual.papeis||[]).includes('consultor'))BARRA_LINKS.push({chave:'raiox',nome:'Raio-X POP',url:new URL('raiox/',location.href).href,sub:'lucratividade por loja',cor:'#FF6B15'});
+  if(usuarioAtual.admin||(usuarioAtual.papeis||[]).includes('expansao'))BARRA_LINKS.push({chave:'esteira',nome:'Esteira de Expansão',url:new URL('expansao/',location.href).href,sub:'captação → 3º mês',cor:'#71C5E8'});
+  if(usuarioAtual.admin)BARRA_LINKS.push({chave:'ic',nome:'Inteligência Comercial',url:'https://agenciai3xdigital-crypto.github.io/analise-geral-franquia/',sub:'login próprio',cor:'#F1BDC8'});
+  BarraPop.sessao();BarraPop.sairVisivel(true);
   $('abaInsights').style.display=usuarioAtual.admin?'inline-block':'none';
   $('abaRotina').style.display='none';
   if(!usuarioAtual.admin){
@@ -1636,6 +1821,7 @@ function linhaEventoDia(uid,e){
     +(ehT?'<small>'+(e.por&&e.por!==e.dono?'marcada por '+(((uPorId(e.por)||{}).nome||'—').split(' ')[0])+' · ':'')+'agendada '+e.data.split('-').reverse().slice(0,2).join('/')+(e.prazo?' · prazo '+e.prazo.split('-').reverse().slice(0,2).join('/'):'')+((e.fra===0||e.fra)?' · 🏪 '+(frqRotulo(e.fra)||''):'')+(pendDesde?' · <b style="color:#B3241A">pendente há '+pendDesde+' dia'+(pendDesde>1?'s':'')+'</b>':'')+'</small>':'')
     +(e.descricao?'<small>'+escHtml(e.descricao)+'</small>':'')
     +subsHtml
+    +(ehT&&(e.anotacoes||[]).length?'<small>📝 '+e.anotacoes.length+' anotaç'+(e.anotacoes.length>1?'ões':'ão')+' · última: "'+escHtml(String((e.anotacoes[e.anotacoes.length-1]||{}).txt||'').slice(0,90))+'"</small>':'')
     +(ehT&&!e.concluida&&(e.reaberturas||[]).length?'<small style="color:#B3241A">↩ Obs da reabertura: "'+escHtml((e.reaberturas[e.reaberturas.length-1]||{}).obs||'')+'"</small>':'')
     +htmlUploadBetta(e)
     +(podeDevolver?'<div style="margin:5px 0 2px"><button type="button" class="btn-devolver">↩ Devolver com nova tarefa</button></div>':'')
@@ -1643,6 +1829,9 @@ function linhaEventoDia(uid,e){
     +(pend?'<div class="dif-chips"><span>Como foi?</span><button type="button" data-d="facil">Fácil</button><button type="button" data-d="medio">Médio</button><button type="button" data-d="dificil">Difícil</button></div>':'')
     +'</div>';
   if(!ehT){row.style.cursor='pointer';row.title='Clique para ver os detalhes';row.onclick=()=>abrirDetalheEv(e.id);return row;}
+  // v8.1: tarefa também abre o pop-up (clique fora de caixa, botão ou link); ali quem está com a tarefa acrescenta subtarefas e anotações
+  row.title='Clique para abrir a tarefa';
+  row.onclick=ev=>{if(ev.target.closest('input,button,label,a,select,textarea,.dif-chips'))return;abrirDetalheEv(e.id);};
   row.querySelectorAll('.subs-box input[data-sid]').forEach(si=>{
     si.onchange=async ev=>{
       ev.stopPropagation();
@@ -2696,8 +2885,18 @@ function abrirDetalheEv(id){
   h+='<div class="evm-l">👤 Responsável: <b>'+escHtml(nomeDe(e.dono))+'</b>'+(e.por&&e.por!==e.dono?' &nbsp;·&nbsp; ✍️ criado por '+escHtml(nomeDe(e.por).split(' ')[0]):'')+'</div>';
   if(outros.length)h+='<div class="evm-l">👥 Participantes: '+escHtml(outros.map(x=>nomeDe(x).split(' ')[0]).join(', '))+'</div>';
   if(e.descricao)h+='<div class="evm-l evm-desc">'+escHtml(e.descricao)+'</div>';
+  // v8.1: quem pode mexer no andamento (subtarefas, anotações): responsável, quem marcou ou admin. Quem pode editar a principal: quem marcou ou admin.
+  const souDono=e.dono===usuarioAtual.id, souCriador=(e.por||e.dono)===usuarioAtual.id;
+  const podeAndar=ehT&&!e.concluida&&(souDono||souCriador||usuarioAtual.admin)&&!e.consultoriaId;
+  const podeEditarPrincipal=(souCriador||usuarioAtual.admin)&&(!e.consultoriaId||usuarioAtual.admin);
   if(ehT&&(e.subs||[]).length)h+='<div class="evm-l"><b>Subtarefas · '+e.subs.filter(x=>x.feita).length+' de '+e.subs.length+' feitas</b>'
-    +e.subs.map(x=>'<div class="evm-sub'+(x.feita?' feita':'')+'">'+(x.feita?'✅':'⬜')+' '+escHtml(x.txt)+'</div>').join('')+'</div>';
+    +e.subs.map(x=>'<div class="evm-sub'+(x.feita?' feita':'')+'">'+(podeAndar?'<label style="cursor:pointer"><input type="checkbox" data-esid="'+escHtml(x.id)+'" '+(x.feita?'checked':'')+' style="accent-color:var(--verde);margin-right:5px;vertical-align:-2px">'+escHtml(x.txt)+'</label>'+((x.por===usuarioAtual.id||souCriador||usuarioAtual.admin)&&!x.feita?' <button type="button" class="evm-rm" data-esid="'+escHtml(x.id)+'" title="Remover subtarefa">✕</button>':''):(x.feita?'✅':'⬜')+' '+escHtml(x.txt))
+      +(x.por&&x.por!==(e.por||e.dono)?' <span style="color:var(--tinta-suave);font-size:11px">· '+escHtml(nomeDe(x.por).split(' ')[0])+'</span>':'')+'</div>').join('')+'</div>';
+  if(podeAndar)h+='<div class="evm-l evm-add"><input id="evmSubTxt" placeholder="Nova subtarefa…" maxlength="160"><button type="button" id="evmSubAdd">+ Subtarefa</button></div>';
+  if(ehT&&(e.anotacoes||[]).length)h+='<div class="evm-l"><b>📝 Anotações · '+e.anotacoes.length+'</b>'
+    +e.anotacoes.map(a=>'<div class="evm-nota"><span class="q">'+fmtDtHr(a.quando)+' · '+escHtml(nomeDe(a.por).split(' ')[0])+'</span>'+escHtml(a.txt||'')+'</div>').join('')+'</div>';
+  if(podeAndar)h+='<div class="evm-l evm-add col"><textarea id="evmNotaTxt" rows="2" placeholder="Anotação de andamento (o que foi feito, o que falta, quem foi acionado)…" maxlength="1000"></textarea><button type="button" id="evmNotaAdd">+ Anotação</button></div>';
+  if(ehT&&!e.concluida&&souDono&&!souCriador&&!usuarioAtual.admin)h+='<div class="evm-l" style="font-size:12px;color:var(--tinta-suave)">🔒 Tarefa marcada por '+escHtml(nomeDe(e.por).split(' ')[0])+': título, descrição e prazo só ele(a) ou um admin alteram. Você pode acrescentar subtarefas e anotações, concluir, reagendar ou devolver.</div>';
   if(e.origem)h+='<div class="evm-l">🔗 Tarefa de continuidade (criada a partir de uma devolução)</div>';
   if(e.demanda){const dm=demPorId(e.demanda);if(dm)h+='<div class="evm-l">🧵 Demanda: <a href="#" id="evmDem" data-id="'+dm.id+'" style="color:var(--petroleo);font-weight:700">'+escHtml(dm.titulo)+'</a> <span style="color:var(--tinta-suave)">· '+escHtml(FX_AREAS[dm.area]||dm.area)+(dm.etapa?' · etapa '+escHtml(dm.etapa):'')+'</span></div>';}
   if(e.dadosEvento){
@@ -2726,7 +2925,7 @@ function abrirDetalheEv(id){
   h+='<div class="evm-acoes">'
     +(!ehT?'<a class="g" target="_blank" rel="noopener" href="'+gcalUrl(e.titulo,e.data,e.ini,e.fim,e.descricao)+'">Google Agenda</a><button type="button" id="evmIcs">.ics</button>':'')
     +'<button type="button" id="evmDia">📂 Abrir no dia</button>'
-    +(((e.por||e.dono)===usuarioAtual.id&&(!e.consultoriaId||usuarioAtual.admin))?'<button type="button" id="evmEd">✎ Editar</button>':'')
+    +(podeEditarPrincipal?'<button type="button" id="evmEd">✎ Editar</button>':'')
     +(e.consultoriaId?'<a href="raiox/?fra='+(e.fra||'')+'&aba=tarefas" style="color:var(--foco);font-weight:700;padding:6px 10px">🩻 Consultoria</a>':'')
     +(((e.rec||e.recPai)&&(usuarioAtual.admin||(e.por||e.dono)===usuarioAtual.id))?'<button type="button" id="evmSerie" title="Remove as ocorrências futuras em aberto">↻ Excluir série</button>':'')
     +'<button type="button" id="evmFechar">Fechar</button></div>';
@@ -2740,6 +2939,12 @@ function abrirDetalheEv(id){
   const bi=$('evmIcs');if(bi)bi.onclick=()=>baixarICS(e.titulo.replace(/\s+/g,'_')+'.ics',[e]);
   $('evmDia').onclick=()=>{fecharDetalheEv();irAgenda();if($('agModo')){$('agModo').value='dia';$('agModo').dispatchEvent(new Event('change'));}$('agData').value=e.data;evAbertos.add(e.id);desenharAgenda();setTimeout(()=>{const el=document.querySelector('[data-evid="'+e.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},80);};
   const be=$('evmEd');if(be)be.onclick=()=>{fecharDetalheEv();irAgenda();entrarEdicao(e);};
+  // v8.1: andamento pelo pop-up — grava, recarrega a agenda e reabre o mesmo pop-up
+  const salvarAndamento=async(patch)=>{const{error}=await sb.from('agenda_eventos').update(patch).eq('id',e.id);if(error){erroDB(error);return;}await carregarAgenda();redesenharTarefasDia();if(typeof desenharAgenda==='function'&&$('v-agenda').classList.contains('ativa'))desenharAgenda();piscar();abrirDetalheEv(e.id);};
+  $('evModal').querySelectorAll('input[data-esid]').forEach(ci=>{ci.onchange=()=>salvarAndamento({subtarefas:(e.subs||[]).map(x=>x.id===ci.dataset.esid?{...x,feita:ci.checked}:x)});});
+  $('evModal').querySelectorAll('button.evm-rm').forEach(bt=>{bt.onclick=()=>{if(confirm('Remover esta subtarefa?'))salvarAndamento({subtarefas:(e.subs||[]).filter(x=>x.id!==bt.dataset.esid)});};});
+  const bSub=$('evmSubAdd');if(bSub){const addSub=()=>{const v=$('evmSubTxt').value.trim();if(!v)return;salvarAndamento({subtarefas:[...(e.subs||[]),{id:novoId('s'),txt:v,feita:false,por:usuarioAtual.id,quando:new Date().toISOString()}]});};bSub.onclick=addSub;$('evmSubTxt').addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();addSub();}});setTimeout(()=>{const f=$('evmSubTxt');if(f&&document.activeElement&&document.activeElement.id==='evmSubTxt')f.focus();},0);}
+  const bNota=$('evmNotaAdd');if(bNota)bNota.onclick=()=>{const v=$('evmNotaTxt').value.trim();if(!v)return;salvarAndamento({anotacoes:[...(e.anotacoes||[]),{id:novoId('n'),txt:v,por:usuarioAtual.id,quando:new Date().toISOString()}]});};
   const bs=$('evmSerie');if(bs)bs.onclick=()=>{fecharDetalheEv();excluirSerie(e);};
   const upBetta=$('evmBettaUp');if(upBetta)upBetta.onchange=ev=>{const arq=ev.target.files[0];fecharDetalheEv();processarVendasBetta(e,arq);};
 }
@@ -4245,7 +4450,21 @@ function fmtH(h){if(h<1)return Math.round(h*60)+' min';if(h<48)return h.toFixed(
 /* ================================================================
    ADMIN
 ================================================================ */
-function desenharAdmin(){desenharUsuarios();desenharFrqAdmin();desenharSkusBetta();desenharRegrasBetta();desenharLog();}
+function desenharAdmin(){desenharUsuarios();desenharAcessoBarra();desenharFrqAdmin();desenharSkusBetta();desenharRegrasBetta();desenharLog();}
+/* v8.0: gestão de quem vê o botão "Sistemas" (RPCs barra_* — admin da rede ou quem já está na lista) */
+async function desenharAcessoBarra(){
+  const t=$('tabAcessoBarra'),sel=$('selAcessoBarra'),msg=$('acessoBarraMsg');if(!t)return;
+  const fmt=d=>{try{return new Date(d).toLocaleDateString('pt-BR');}catch(_){return '';}};
+  const [{data:lista,error:e1},{data:pessoas,error:e2}]=await Promise.all([sb.rpc('barra_acesso_listar'),sb.rpc('barra_pessoas_listar')]);
+  if(e1||e2){t.innerHTML='<tr><td style="color:var(--verm)">Não foi possível ler a lista ('+escHtml((e1||e2).message||'')+').</td></tr>';return;}
+  t.innerHTML='<tr><th>Nome</th><th>E-mail</th><th>Liberado em</th><th></th></tr>'+(lista||[]).map(a=>'<tr><td>'+escHtml(a.nome||'')+'</td><td>'+escHtml(a.email||'')+'</td><td>'+fmt(a.liberado_em)+(a.obs?' <span style="color:var(--tinta-suave);font-size:12px">· '+escHtml(a.obs)+'</span>':'')+'</td><td style="text-align:right">'+(a.eu?'<span style="font-size:12px;color:var(--tinta-suave)">você</span>':'<button class="btn claro" data-rev="'+escHtml(a.perfil_id)+'" style="color:var(--verm);font-size:12px;padding:4px 10px">Remover</button>')+'</td></tr>').join('')
+    +((lista||[]).length?'':'<tr><td colspan="4" style="color:var(--tinta-suave)">Ninguém na lista: o botão Sistemas mostra só os atalhos do papel.</td></tr>');
+  t.querySelectorAll('button[data-rev]').forEach(b=>b.onclick=async()=>{if(!confirm('Tirar o botão Sistemas desta pessoa? Ela também deixa de abrir o Painel Master.'))return;const{error}=await sb.rpc('barra_acesso_revogar',{p_perfil:b.dataset.rev});if(error)erroDB(error);else{piscar();desenharAcessoBarra();}});
+  sel.innerHTML='<option value="">Escolha uma pessoa…</option>'+(pessoas||[]).map(p=>'<option value="'+escHtml(p.perfil_id)+'">'+escHtml(p.nome||'')+(p.email?' — '+escHtml(p.email):'')+'</option>').join('');
+  msg.textContent='';
+  $('btnAcessoBarra').onclick=async()=>{const id=sel.value;if(!id){msg.textContent='Escolha uma pessoa na lista.';return;}
+    const{error}=await sb.rpc('barra_acesso_conceder',{p_perfil:id,p_obs:'via Central POP · '+(usuarioAtual&&usuarioAtual.nome||'')});if(error)erroDB(error);else{piscar();desenharAcessoBarra();}};
+}
 function frqForm(f){
   const v=k=>f&&f[k]!=null?String(f[k]).replace(/"/g,'&quot;'):'';
   const box=document.createElement('div');
@@ -4719,7 +4938,7 @@ function tick(){
   const d=agora();
   $('relogio').textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   if(usuarioAtual){
-    $('quemSou').textContent=usuarioAtual.nome+' · '+DIAS[d.getDay()]+' · '+papelTexto(usuarioAtual.id,d);
+    BarraPop.quem(usuarioAtual.nome,DIAS[d.getDay()]+' · '+papelTexto(usuarioAtual.id,d)); // v8.0: nome e papel na Barra POP
     // v7.9.3: não redesenha o checklist enquanto o usuário está digitando dentro dele (perdia o texto do campo)
     const ae=document.activeElement,lista=$('linhaDia');
     const digitando=ae&&lista&&lista.contains(ae)&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
@@ -4739,6 +4958,8 @@ function ligarAbas(){
   });
 }
 ligarAbas();
+// v8.0: Barra POP monta o cabeçalho (logo, trilha, relógio, sino, Sistemas, Sair) antes de qualquer rede; o menu só carrega depois do login (auto:false).
+BarraPop.montar({el:'barraPop',sistema:'central',titulo:'Central <em>POP</em>',logo:'logo-pop.png',logoHref:'./',sair:function(){sair();},sairId:'btnSair',sairOculto:true,auto:false,links:BARRA_LINKS});
 
 (async function(){
   if(SUPABASE_URL.startsWith('COLE_AQUI')){
@@ -4751,7 +4972,6 @@ ligarAbas();
   sb.auth.onAuthStateChange((ev,s)=>{ if(!usuarioAtual)return; if(ev==='SIGNED_OUT'||(ev==='TOKEN_REFRESHED'&&!s)) location.reload(); });
   $('btnEntrar').onclick=entrar;
   $('loginSenha').addEventListener('keydown',e=>{if(e.key==='Enter')entrar();});
-  $('btnSair').onclick=sair;
   $('btnAddEvento').onclick=()=>{if(emModoBetta&&!editEvId)salvarEventoBetta();else addEvento();};
   $('btnCancelEdit').onclick=()=>{$('evTitulo').value='';$('evDesc').value='';$('evPrazo').value='';devolverDe=null;evSubsArr=[];desenharEvSubs();evPartsSel.clear();sairEdicao();desenharEvParts();emModoBetta=false;evDadosEventoOrig=null;$('evCustoLbl').style.display='none';$('evCusto').value='';fecharFormAgenda();};
   const inpIcs=$('inputIcs');

@@ -6,7 +6,7 @@ As regras de ritmo/gargalo são as mesmas do raiox/app.js (andamento). */
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'dash v1.3';
+const VERSAO = 'dash v1.4'; // v1.4 · 21/09/2026 · Barra POP no cabeçalho
 const PAPEIS_OK = ['supervisor', 'diretoria'];
 
 const $ = id => document.getElementById(id);
@@ -55,7 +55,8 @@ async function entrou(session) {
   const { data: p } = await sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults').eq('id', usuario.id).maybeSingle();
   perfil = p || { nome: usuario.email, is_admin: false, papeis: [] };
   $('quem').textContent = perfil.nome + (perfil.is_admin ? ' · admin' : '') + ' · ' + VERSAO;
-  $('login').style.display = 'none'; $('btnSair').style.display = ''; $('btnImprimir').style.display = '';
+  if (window.BarraPop) { BarraPop.quem(perfil.nome, (perfil.is_admin ? 'admin' : 'supervisão') + ' · ' + VERSAO); BarraPop.sessao(); BarraPop.sairVisivel(true); } // v1.4: Barra POP
+  $('login').style.display = 'none'; $('btnImprimir').style.display = '';
   if (!podeVer()) {
     $('app').style.display = 'none';
     const d = document.createElement('div'); d.className = 'negado';

@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.8';
+const VERSAO = 'v3.9'; // v3.9 · 21/09/2026 · Barra POP no cabeçalho
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -53,7 +53,14 @@ async function entrou(session) {
   const { data: p } = await sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults').eq('id', usuario.id).maybeSingle();
   perfil = p || { nome: usuario.email, is_admin: false, papeis: [] };
   $('quem').textContent = perfil.nome + (perfil.is_admin ? ' · admin' : ehFranq() ? ' · franqueado' : '') + ' · ' + VERSAO;
-  $('login').style.display = 'none'; $('app').style.display = ''; $('btnSair').style.display = '';
+  // v3.9: Barra POP — nome e papel no cabeçalho; franqueado não tem Central, então some a trilha e o logo não leva para lá
+  if (window.BarraPop) {
+    BarraPop.quem(perfil.nome, (perfil.is_admin ? 'admin' : ehFranq() ? 'franqueado' : 'consultor') + ' · ' + VERSAO);
+    if (ehFranq()) { document.querySelectorAll('.pb-pai,.pb-sep').forEach(e => e.remove()); const m = document.querySelector('.pb-marca'); if (m) { m.href = './'; m.title = 'Raio-X POP'; } }
+    else BarraPop.sessao();
+    BarraPop.sairVisivel(true);
+  }
+  $('login').style.display = 'none'; $('app').style.display = '';
   sb.from('acessos').insert({ user_id: usuario.id, origem: 'raiox' }).then(() => {});
   if (ehAdmin()) $('btnRecalcRede').style.display = '';
   if (podeFranq()) $('abaFranq').style.display = '';   // admin ve a rede; consultor ve a carteira dele

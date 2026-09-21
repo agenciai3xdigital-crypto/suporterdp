@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entenda seu score · Raio-X POP</title>
+<!-- v1.1 · 21/09/2026 · Barra POP no cabeçalho.
 <!-- Raio-X POP · score.html v1.0 · 17/09/2026 · explicação do score da loja para franqueado e consultor.
      Página estática: não lê o banco. As cinco notas chegam pela URL (?fra=&loja=&mes=&receita=&margem=&mix=&ret=&dado=)
      a partir do botão "Entenda aqui seu score" da ficha da loja (app.js); sem parâmetros vira simulador manual. -->
@@ -26,12 +27,8 @@ a{color:var(--petroleo)}
 [hidden]{display:none!important}
 .num{font-variant-numeric:tabular-nums}
 .wrap{max-width:900px;margin:0 auto;padding:0 18px 60px}
-.topo{background:var(--papel);border-bottom:1px solid var(--linha);margin-bottom:22px}
-.topo .in{max-width:900px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.topo img{height:40px}
-.topo h1{font-family:'Archivo',sans-serif;font-weight:900;font-size:19px;line-height:1.1}
-.topo h1 small{display:block;font-family:'Inter';font-weight:500;font-size:12px;color:var(--tinta-suave)}
-.topo .esp{flex:1}
+/* topo: v1.1 — Barra POP (#pb-css), alinhada ao wrap de 900px */
+.pb-score{margin-bottom:22px;padding-left:max(18px,calc((100% - 900px)/2 + 18px));padding-right:max(18px,calc((100% - 900px)/2 + 18px))}
 .btn{border:none;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
 .btn.laranja{background:var(--laranja);color:#fff}
 .btn.claro{background:#fff;border:1.5px solid var(--linha);color:var(--tinta)}
@@ -106,14 +103,198 @@ h2{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-transfor
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<!-- ===== BARRA POP v1.0 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+     Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
+     expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
+     Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
+     só para quem está em hub_acesso; para os outros mostra apenas os atalhos do papel (links) ou nada.
+     Para alterar o visual, altere aqui e cole o bloco inteiro nas outras páginas. ===== -->
+<style id="pb-css">
+.pb{--pb-bg:#fff;--pb-ink:#14332A;--pb-muted:#5A7268;--pb-line:#D3DFD8;--pb-soft:#EEF3F0;--pb-lar:#FF6B15;--pb-lar-soft:#FFEDE1;--pb-verde:#009150;--pb-verm:#C0392B;
+  display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--pb-bg);border-bottom:1px solid var(--pb-line);position:relative;flex-wrap:wrap;
+  font-family:'Inter',system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:var(--pb-ink);line-height:1.3;box-sizing:border-box}
+.pb *{box-sizing:border-box}
+.pb-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+.pb-logo{height:38px;width:auto;display:block}
+.pb-trilha{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:19px;letter-spacing:-.3px;line-height:1.1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pb-trilha a.pb-pai{color:var(--pb-muted);font-weight:600;font-size:14px;text-decoration:none;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
+.pb-trilha a.pb-pai:hover{color:var(--pb-lar)}
+.pb-sep{color:var(--pb-line);font-weight:400}
+.pb-trilha em{font-style:normal;color:var(--pb-lar)}
+.pb-trilha small{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:12px;color:var(--pb-muted);letter-spacing:0;margin-top:2px}
+.pb-esp{flex:1 1 8px}
+.pb-quem{font-size:12.5px;color:var(--pb-muted);text-align:right;line-height:1.25;max-width:220px}
+.pb-quem b{display:block;color:var(--pb-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-ico{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--pb-line);background:var(--pb-bg);display:grid;place-items:center;color:var(--pb-ink);cursor:pointer;position:relative;flex:none;padding:0;font:inherit}
+.pb-ico svg{width:19px;height:19px;display:block}
+.pb-ico:hover{border-color:var(--pb-muted)}
+.pb-ico.on,.pb-ico.tem{border-color:var(--pb-lar);color:var(--pb-lar)}
+.pb-ico.on{background:var(--pb-lar-soft)}
+.pb-ico:focus-visible,.pb-sair:focus-visible,.pb-item:focus-visible{outline:2px solid var(--pb-lar);outline-offset:2px}
+.pb-bd{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;line-height:17px;padding:0 4px;border-radius:9px;background:var(--pb-verm);color:#fff;font-size:10.5px;font-weight:700;text-align:center}
+.pb-sair{border:1.5px solid var(--pb-line);background:var(--pb-bg);color:var(--pb-ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.3}
+.pb-sair:hover{border-color:var(--pb-muted)}
+.pb-relogio{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;line-height:1;text-align:right}
+.pb-relogio .sync{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--pb-verde);margin-top:2px}
+.pb-veu{display:none;position:fixed;inset:0;background:rgba(20,51,42,.35);z-index:180}
+.pb-veu.on{display:block}
+.pb-pop{display:none;position:absolute;right:16px;top:calc(100% - 4px);width:min(560px,calc(100vw - 32px));background:var(--pb-bg);border:1px solid var(--pb-line);border-radius:14px;box-shadow:0 10px 30px rgba(20,51,42,.16);padding:14px;z-index:190;color:var(--pb-ink)}
+.pb-pop.on{display:block}
+.pb-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.pb-cab b{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:15px}
+.pb-cab span{font-size:12px;color:var(--pb-muted)}
+.pb-cab a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--pb-verde);text-decoration:none;white-space:nowrap}
+.pb-cab a:hover{text-decoration:underline}
+.pb-x{display:none;margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--pb-muted);cursor:pointer;padding:0 4px}
+.pb-grupo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--pb-muted);margin:10px 0 6px}
+.pb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.pb-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;text-decoration:none;color:var(--pb-ink);border:1px solid transparent;min-width:0}
+.pb-item:hover{background:var(--pb-soft)}
+.pb-item.atual{background:var(--pb-lar-soft);cursor:default}
+.pb-q{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:900;font-size:11px;flex:none;letter-spacing:.02em}
+.pb-t{font-size:13px;font-weight:600;line-height:1.15;min-width:0}
+.pb-t small{display:block;font-weight:500;font-size:11px;color:var(--pb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-item.ext .pb-t::after{content:" ↗";color:var(--pb-muted);font-weight:400}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chips a{font-size:12px;font-weight:600;color:var(--pb-muted);text-decoration:none;border:1px solid var(--pb-line);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.pb-chips a:hover{color:var(--pb-ink);border-color:var(--pb-muted)}
+.pb-aviso{font-size:11.5px;color:var(--pb-muted);margin-top:10px;border-top:1px solid var(--pb-line);padding-top:8px}
+@media(max-width:640px){
+  .pb{padding:8px 12px;gap:8px;flex-wrap:nowrap}.pb-logo{height:32px}
+  .pb-marca{flex:1 1 0;min-width:0}.pb-trilha{font-size:16px;flex-wrap:nowrap;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb-trilha a.pb-pai,.pb-sep,.pb-trilha small{display:none} /* no celular o logo já leva à Central */
+  .pb-esp{display:none}.pb-sair{padding:7px 10px}
+  .pb-quem,.pb-relogio{display:none}
+  .pb-pop{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;border-radius:18px 18px 0 0;max-height:80vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .pb-x{display:block}.pb-cab a{margin-left:0;flex-basis:100%}
+  .pb-grade{grid-template-columns:1fr 1fr}
+}
+@media print{.pb{display:none!important}}
+</style>
+<script id="pb-js">
+/* BarraPop — API: BarraPop.montar(opts) → depois BarraPop.sessao() quando houver login, BarraPop.quem(nome,sub), BarraPop.sairVisivel(bool). */
+window.BarraPop=(function(){
+  'use strict';
+  var SB_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+  var SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+  var HUB_URL='https://agenciai3xdigital-crypto.github.io/painel-master-pop/';
+  var GRID='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>';
+  var O=null, el={}, carregou=false;
+
+  function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.ref==='klcxavgxonpsbsbzqcil'&&p.role==='authenticated');}
+  /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
+  function tokenPadrao(){
+    var melhor=null;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v;
+        try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}
+        var c=v&&(typeof v.access_token==='string'?v:(v.currentSession||v.session));
+        if(!c||typeof c.access_token!=='string'||!doProjeto(c.access_token))continue;
+        var exp=Number(c.expires_at)||(jwtPayload(c.access_token)||{}).exp||0;
+        if(exp*1000<Date.now()+15000)continue;
+        if(!melhor||exp>melhor.exp)melhor={t:c.access_token,exp:exp};
+      }
+    }catch(e){}
+    return Promise.resolve(melhor?melhor.t:null);
+  }
+  function rpc(nome,token,corpo,keep){
+    return fetch(SB_URL+'/rest/v1/rpc/'+nome,{method:'POST',keepalive:!!keep,
+      headers:{'apikey':SB_ANON,'Authorization':'Bearer '+token,'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(corpo||{})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }
+  function h(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function iniciais(n){var p=String(n||'').replace(/[—–-].*$/,'').trim().split(/\s+/).filter(function(w){return w.length>2||/^[A-Z0-9]+$/.test(w);});return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase();}
+  function escura(hex){var m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));if(!m)return true;var n=parseInt(m[1],16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)<150;}
+  function urlOk(u){try{var x=new URL(u,location.href);return x.protocol==='https:'?x:null;}catch(e){return null;}}
+
+  function montar(o){
+    O=o||{};var raiz=typeof O.el==='string'?document.getElementById(O.el):O.el;if(!raiz)return;
+    var extras=[];while(raiz.firstChild){extras.push(raiz.firstChild);raiz.removeChild(raiz.firstChild);}
+    raiz.className='pb'+(O.classe?' '+O.classe:'');raiz.setAttribute('role','banner');
+    var marca=h('a','pb-marca');marca.href=O.logoHref||O.central||'./';marca.title='Ir para a Central POP';
+    var img=h('img','pb-logo');img.src=O.logo||'logo-pop.png';img.alt='Rede POP Pet Center';img.onerror=function(){img.style.display='none';};marca.appendChild(img);
+    var tr=h('div','pb-trilha');
+    (O.trilha||[]).forEach(function(t){var a=h('a','pb-pai',t.nome);a.href=t.href;tr.appendChild(a);tr.appendChild(h('span','pb-sep','/'));});
+    var tit=h('span');tit.innerHTML=O.titulo||'';if(O.sub){tit.appendChild(h('small',null,O.sub));}tr.appendChild(tit);
+    marca.appendChild(tr);raiz.appendChild(marca);
+    raiz.appendChild(h('span','pb-esp'));
+    extras.forEach(function(n){raiz.appendChild(n);});
+    el.quem=h('div','pb-quem');el.quemN=h('b');el.quemS=h('span');el.quem.appendChild(el.quemN);el.quem.appendChild(el.quemS);el.quem.style.display='none';raiz.appendChild(el.quem);
+    el.btn=h('button','pb-ico');el.btn.type='button';el.btn.title='Sistemas';el.btn.setAttribute('aria-label','Sistemas');el.btn.setAttribute('aria-expanded','false');el.btn.innerHTML=GRID;el.btn.style.display='none';raiz.appendChild(el.btn);
+    if(O.sair){el.sair=h('button','pb-sair','Sair');el.sair.type='button';el.sair.id=O.sairId||'pbSair';el.sair.onclick=function(){O.sair();};if(O.sairOculto)el.sair.style.display='none';raiz.appendChild(el.sair);}
+    el.veu=h('div','pb-veu');el.pop=h('div','pb-pop');el.pop.setAttribute('role','dialog');el.pop.setAttribute('aria-label','Sistemas');
+    raiz.appendChild(el.veu);raiz.appendChild(el.pop);
+    el.btn.onclick=function(){alternar();};el.veu.onclick=fechar;
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
+    document.addEventListener('click',function(e){if(el.pop.classList.contains('on')&&!el.pop.contains(e.target)&&!el.btn.contains(e.target))fechar();});
+    if(O.quem)quem(O.quem.nome,O.quem.sub);
+    if(O.auto!==false)sessao();
+  }
+  function alternar(){el.pop.classList.contains('on')?fechar():abrir();}
+  function abrir(){el.pop.classList.add('on');el.veu.classList.add('on');el.btn.classList.add('on');el.btn.setAttribute('aria-expanded','true');}
+  function fechar(){if(!el.pop)return;el.pop.classList.remove('on');el.veu.classList.remove('on');el.btn.classList.remove('on');el.btn.setAttribute('aria-expanded','false');}
+  function quem(nome,sub){if(!el.quem)return;el.quemN.textContent=nome||'';el.quemS.textContent=sub||'';el.quem.style.display=nome?'':'none';}
+  function sairVisivel(v){if(el.sair)el.sair.style.display=v?'':'none';}
+
+  /* Carrega o menu: catálogo completo para quem está em hub_acesso; senão só os atalhos do papel (O.links). */
+  function sessao(){
+    if(!O||!el.pop)return Promise.resolve();
+    var get=O.token||tokenPadrao;
+    return Promise.resolve().then(function(){return get();}).then(function(tok){
+      if(!tok)return desenhar(null,null);
+      return rpc('barra_sistemas',tok,{}).then(function(r){desenhar(r&&r.ok?r:null,tok);});
+    }).catch(function(){desenhar(null,null);});
+  }
+  function desenhar(r,tok){
+    el.pop.innerHTML='';carregou=true;
+    var itens=r?(r.paineis||[]):[];
+    var links=(O.links||[]).filter(function(l){return urlOk(l.url);});
+    var paineis=itens.filter(function(p){return p.grupo==='painel';});
+    var bastidor=itens.filter(function(p){return p.grupo!=='painel';});
+    if(!paineis.length&&!links.length){el.btn.style.display='none';return;}
+    var cab=h('div','pb-cab');cab.appendChild(h('b',null,'Sistemas'));
+    cab.appendChild(h('span',null,r?'catálogo do Painel Master':'atalhos do seu perfil'));
+    var x=h('button','pb-x','×');x.type='button';x.setAttribute('aria-label','Fechar');x.onclick=fechar;
+    if(r){var hub=h('a',null,'Abrir Painel Master →');hub.href=HUB_URL;hub.target='_blank';hub.rel='noopener';cab.appendChild(hub);}
+    cab.appendChild(x);el.pop.appendChild(cab);
+    el.pop.appendChild(h('div','pb-grupo','Painéis'));
+    var g=h('div','pb-grade');
+    (paineis.length?paineis:links).forEach(function(p){
+      var u=urlOk(p.url);if(!u)return;
+      var atual=(p.chave&&p.chave===O.sistema);
+      var a=h(atual?'span':'a','pb-item'+(atual?' atual':''));
+      if(!atual){a.href=u.href;if(u.origin!==location.origin){a.target='_blank';a.rel='noopener';a.classList.add('ext');}
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};}
+      var q=h('span','pb-q',iniciais(p.nome));var cor=/^#[0-9a-f]{6}$/i.test(p.cor||'')?p.cor:'#00573F';q.style.background=cor;q.style.color=escura(cor)?'#fff':'#14332A';
+      var t=h('span','pb-t',p.nome);var sub=atual?'você está aqui':(p.descricao||p.sub||'');if(sub)t.appendChild(h('small',null,sub));
+      if(p.aviso)a.title=p.aviso;
+      a.appendChild(q);a.appendChild(t);g.appendChild(a);
+    });
+    el.pop.appendChild(g);
+    if(bastidor.length){
+      el.pop.appendChild(h('div','pb-grupo','Bastidor'));var c=h('div','pb-chips');
+      bastidor.forEach(function(p){var u=urlOk(p.url);if(!u)return;var a=h('a',null,p.nome+' ↗');a.href=u.href;a.target='_blank';a.rel='noopener';if(p.aviso)a.title=p.aviso;
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};c.appendChild(a);});
+      el.pop.appendChild(c);
+    }
+    if(r)el.pop.appendChild(h('div','pb-aviso','Quem vê este botão é definido em Central POP → Admin → Equipe → "Botão Sistemas". Endereços e cards: pelo Painel Master.'));
+    el.btn.style.display='';
+  }
+  return {montar:montar,sessao:sessao,quem:quem,sairVisivel:sairVisivel,fechar:fechar,rpc:rpc,token:tokenPadrao};
+})();
+</script>
+<!-- ===== fim BARRA POP ===== -->
 </head>
 <body>
-<div class="topo"><div class="in">
-  <img src="../logo-pop.png" alt="Rede POP Pet Center">
-  <h1>Entenda seu score<small>Raio-X POP · Central POP</small></h1>
-  <span class="esp"></span>
-  <a class="btn claro" id="btnVoltar" href="./">← Voltar ao Raio-X</a>
-</div></div>
+<!-- v1.1: Barra POP (cabeçalho único). Página estática, sem login: a trilha leva ao Raio-X; o botão Sistemas só aparece
+     se houver sessão desta origem no navegador e a pessoa estiver em hub_acesso. -->
+<div id="barraPop"></div>
+<script>
+BarraPop.montar({el:'barraPop',classe:'pb-score',sistema:'score',logo:'../logo-pop.png',logoHref:'./',
+  trilha:[{nome:'Raio-X',href:'./'}],titulo:'Entenda seu <em>score</em>',sub:'como a nota da loja é calculada'});
+</script>
 
 <div class="wrap">
 
@@ -318,7 +499,7 @@ h2{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;text-transfor
     $('howto').innerHTML='As notas abaixo já são as da <b>'+esc(quem)+'</b>, como estão no raio-x. Se quiser, altere qualquer uma para <b>simular</b> quanto o score sobe — e volte às notas reais com o botão ao lado.';
     $('notaEx').hidden=true;
     $('btnEx').hidden=true;
-    if(LOJA.fra) $('btnVoltar').href='./?fra='+encodeURIComponent(LOJA.fra);
+    if(LOJA.fra) document.querySelectorAll('.pb-pai,.pb-marca').forEach(a=>{a.href='./?fra='+encodeURIComponent(LOJA.fra);}); // v1.1: trilha e logo voltam para a loja aberta
     preencherLoja();
   } else {
     render();

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de Alavancas POP</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;800&display=swap">
+<style>
+:root{
+  --bg:#f6f8f6; --surface:#ffffff; --ink:#173026; --muted:#5d6f66; --line:#d9e3dd;
+  --verde:#009150; --verde-esc:#00573F; --laranja:#FF6B15; --amarelo:#FDAE25;
+  --verde-claro:#A8D3C4; --verde-tint:#e6f3ec; --laranja-tint:#fff0e6; --neg:#b3261e; --neg-tint:#fbe9e7;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1a15; --surface:#16241d; --ink:#eaf2ed; --muted:#9db3a8; --line:#28392f;
+    --verde:#2bb573; --verde-esc:#A8D3C4; --verde-tint:#173627; --laranja-tint:#3a2414; --neg:#ff8a80; --neg-tint:#3a1c1a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1a15; --surface:#16241d; --ink:#eaf2ed; --muted:#9db3a8; --line:#28392f;
+  --verde:#2bb573; --verde-esc:#A8D3C4; --verde-tint:#173627; --laranja-tint:#3a2414; --neg:#ff8a80; --neg-tint:#3a1c1a;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:Poppins,"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-block:28px 48px;padding-inline:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:22px;position:relative;overflow:hidden}
+h1{font-size:clamp(22px,3.4vw,30px);font-weight:800;color:var(--verde-esc);margin:0;text-wrap:balance;line-height:1.15}
+.eyebrow{display:inline-block;background:var(--laranja);color:#fff;font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:8px}
+.sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.formula{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--verde-tint);color:var(--verde-esc);padding:8px 12px;border-radius:8px;white-space:nowrap;overflow-x:auto;line-height:1.7}
+.hex{position:absolute;right:-20px;top:-30px;width:140px;opacity:.12;pointer-events:none}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:640px}
+th,td{padding:12px 14px;text-align:right;border-bottom:1px solid var(--line);vertical-align:middle}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--bg)}
+thead th.atual{color:var(--verde-esc)}
+thead th.novo{color:var(--laranja)}
+tbody th{font-weight:500;text-align:left}
+tbody th small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:1px 7px;border-radius:5px;background:var(--verde-tint);color:var(--verde-esc);margin-left:6px;vertical-align:middle}
+tr.sec td,tr.sec th{background:var(--bg);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding-block:8px}
+tr.total th,tr.total td{font-weight:800;font-size:17px}
+tr.total:last-child th,tr.total:last-child td{border-bottom:none}
+tr.total .delta{font-size:15px}
+
+.field{display:inline-flex;align-items:center;gap:6px;justify-content:flex-end}
+.field span{color:var(--muted);font-size:13px}
+input[type=number]{width:110px;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+input[type=number]:focus{outline:none;border-color:var(--verde);box-shadow:0 0 0 3px var(--verde-tint)}
+td.novo input{border-color:var(--laranja)}
+td.novo input:focus{box-shadow:0 0 0 3px var(--laranja-tint)}
+.calc{font-weight:600}
+.delta{white-space:nowrap}
+.pill{display:inline-block;padding:3px 9px;border-radius:999px;font-weight:600;font-size:13px;min-width:5.5em;text-align:center}
+.pill.up{background:var(--verde-tint);color:var(--verde)}
+.pill.down{background:var(--neg-tint);color:var(--neg)}
+.pill.zero{background:var(--bg);color:var(--muted)}
+.abs{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);background:var(--bg)}
+.actions span{color:var(--muted);font-size:13px;margin-right:4px}
+button{font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);color:var(--verde-esc);cursor:pointer}
+button:hover{border-color:var(--verde)}
+button:focus-visible{outline:2px solid var(--verde);outline-offset:2px}
+button.primary{background:var(--verde);border-color:var(--verde);color:#fff}
+button.warn{color:var(--laranja)}
+
+h2{font-size:17px;font-weight:800;color:var(--verde-esc);margin:32px 0 4px}
+.hint{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:70ch}
+.step{color:var(--muted);font-size:12px}
+.foot{margin-top:28px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:560px){ input[type=number]{width:92px} th,td{padding:10px 8px} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <svg class="hex" viewBox="0 0 100 100" aria-hidden="true"><polygon points="50,3 93,27 93,73 50,97 7,73 7,27" fill="#009150"/></svg>
+    <div>
+      <span class="eyebrow">Consultoria de faturamento</span>
+      <h1>Simulador de alavancas do faturamento</h1>
+      <p class="sub">Preencha o dia típico da loja na coluna verde e altere os números na coluna laranja. O simulador mostra o efeito por dia, no mês e no ano.</p>
+    </div>
+    <div class="formula">Dia = clientes × conversão × ticket médio × frequência<br>Mês = dia × dias de venda</div>
+  </header>
+
+  <div class="card">
+    <div class="tblwrap">
+    <table id="tb">
+      <thead>
+        <tr><th>Indicador</th><th class="atual">Atual</th><th class="novo">Simulado</th><th>Diferença</th></tr>
+      </thead>
+      <tbody>
+        <tr class="sec"><th colspan="4">Alavancas por dia (preencher)</th></tr>
+        <tr>
+          <th>Quantidade de clientes <span class="tag">MKT</span><small>pessoas que entram na loja por dia</small></th>
+          <td><div class="field"><input type="number" id="a_cli" min="0" step="1" value="100"></div></td>
+          <td class="novo"><div class="field"><input type="number" id="n_cli" min="0" step="1" value="100"></div></td>
+          <td class="delta" id="d_cli"></td>
+        </tr>
+        <tr>
+          <th>Conversão <span class="tag">MIX</span><small>% dos que entram e compram</small></th>
+          <td><div class="field"><input type="number" id="a_conv" min="0" max="100" step="1" value="80"><span>%</span></div></td>
+          <td class="novo"><div class="field"><input type="number" id="n_conv" min="0" max="100" step="1" value="80"><span>%</span></div></td>
+          <td class="delta" id="d_conv"></td>
+        </tr>
+        <tr>
+          <th>Ticket médio (TKM)<small>valor médio por compra</small></th>
+          <td><div class="field"><span>R$</span><input type="number" id="a_tk" min="0" step="5" value="100"></div></td>
+          <td class="novo"><div class="field"><span>R$</span><input type="number" id="n_tk" min="0" step="5" value="100"></div></td>
+          <td class="delta" id="d_tk"></td>
+        </tr>
+        <tr>
+          <th>Frequência<small>compras por cliente no período</small></th>
+          <td><div class="field"><input type="number" id="a_fq" min="0" step="0.1" value="1"><span>x</span></div></td>
+          <td class="novo"><div class="field"><input type="number" id="n_fq" min="0" step="0.1" value="1"><span>x</span></div></td>
+          <td class="delta" id="d_fq"></td>
+        </tr>
+        <tr>
+          <th>Dias de venda no mês<small>vale para as duas colunas</small></th>
+          <td colspan="2" style="text-align:center"><div class="field" style="justify-content:center"><input type="number" id="dias" min="1" max="31" step="1" value="22"><span>dias</span></div></td>
+          <td></td>
+        </tr>
+
+        <tr class="sec"><th colspan="4">Resultado (calculado)</th></tr>
+        <tr>
+          <th>Clientes que compram por dia<small>clientes × conversão</small></th>
+          <td class="calc" id="a_comp"></td><td class="calc" id="n_comp"></td><td class="delta" id="d_comp"></td>
+        </tr>
+        <tr>
+          <th>Vendas por dia<small>compradores × frequência</small></th>
+          <td class="calc" id="a_vend"></td><td class="calc" id="n_vend"></td><td class="delta" id="d_vend"></td>
+        </tr>
+        <tr class="total">
+          <th>Faturamento por dia</th>
+          <td id="a_dia"></td><td id="n_dia" style="color:var(--laranja)"></td><td class="delta" id="d_dia"></td>
+        </tr>
+        <tr class="total">
+          <th>Faturamento no mês<small style="font-weight:400;font-size:12px;color:var(--muted)">dia × dias de venda</small></th>
+          <td id="a_fat"></td><td id="n_fat" style="color:var(--laranja)"></td><td class="delta" id="d_fat"></td>
+        </tr>
+        <tr class="total">
+          <th>Faturamento no ano<small style="font-weight:400;font-size:12px;color:var(--muted)">mês × 12</small></th>
+          <td id="a_ano"></td><td id="n_ano" style="color:var(--laranja)"></td><td class="delta" id="d_ano"></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="actions">
+      <span>Atalhos:</span>
+      <button type="button" data-lever="cli">+10% clientes</button>
+      <button type="button" data-lever="conv">+10 pts conversão</button>
+      <button type="button" data-lever="tk">+10% ticket</button>
+      <button type="button" data-lever="fq">+10% frequência</button>
+      <button type="button" class="primary" id="btnAll">+10% em tudo</button>
+      <button type="button" class="warn" id="btnReset">Igualar ao atual</button>
+    </div>
+  </div>
+
+  <h2>Degraus: uma alavanca por vez, somando</h2>
+  <p class="hint">Como no quadro: parte do atual e vai aplicando o valor simulado de cada alavanca por cima da anterior. A última linha é o cenário completo.</p>
+  <div class="card">
+    <div class="tblwrap">
+    <table id="deg">
+      <thead><tr><th>Degrau</th><th>Por dia</th><th>No mês</th><th>Ganho sobre o degrau anterior</th><th>Ganho sobre o atual</th></tr></thead>
+      <tbody>
+        <tr><th>Atual</th><td class="calc" id="g0_d"></td><td class="calc" id="g0_m"></td><td class="step">—</td><td class="step">—</td></tr>
+        <tr><th>+ clientes<small id="g1_de"></small></th><td class="calc" id="g1_d"></td><td class="calc" id="g1_m"></td><td id="g1_p"></td><td id="g1_t"></td></tr>
+        <tr><th>+ conversão<small id="g2_de"></small></th><td class="calc" id="g2_d"></td><td class="calc" id="g2_m"></td><td id="g2_p"></td><td id="g2_t"></td></tr>
+        <tr><th>+ ticket médio<small id="g3_de"></small></th><td class="calc" id="g3_d"></td><td class="calc" id="g3_m"></td><td id="g3_p"></td><td id="g3_t"></td></tr>
+        <tr class="total"><th>+ frequência<small id="g4_de" style="font-weight:400;font-size:12px;color:var(--muted)"></small></th><td id="g4_d"></td><td id="g4_m" style="color:var(--laranja)"></td><td id="g4_p"></td><td id="g4_t"></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <h2>O que cada alavanca vale sozinha</h2>
+  <p class="hint">Mantendo as outras três no valor atual. Mostra ao franqueado onde o esforço rende mais.</p>
+  <div class="card">
+    <div class="tblwrap">
+    <table id="iso">
+      <thead><tr><th>Alavanca</th><th>De → para</th><th>Faturamento no mês</th><th>Ganho no mês</th><th>Ganho no ano</th></tr></thead>
+      <tbody>
+        <tr><th>Só clientes <span class="tag">MKT</span></th><td id="i_cli_de"></td><td class="calc" id="i_cli_f"></td><td id="i_cli_m"></td><td id="i_cli_a"></td></tr>
+        <tr><th>Só conversão <span class="tag">MIX</span></th><td id="i_conv_de"></td><td class="calc" id="i_conv_f"></td><td id="i_conv_m"></td><td id="i_conv_a"></td></tr>
+        <tr><th>Só ticket médio</th><td id="i_tk_de"></td><td class="calc" id="i_tk_f"></td><td id="i_tk_m"></td><td id="i_tk_a"></td></tr>
+        <tr><th>Só frequência</th><td id="i_fq_de"></td><td class="calc" id="i_fq_f"></td><td id="i_fq_m"></td><td id="i_fq_a"></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <p class="foot">Valores iniciais são o exemplo do quadro (100 clientes/dia · 80% · R$ 100 · 1x · 22 dias = R$ 176.000/mês). Substitua pelos dados reais da loja (Raio-X / OnePet).</p>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const num=id=>{const v=parseFloat($(id).value);return isNaN(v)?0:v;};
+  const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+  const int=v=>Math.round(v).toLocaleString('pt-BR');
+  const dec=(v,d=1)=>v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const pct=v=>dec(v,0)+'%';
+  const fq=v=>dec(v,1)+'x';
+  const dia=(c,cv,tk,f)=>c*(cv/100)*tk*f;
+
+  function pill(el,base,novo,fmtAbs,isPoints){
+    const diff=novo-base;
+    let cls='zero', txt='—';
+    if(Math.abs(diff)>1e-9){
+      cls=diff>0?'up':'down';
+      if(isPoints) txt=(diff>0?'+':'')+dec(diff,0)+' pts';
+      else if(base>0) txt=(diff>0?'+':'')+dec(diff/base*100,1)+'%';
+      else txt='novo';
+    }
+    el.innerHTML='<span class="pill '+cls+'">'+txt+'</span>'+(fmtAbs&&Math.abs(diff)>1e-9?'<span class="abs">'+(diff>0?'+':'−')+fmtAbs(Math.abs(diff))+'</span>':'');
+  }
+
+  function calc(){
+    const a={c:num('a_cli'),cv:num('a_conv'),tk:num('a_tk'),f:num('a_fq')};
+    const n={c:num('n_cli'),cv:num('n_conv'),tk:num('n_tk'),f:num('n_fq')};
+    const D=Math.max(1,num('dias'));
+
+    pill($('d_cli'),a.c,n.c,int);
+    pill($('d_conv'),a.cv,n.cv,null,true);
+    pill($('d_tk'),a.tk,n.tk,brl);
+    pill($('d_fq'),a.f,n.f,v=>dec(v,1)+'x');
+
+    const aComp=a.c*a.cv/100, nComp=n.c*n.cv/100;
+    const aVend=aComp*a.f, nVend=nComp*n.f;
+    const aDia=dia(a.c,a.cv,a.tk,a.f), nDia=dia(n.c,n.cv,n.tk,n.f);
+    const aFat=aDia*D, nFat=nDia*D;
+
+    $('a_comp').textContent=int(aComp); $('n_comp').textContent=int(nComp); pill($('d_comp'),aComp,nComp,int);
+    $('a_vend').textContent=int(aVend); $('n_vend').textContent=int(nVend); pill($('d_vend'),aVend,nVend,int);
+    $('a_dia').textContent=brl(aDia); $('n_dia').textContent=brl(nDia); pill($('d_dia'),aDia,nDia,brl);
+    $('a_fat').textContent=brl(aFat); $('n_fat').textContent=brl(nFat); pill($('d_fat'),aFat,nFat,brl);
+    $('a_ano').textContent=brl(aFat*12); $('n_ano').textContent=brl(nFat*12); pill($('d_ano'),aFat*12,nFat*12,brl);
+
+    // degraus (acumulado)
+    const g=[
+      aDia,
+      dia(n.c,a.cv,a.tk,a.f),
+      dia(n.c,n.cv,a.tk,a.f),
+      dia(n.c,n.cv,n.tk,a.f),
+      nDia
+    ];
+    const des=[null, int(a.c)+' → '+int(n.c), pct(a.cv)+' → '+pct(n.cv), brl(a.tk)+' → '+brl(n.tk), fq(a.f)+' → '+fq(n.f)];
+    $('g0_d').textContent=brl(g[0]); $('g0_m').textContent=brl(g[0]*D);
+    for(let i=1;i<5;i++){
+      $('g'+i+'_de').textContent=des[i];
+      $('g'+i+'_d').textContent=brl(g[i]);
+      $('g'+i+'_m').textContent=brl(g[i]*D);
+      pill($('g'+i+'_p'),g[i-1]*D,g[i]*D,brl);
+      pill($('g'+i+'_t'),g[0]*D,g[i]*D,brl);
+    }
+
+    // efeito isolado
+    [
+      ['cli', dia(n.c,a.cv,a.tk,a.f), des[1]],
+      ['conv',dia(a.c,n.cv,a.tk,a.f), des[2]],
+      ['tk',  dia(a.c,a.cv,n.tk,a.f), des[3]],
+      ['fq',  dia(a.c,a.cv,a.tk,n.f), des[4]]
+    ].forEach(([k,d,de])=>{
+      $('i_'+k+'_de').textContent=de;
+      $('i_'+k+'_f').textContent=brl(d*D);
+      pill($('i_'+k+'_m'),aFat,d*D,brl);
+      pill($('i_'+k+'_a'),aFat*12,d*D*12,brl);
+    });
+  }
+
+  document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc));
+  function setN(id,v,d){ $(id).value=Math.round(v*Math.pow(10,d))/Math.pow(10,d); }
+  document.querySelectorAll('button[data-lever]').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.lever;
+    if(k==='cli') setN('n_cli',num('a_cli')*1.10,0);
+    if(k==='conv') setN('n_conv',Math.min(100,num('a_conv')+10),0);
+    if(k==='tk') setN('n_tk',num('a_tk')*1.10,2);
+    if(k==='fq') setN('n_fq',num('a_fq')*1.10,1);
+    calc();
+  }));
+  $('btnAll').addEventListener('click',()=>{
+    setN('n_cli',num('a_cli')*1.10,0); setN('n_conv',Math.min(100,num('a_conv')*1.10),0);
+    setN('n_tk',num('a_tk')*1.10,2); setN('n_fq',num('a_fq')*1.10,1); calc();
+  });
+  $('btnReset').addEventListener('click',()=>{
+    ['cli','conv','tk','fq'].forEach(k=>$('n_'+k).value=$('a_'+k).value); calc();
+  });
+  calc();
+})();
+</script>
+</body>
+</html>

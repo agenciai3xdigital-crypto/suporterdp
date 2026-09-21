@@ -29,6 +29,10 @@ h1{font-size:clamp(22px,3.4vw,30px);font-weight:800;color:var(--verde-esc);margi
 .eyebrow{display:inline-block;background:var(--laranja);color:#fff;font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:3px 10px;border-radius:6px;margin-bottom:8px}
 .sub{color:var(--muted);margin:6px 0 0;max-width:62ch}
 .formula{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--verde-tint);color:var(--verde-esc);padding:8px 12px;border-radius:8px;white-space:nowrap;overflow-x:auto;line-height:1.7}
+.loja{background:var(--laranja-tint);border:1px solid var(--laranja);border-radius:12px;padding:12px 16px;margin:-6px 0 18px;font-size:14px}
+.loja strong{color:var(--verde-esc);font-weight:800;margin-right:8px}
+.loja span{color:var(--muted);font-size:13px}
+.loja p{margin:4px 0 0;color:var(--muted);font-size:13px;max-width:80ch}
 .hex{position:absolute;right:-20px;top:-30px;width:140px;opacity:.12;pointer-events:none}
 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -88,6 +92,10 @@ h2{font-size:17px;font-weight:800;color:var(--verde-esc);margin:32px 0 4px}
     </div>
     <div class="formula">Dia = clientes × conversão × ticket médio × frequência<br>Mês = dia × dias de venda</div>
   </header>
+  <div class="loja" id="loja" hidden>
+    <div><strong id="lojaNome"></strong><span id="lojaMeta"></span></div>
+    <p id="lojaNota"></p>
+  </div>
 
   <div class="card">
     <div class="tblwrap">
@@ -291,6 +299,22 @@ h2{font-size:17px;font-weight:800;color:var(--verde-esc);margin:32px 0 4px}
   $('btnReset').addEventListener('click',()=>{
     ['cli','conv','tk','fq'].forEach(k=>$('n_'+k).value=$('a_'+k).value); calc();
   });
+  // Pré-preenchimento pela URL (vindo da ficha da loja no Raio-X)
+  (function(){
+    const q=new URLSearchParams(location.search);
+    if(!q.get('fra')) return;
+    const set=(id,v)=>{ if(v!==null && v!=='' && !isNaN(parseFloat(v))) $(id).value=parseFloat(v); };
+    set('dias',q.get('dias'));
+    ['cli','conv','tk','fq'].forEach(k=>{ const v=q.get(k); set('a_'+k,v); set('n_'+k,v); });
+    $('lojaNome').textContent='FRA '+q.get('fra')+(q.get('nome')?' · '+q.get('nome'):'');
+    $('lojaMeta').textContent=q.get('ref')?'Raio-X · '+q.get('ref'):'Raio-X';
+    const ident=parseFloat(q.get('ident'));
+    $('lojaNota').textContent = (q.get('modo')==='ident')
+      ? 'Coluna "Atual" preenchida com o Raio-X: clientes = compradores identificados por dia, frequência = cupons ÷ compradores, ticket médio do período ('+(isNaN(ident)?'':Math.round(ident)+'% da venda identificada')+'). O OnePet não mede fluxo de loja, por isso conversão entra como 100% — ajuste se souber o fluxo real.'
+      : 'Coluna "Atual" preenchida com o Raio-X: clientes = cupons por dia, conversão 100% e frequência 1x, porque a loja identifica '+(isNaN(ident)?'poucos':Math.round(ident)+'% dos')+' clientes e não dá para separar compradores de compras. O OnePet não mede fluxo de loja — ajuste conversão e frequência se souber os valores reais.';
+    $('loja').hidden=false;
+    document.querySelector('.foot').textContent='Base: Raio-X da loja (12 meses fechados). Dias de venda por mês é premissa editável.';
+  })();
   calc();
 })();
 </script>

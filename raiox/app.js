@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.9'; // v3.9 · 21/09/2026 · Barra POP no cabeçalho
+const VERSAO = 'v3.10'; // v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -277,6 +277,22 @@ function linkScore(f, s) {
     receita: s.sub.receita, margem: s.sub.margem, mix: s.sub.mix, ret: s.sub.ret, dado: s.sub.dado });
   return 'score.html?' + q.toString();
 }
+// v3.10: link para o simulador de alavancas com a coluna "Atual" preenchida pelo raio-x (médias dos 12 meses fechados).
+// Mês = dia × dias; dias = 26 é premissa editável na página. O OnePet não mede fluxo, então conversão entra 100%.
+// Loja com >=80% da receita identificada: clientes/dia = compradores e frequência = cupons identificados ÷ clientes ativos;
+// senão clientes/dia = cupons/dia e frequência 1x. Nos dois casos clientes × frequência × ticket × dias = receita/mês.
+function linkSimulador(f, s) {
+  const k = (s && s.kpis) || {}, dias = 26;
+  const cupons = +k.cupons_mes || 0, rec = +k.receita_mes || 0, ident = +k.ident_pct || 0, ativos = +k.ativos_ult || 0;
+  if (!cupons || !rec) return null;
+  const tk = k.ticket ? +k.ticket : rec / cupons;
+  let modo = 'cupons', cli = cupons / dias, fq = 1;
+  if (ident >= 80 && ativos > 0) { const f_ = (cupons * ident / 100) / ativos; if (f_ >= 1) { modo = 'ident'; fq = f_; cli = cupons / dias / fq; } }
+  const r = (v, d) => String(Math.round(v * Math.pow(10, d)) / Math.pow(10, d));
+  const q = new URLSearchParams({ fra: f.fra, nome: f.nome || '', ref: mesBR(k.mes_ini) + ' a ' + mesBR(s.mes_ref), dias: dias,
+    cli: r(cli, 1), conv: 100, tk: r(tk, 2), fq: r(fq, 2), ident: r(ident, 0), modo });
+  return 'simulador-alavancas-pop.html?' + q.toString();
+}
 function cabecaLoja(f, s) {
   const Q = quartis(); const c = consAtiva(f.fra); const pc_ = perfilDaLoja(f.fra);
   const podeIniciar = !c && !ehFranq() && (ehAdmin() || (perfil.papeis || []).includes('consultor'));
@@ -293,6 +309,7 @@ function cabecaLoja(f, s) {
         ${s && !ehFranq() ? `<button class="btn claro" id="btnRecalc"${FILA.has(f.fra) ? ' disabled' : ''}>${FILA.has(f.fra) ? '↻ na fila' : '↻ Recalcular'}</button>` : ''}
         ${s ? '<button class="btn claro" id="btnImprimir">🖨 Imprimir / PDF</button>' : ''}
         ${s && s.score != null && s.sub ? `<a class="btn verde" id="btnScore" href="${linkScore(f, s)}" target="_blank" rel="noopener" title="O que cada nota mede, o que ela diz da loja e o que fazer primeiro">💡 Entenda aqui seu score (nota)</a>` : ''}
+        ${s && linkSimulador(f, s) ? `<a class="btn claro" id="btnSimulador" href="${linkSimulador(f, s)}" target="_blank" rel="noopener" title="Clientes × conversão × ticket × frequência: quanto cada alavanca muda o faturamento desta loja">📈 Simular alavancas</a>` : ''}
       </div>
     </div>
     ${s && s.sub ? `<div class="subs">${[['receita', 'Crescimento'], ['margem', 'Margem'], ['mix', 'Serviços'], ['ret', 'Retenção'], ['dado', 'Dado']].map(([k, t]) => `<div class="sub"><b>${br(s.sub[k], 1)}</b><span>${t} · de 10</span><div class="bar"><i style="width:${Math.round(s.sub[k] * 10)}%"></i></div></div>`).join('')}</div>` : ''}

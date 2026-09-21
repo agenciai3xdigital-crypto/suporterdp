@@ -147,7 +147,7 @@ table.lista td.r,table.lista th.r{text-align:right}
 .aba-rel .bd{background:#C0392B;color:#fff;border-radius:99px;font-size:11px;padding:0 6px;line-height:1.5}.aba-rel.on .bd{background:#FDAE25;color:#10231C}
 .exp-pai{position:relative}.exp-pai .menu{display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--linha,#dfe8e2);border-radius:10px;box-shadow:0 8px 24px rgba(16,35,28,.14);min-width:240px;z-index:20;padding:6px}.exp-pai .menu.on{display:block}.exp-pai .menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;font:inherit;font-size:13px;border-radius:7px;cursor:pointer}.exp-pai .menu button:hover{background:#EDF4F0}
 </style>
-<!-- ===== BARRA POP v1.0 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+<!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
      Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
      expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
      Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
@@ -226,7 +226,7 @@ window.BarraPop=(function(){
   var O=null, el={}, carregou=false;
 
   function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
-  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.ref==='klcxavgxonpsbsbzqcil'&&p.role==='authenticated');}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.role==='authenticated'&&(String(p.iss||'').indexOf('klcxavgxonpsbsbzqcil')>=0||p.ref==='klcxavgxonpsbsbzqcil'));} /* v1.0.1: token de login traz o projeto em iss, não em ref */
   /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
   function tokenPadrao(){
     var melhor=null;

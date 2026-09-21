@@ -1,4 +1,4 @@
-<!-- ===== BARRA POP v1.0 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+<!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
      Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
      expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
      Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
@@ -77,7 +77,7 @@ window.BarraPop=(function(){
   var O=null, el={}, carregou=false;
 
   function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
-  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.ref==='klcxavgxonpsbsbzqcil'&&p.role==='authenticated');}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.role==='authenticated'&&(String(p.iss||'').indexOf('klcxavgxonpsbsbzqcil')>=0||p.ref==='klcxavgxonpsbsbzqcil'));} /* v1.0.1: token de login traz o projeto em iss, não em ref */
   /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
   function tokenPadrao(){
     var melhor=null;

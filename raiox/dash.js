@@ -6,7 +6,7 @@ As regras de ritmo/gargalo são as mesmas do raiox/app.js (andamento). */
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'dash v1.4'; // v1.4 · 21/09/2026 · Barra POP no cabeçalho
+const VERSAO = 'dash v1.5'; // v1.5 · 22/09/2026 · bloco Rede por cluster + 10 franqueados de score mais baixo · v1.4 · 21/09/2026 · Barra POP no cabeçalho
 const PAPEIS_OK = ['supervisor', 'diretoria'];
 
 const $ = id => document.getElementById(id);
@@ -30,6 +30,7 @@ function toast(t) { const el = $('toast'); el.textContent = t || 'ok'; el.classL
 function erro(e) { console.error(e); alert('Erro: ' + (e.message || e)); }
 function baixarCSV(nome, linhas) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = nome + '_' + hojeISO() + '.csv'; a.click(); }
 
+let CLUS = {};
 let sb, usuario, perfil;
 let PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ITENS = [], AVS = [], HIST = [], FQL = [], ACESSOS = [], KCTT = {}, PLANO = [];
 const F = { cons: '', uf: '', per: 30 };
@@ -85,7 +86,7 @@ async function fetchAll(builder, step = 1000) {
   return all;
 }
 async function carregarTudo() {
-  const [pf, fq, sn, cs, it, av, hs, fl, ac, kc, pl] = await Promise.all([
+  const [pf, fq, sn, cs, it, av, hs, fl, ac, kc, pl, cl] = await Promise.all([
     sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults').order('criado_em'),
     sb.from('franquias').select('fra,nome,cidade,estado,consultor,ativo').order('fra'),
     fetchAll(() => sb.from('raiox_snapshots_atual').select('fra,mes_ref,calculado_em,score,sem_nota_motivo,sub,kpis').order('fra')),
@@ -97,8 +98,10 @@ async function carregarTudo() {
     sb.from('franqueado_lojas').select('user_id,fra'),
     fetchAll(() => sb.from('acessos').select('user_id,em,origem').gte('em', addDias(HOJE, -60)).order('em', { ascending: false }).order('id')),
     sb.from('raiox_kpi_contatos').select('*'),
-    sb.from('raiox_plano_modelo').select('*').order('ordem')
+    sb.from('raiox_plano_modelo').select('*').order('ordem'),
+    fetchAll(() => sb.from('v_loja_clusters').select('fra,grupo_id,lojas_grupo,receita_mes,score,faixa_faturamento,faixa_multi,faixa_score,faixa_potencial,realizado_pct,faixa_engaj_franqueadora,faixa_maturidade,faixa_delivery,faixa_servicos,faixa_tendencia,tendencia_pct,faixa_lucratividade,faixa_inadimplencia,inad_vencido,score_franqueado_parcial,score_franqueado_criterios').order('fra'))
   ]);
+  CLUS = {}; (cl || []).forEach(c => { CLUS[c.fra] = c; });
   if (pf.error) throw pf.error; if (fq.error) throw fq.error; if (cs.error) throw cs.error; if (fl.error) throw fl.error;
   PERFIS = (pf.data || []).filter(p => !/robo\.raiox/i.test(p.nome || ''));
   FRQ = fq.data || [];
@@ -179,7 +182,7 @@ function recorte() {
 function desenhar() {
   const R = recorte();
   const AL = alertas(R);
-  $('conteudo').innerHTML = secAlertas(R, AL) + secRede(R) + secExec(R) + secTarefas(R) + secSatisf(R) + secResult(R) + secEvol(R) + secAcessos(R);
+  $('conteudo').innerHTML = secAlertas(R, AL) + secRede(R) + secClusters(R) + secExec(R) + secTarefas(R) + secSatisf(R) + secResult(R) + secEvol(R) + secAcessos(R);
   $('nAlertas').textContent = AL.length; $('nAlertas').style.display = AL.length ? '' : 'none';
   ligar(R, AL);
 }
@@ -252,6 +255,39 @@ ${kpi(defas, 'Dado defasado (2+ meses)', defas ? 'atencao' : '')}
 <div class="lin"><span>Vazamento somado /mês</span><b>${kmil(kp.reduce((n, s) => n + (s.kpis.vaz_total || 0), 0))}</b></div>
 <div class="lin"><span>Tarefas graves nos achados</span><b>${kp.reduce((n, s) => n + (s.kpis.tarefas_alta || 0), 0)}</b></div>
 </div></div></section>`;
+}
+
+/* ---- 1b. rede por cluster (quadro "CLUSTERS REDE POP", 21/09/2026) ---- */
+const CL_DIM = { faixa_faturamento: 'Faturamento', faixa_multi: 'Multifranqueado', faixa_score: 'Score da loja', faixa_potencial: 'Potencial', faixa_engaj_franqueadora: 'Engaj. franqueadora', faixa_maturidade: 'Maturidade', faixa_delivery: 'Delivery', faixa_servicos: 'Serviços', faixa_tendencia: 'Tendência', faixa_lucratividade: 'Lucratividade', faixa_inadimplencia: 'Inadimplência' };
+const CL_ORDEM = { faixa_potencial: ['muito abaixo do potencial', 'abaixo do potencial', 'no potencial', 'acima do potencial', 'sem dado'], faixa_score: ['prioridade', 'atenção', 'saudável', 'referência', 'sem nota'], faixa_tendencia: ['caindo', 'estável', 'crescendo', 'sem dado'], faixa_maturidade: ['nova (< 1 ano)', '1–3 anos', '3–7 anos', 'madura (> 7 anos)', 'sem dado'], faixa_delivery: ['sem delivery', 'baixo (< 5%)', 'médio (5–15%)', 'alto (≥ 15%)', 'sem dado'], faixa_servicos: ['sem serviço', 'baixo (< 5%)', 'médio (5–15%)', 'alto (≥ 15%)', 'sem dado'], faixa_lucratividade: ['baixa (< 35%)', 'média (35–42%)', 'alta (≥ 42%)', 'sem dado'], faixa_inadimplencia: ['em dia', 'até 5 mil vencido', '5–20 mil vencido', '> 20 mil vencido'], faixa_engaj_franqueadora: ['baixo', 'parcial', 'engajado', 'consultoria iniciada', 'sem consultoria'] };
+function secClusters(R) {
+  const cl = R.lojas.map(f => CLUS[f.fra]).filter(Boolean);
+  if (!cl.length) return `<section id="s-clusters"><h2>Rede por cluster</h2><div class="painel"><div class="vazio">Sem dado de cluster neste recorte.</div></div></section>`;
+  const emCons = new Set(R.ativas.map(c => c.fra));
+  const linkRede = (dim, val) => `./?cl=${encodeURIComponent(dim)}:${encodeURIComponent(val)}`;
+  const bloco = dim => {
+    const g = {}; cl.forEach(c => { const v = c[dim] || 'sem dado'; (g[v] = g[v] || []).push(c); });
+    const ordem = CL_ORDEM[dim] || Object.keys(g).sort();
+    const chaves = ordem.filter(k => g[k]).concat(Object.keys(g).filter(k => !ordem.includes(k)).sort());
+    return `<div class="painel"><h3>${CL_DIM[dim]}</h3><table class="tab"><thead><tr><th>Faixa</th><th class="r">Lojas</th><th class="r">Nota média</th><th class="r">Receita média</th><th class="r">Em consult.</th></tr></thead><tbody>`
+      + chaves.map(k => { const L = g[k], n = L.filter(c => c.score != null); return `<tr class="lk" data-href="${linkRede(dim, k)}" title="abrir estas lojas no Raio-X"><td>${esc(k)}</td><td class="r num">${L.length}</td><td class="r num">${n.length ? br(media(n.map(c => c.score)), 0) : '—'}</td><td class="r num">${kmil(media(L.map(c => c.receita_mes).filter(v => v != null)) || 0)}</td><td class="r num">${L.filter(c => emCons.has(c.fra)).length}</td></tr>`; }).join('')
+      + '</tbody></table></div>';
+  };
+  // score do franqueado: um por grupo, não por loja
+  const grupos = {}; cl.forEach(c => { if (!grupos[c.grupo_id]) grupos[c.grupo_id] = c; });
+  const sfq = Object.values(grupos).filter(c => c.score_franqueado_parcial != null).map(c => c.score_franqueado_parcial);
+  const dist = [['< 4', sfq.filter(v => v < 4).length], ['4–6', sfq.filter(v => v >= 4 && v < 6).length], ['6–8', sfq.filter(v => v >= 6 && v < 8).length], ['≥ 8', sfq.filter(v => v >= 8).length]];
+  const piores = Object.values(grupos).filter(c => c.score_franqueado_parcial != null).sort((a, b) => a.score_franqueado_parcial - b.score_franqueado_parcial).slice(0, 10);
+  return `<section id="s-clusters"><h2>Rede por cluster ${titAcao('clusters', 'clusters')}</h2><div class="sub">Dimensões do quadro "Clusters Rede POP" (21/09/2026). Para a primeira onda de 50 lojas, misturar faixas em vez de pegar só as piores. Clique numa faixa para abrir as lojas no Raio-X.</div>
+<div class="kpis">
+${kpi(Object.keys(grupos).length, 'Grupos de franqueado', '', cl.length + ' loja(s) · ' + Object.values(grupos).filter(c => c.lojas_grupo > 1).length + ' multifranqueado(s)')}
+${kpi(sfq.length ? br(media(sfq), 1) : '—', 'Score do franqueado (média)', '', 'parcial: 4 de 9 critérios com dado')}
+${dist.map(([l, n]) => kpi(n, 'Score ' + l)).join('')}
+</div>
+<div class="grid2">${['faixa_faturamento', 'faixa_potencial', 'faixa_tendencia', 'faixa_multi', 'faixa_maturidade', 'faixa_servicos', 'faixa_delivery', 'faixa_lucratividade', 'faixa_inadimplencia', 'faixa_score'].map(bloco).join('')}</div>
+<div class="painel" style="margin-top:12px"><h3>10 franqueados de score mais baixo (parcial)</h3><table class="tab"><thead><tr><th>Franqueado (loja de referência)</th><th class="r">Lojas</th><th class="r">Score franq.</th><th>Faturamento</th><th>Potencial</th><th>Tendência</th><th>Inadimplência</th></tr></thead><tbody>
+${piores.map(c => { const todas = cl.filter(x => x.grupo_id === c.grupo_id); return `<tr class="lk" data-href="${linkLoja(c.fra)}"><td>${lojaCel(c.fra)}</td><td class="r num">${todas.length}</td><td class="r num"><b>${br(c.score_franqueado_parcial, 1)}</b></td><td>${esc(c.faixa_faturamento)}</td><td>${esc(c.faixa_potencial)}</td><td>${esc(c.faixa_tendencia)}</td><td>${esc(c.faixa_inadimplencia)}</td></tr>`; }).join('')}
+</tbody></table><p class="aviso">Score do franqueado por grupo (mesmo responsável no cadastro). Critérios com dado hoje: faturamento, nº de lojas, potencial × realizado, serviços. Faltam engajamento com franqueadora e parceiros, delivery, lucratividade e inadimplência — entram quando as réguas forem aprovadas.</p></div></section>`;
 }
 
 /* ---- 2. execução ---- */
@@ -603,6 +639,7 @@ function exportar(qual, R, AL) {
   const L = [];
   if (qual === 'alertas') { L.push('prioridade;fra;loja;consultor;motivo;dias;link'); AL.forEach(a => { const c = R.cons.find(x => x.id === a.cid); L.push([a.p, a.fra, seg(frqDe(a.fra).nome), seg(nomeDe(c.consultor_id)), seg(a.motivo.replace(/<[^>]+>/g, '')), a.dias, location.origin + location.pathname.replace(/dash\.html$/, '') + linkLoja(a.fra, a.aba).slice(2)].join(';')); }); }
   if (qual === 'rede') { const Q = quartis(R.snaps); L.push('fra;loja;uf;consultor;nota;quartil;mes_ref;receita_mes;margem_adj;ident_pct;ret45;vaz_total;tarefas_alta;carga_parcial;defasagem_meses;consultoria'); R.lojas.forEach(f => { const s = SNAPS[f.fra], c = R.ativas.find(x => x.fra === f.fra); L.push([f.fra, seg(f.nome), f.estado || '', seg(f.consultor), s ? (s.score ?? '') : '', s ? classeScore(s.score, Q) : 'sem raio-x', s ? s.mes_ref : '', s ? (s.kpis.receita_mes ?? '') : '', s ? (s.kpis.margem_adj ?? '') : '', s ? (s.kpis.ident_pct ?? '') : '', s ? (s.kpis.ret45 ?? '') : '', s ? (s.kpis.vaz_total ?? '') : '', s ? (s.kpis.tarefas_alta ?? '') : '', s && s.kpis.mes_parcial ? s.kpis.mes_parcial.mes : '', s ? (s.kpis.defasagem_meses ?? '') : '', c ? c.status + ' desde ' + c.inicio : ''].join(';')); }); }
+  if (qual === 'clusters') { L.push('fra;loja;uf;consultor;grupo;lojas_grupo;nota;receita_mes;faturamento;multi;score_faixa;potencial;realizado_pct;engaj_franqueadora;maturidade;delivery;servicos;tendencia;tendencia_pct;lucratividade;inadimplencia;inad_vencido;score_franqueado_parcial;criterios'); R.lojas.forEach(f => { const c = CLUS[f.fra]; if (!c) return; L.push([f.fra, seg(f.nome), f.estado || '', seg(f.consultor), c.grupo_id.slice(0, 8), c.lojas_grupo, c.score ?? '', c.receita_mes ?? '', c.faixa_faturamento, c.faixa_multi, c.faixa_score, c.faixa_potencial, c.realizado_pct ?? '', c.faixa_engaj_franqueadora, c.faixa_maturidade, c.faixa_delivery, c.faixa_servicos, c.faixa_tendencia, c.tendencia_pct ?? '', c.faixa_lucratividade, c.faixa_inadimplencia, c.inad_vencido ?? '', c.score_franqueado_parcial ?? '', c.score_franqueado_criterios].join(';')); }); }
   if (qual === 'vencidas') { L.push('fra;loja;consultor;consultoria_status;tipo;titulo;data;prazo;concluida;concluida_em;dias_vencida'); R.itens.forEach(i => { const c = R.cons.find(x => x.id === i.consultoria_id); L.push([c.fra, seg(frqDe(c.fra).nome), seg(nomeDe(c.consultor_id)), c.status, i.tipo, seg(i.titulo), i.data || '', i.prazo || '', i.concluida ? 'sim' : 'não', i.concluida_em || '', !i.concluida && i.prazo && i.prazo < HOJE ? diasEntre(i.prazo, HOJE) : ''].join(';')); }); }
   if (qual === 'avaliacoes') { L.push('fra;loja;consultor;referencia;tipo;nota;andamento;clareza;comentario;sugestao;resposta;respondido_em;criado_em'); R.avs.forEach(a => { const c = R.cons.find(x => x.id === a.consultoria_id) || {}; L.push([a.fra, seg(frqDe(a.fra).nome), seg(nomeDe(c.consultor_id)), a.semana, a.tipo || '', a.nota, a.andamento || '', a.clareza || '', seg(String(a.comentario || '').replace(/[\r\n;]+/g, ' ')), seg(String(a.sugestao || '').replace(/[\r\n;]+/g, ' ')), seg(String(a.resposta || '').replace(/[\r\n;]+/g, ' ')), a.respondido_em || '', a.criado_em || ''].join(';')); }); }
   if (qual === 'consultores') { L.push('fra;loja;consultor;inicio;fim_previsto;status;dia;ritmo;tarefas;feitas;vencidas;reunioes;realizadas;sem_confirmacao;nota_inicial;nota_atual;avaliacoes;satisfacao_media;veredito;d_score;d_lucro_pct'); R.cons.forEach(c => { const a = R.AND[c.id], s = SNAPS[c.fra], r = c.resultado || {}; L.push([c.fra, seg(frqDe(c.fra).nome), seg(nomeDe(c.consultor_id)), c.inicio, c.fim_previsto, c.status, a.decorrido, a.ritmo.l, a.tarefas.length, a.tFeitas.length, a.tVenc.length, a.reunioes.length, a.rFeitas.length, a.rPend.length, c.score_inicial ?? '', s && s.score != null ? s.score : '', a.avs.length, a.avs.length ? br(media(a.avs.map(v => v.nota)), 2) : '', r.veredito || '', r.d_score ?? '', r.d_lucro_pct == null ? '' : br(r.d_lucro_pct, 2)].join(';')); }); }

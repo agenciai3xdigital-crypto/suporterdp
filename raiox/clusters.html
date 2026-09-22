@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clusters e Score do Franqueado · Raio-X POP</title>
+<link rel="icon" href="../icone-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--fundo:#f3f4f1;--papel:#fff;--tinta:#1c2b23;--tinta-suave:#5f6b65;--linha:#e3e6e1;--claro:#eef1ec;
+--verde:#1f5f3f;--verde-suave:#dcebe1;--faixa:#cfe3d6;--laranja:#c6521f;--laranja-suave:#fbe4d8;--ambar:#9a6a08;--ambar-suave:#fbeecd;--verm:#b23a2f;--verm-suave:#f8e0dc;--azul:#2b4f7a;--azul-suave:#e1e9f3;--hachura:repeating-linear-gradient(135deg,#dfe3dc 0 4px,transparent 4px 8px);--sombra:0 10px 40px rgba(20,40,30,.14)}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--fundo);color:var(--tinta);font-family:'Figtree',system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45}
+main{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+a{color:var(--verde)}
+h1{font-size:26px;font-weight:800;margin:0;letter-spacing:-.01em}
+.cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.cab .s{color:var(--tinta-suave);font-size:14px;margin-top:2px}
+.cab nav{display:flex;gap:14px;font-size:14px;font-weight:600}
+.aviso{background:#ebe7d9;color:#4a4636;border-radius:10px;padding:12px 16px;font-size:14px;margin:12px 0 18px;line-height:1.5}
+.meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--tinta-suave);font-size:14px;margin:0 0 18px}
+.btn{font:inherit;font-weight:600;font-size:14.5px;padding:9px 16px;border-radius:9px;border:1.5px solid var(--verde);background:var(--papel);color:var(--verde);cursor:pointer}
+.btn.laranja{background:var(--laranja);border-color:var(--laranja);color:#fff}
+.btn.mini{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:22px}
+.card{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.card:hover{border-color:var(--verde)}.card.on{border-color:var(--verde);box-shadow:inset 0 0 0 1.5px var(--verde)}
+.card .t{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14px;line-height:1.25}
+.card .t i{width:8px;height:8px;border-radius:2px;flex:none}
+.card .n{font-size:30px;font-weight:800;margin:6px 0 4px;letter-spacing:-.02em}
+.card .d{font-size:13px;color:var(--tinta-suave);line-height:1.35}
+.c-ru .t{color:var(--verm)}.c-ru i{background:var(--verm)}.c-at .t{color:var(--laranja)}.c-at i{background:var(--laranja)}.c-ok .t{color:var(--azul)}.c-ok i{background:var(--azul)}.c-ref .t{color:var(--verde)}.c-ref i{background:var(--verde)}.c-sd .t{color:var(--tinta-suave)}.c-sd i{background:#9aa39d}
+.filtros{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.filtros label{display:block;font-size:13px;color:var(--tinta-suave);margin-bottom:5px}
+.filtros input,.filtros select{font:inherit;font-size:14.5px;padding:9px 12px;border:1.5px solid var(--linha);border-radius:9px;background:var(--papel);color:inherit;min-width:150px}
+.filtros .esp{flex:1}.filtros .cont{font-size:14px;color:var(--tinta-suave);padding-bottom:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 16px;min-height:6px}
+.chip{font:inherit;font-size:13px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid var(--linha);background:var(--papel);color:var(--tinta-suave);cursor:pointer}
+.chip b{color:var(--tinta);margin-left:3px}.chip.on{background:var(--tinta);border-color:var(--tinta);color:#fff}.chip.on b{color:#fff}
+.chip.limpa{border-style:dashed}
+.th{display:grid;grid-template-columns:56px 1fr 190px 240px 130px;gap:14px;padding:6px 16px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave);font-weight:600}
+.lista{display:flex;flex-direction:column;gap:8px}
+.row{display:grid;grid-template-columns:56px 1fr 190px 240px 130px;gap:14px;align-items:center;background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;cursor:pointer;font:inherit;text-align:left;color:inherit;width:100%}
+.row:hover{border-color:var(--verde)}.row.on{border-color:var(--verde);box-shadow:inset 0 0 0 1.5px var(--verde)}
+.row .fra{font-weight:700;color:var(--verde);font-size:16px}
+.row .nome{font-weight:600;font-size:15.5px}.row .sub{font-size:13.5px;color:var(--tinta-suave);margin-top:2px}
+.pill{display:inline-block;font-size:13px;font-weight:600;padding:5px 11px;border-radius:99px;line-height:1.25}
+.p-ru{background:var(--verm-suave);color:var(--verm)}.p-at{background:var(--laranja-suave);color:var(--laranja)}.p-ok{background:var(--azul-suave);color:var(--azul)}.p-ref{background:var(--verde-suave);color:var(--verde)}.p-sd{background:var(--claro);color:var(--tinta-suave)}.p-am{background:var(--ambar-suave);color:var(--ambar)}
+.mini9{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;align-items:end;height:28px}
+.mini9 i{display:block;background:var(--verde);border-radius:2px 2px 0 0;min-height:2px}
+.mini9 i.m{background:var(--ambar)}.mini9 i.b{background:var(--verm)}.mini9 i.off{background:var(--hachura);height:100%!important;opacity:.9}
+.sc{text-align:right}.sc b{font-size:22px;font-weight:800;letter-spacing:-.02em}.sc small{display:block;font-size:12px;color:var(--tinta-suave)}
+.sc.ru b{color:var(--verm)}.sc.at b{color:var(--laranja)}.sc.ok b{color:var(--azul)}.sc.ref b{color:var(--verde)}
+.vazio{padding:30px;text-align:center;color:var(--tinta-suave)}
+/* painel lateral */
+.pn{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--papel);box-shadow:var(--sombra);transform:translateX(105%);transition:transform .2s;overflow-y:auto;padding:26px 28px 40px;z-index:20}
+.pn.on{transform:none}
+.pn .x{position:absolute;top:20px;right:22px;width:40px;height:40px;border-radius:10px;border:1px solid var(--linha);background:var(--papel);font-size:18px;cursor:pointer}
+.pn .fra{color:var(--verde);font-weight:700;font-size:18px}.pn h2{margin:2px 0 4px;font-size:26px;font-weight:800;letter-spacing:-.01em}
+.pn .s{color:var(--tinta-suave);font-size:14.5px}
+.pn h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);margin:26px 0 12px;font-weight:700}
+.big{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.big div{background:var(--claro);border-radius:10px;padding:14px 16px}
+.sf-ru{color:var(--verm)}.sf-at{color:var(--laranja)}.sf-ok{color:var(--azul)}.sf-ref{color:var(--verde)}.sf-sd{color:var(--tinta-suave)}.big b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em}.big span{font-size:13px;color:var(--tinta-suave)}
+.crit{display:grid;grid-template-columns:170px 1fr 40px;gap:8px 12px;align-items:center;font-size:14px;margin-bottom:9px}
+.crit .l small{display:block;color:var(--tinta-suave);font-size:12px}
+.crit .bar{height:10px;border-radius:3px;background:var(--claro);position:relative;overflow:hidden}.crit .bar i{position:absolute;inset:0;width:0;background:var(--verde);border-radius:3px}
+.crit .bar i.m{background:var(--ambar)}.crit .bar i.b{background:var(--verm)}
+.crit .v{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.crit.off{color:var(--tinta-suave)}.crit.off .bar{background:var(--hachura)}.crit.off .v{font-weight:400}
+.calc{background:var(--claro);border-radius:9px;padding:9px 13px;font-size:13.5px;color:var(--tinta-suave);margin-top:6px}.calc b{color:var(--tinta)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tab{width:100%;border-collapse:collapse;font-size:14px}.tab th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave);padding:6px 6px;border-bottom:1px solid var(--linha);font-weight:600}
+.tab td{padding:8px 6px;border-bottom:1px solid var(--claro)}.tab td.n,.tab th.n{text-align:right;font-variant-numeric:tabular-nums}.tab a{font-weight:700;text-decoration:none}
+.nota{font-size:13.5px;color:var(--tinta-suave);line-height:1.5}
+.dim{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:14px}.dim div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--claro)}.dim span{color:var(--tinta-suave)}
+.fundo{position:fixed;inset:0;background:rgba(20,30,25,.25);display:none;z-index:19}.fundo.on{display:block}
+#login{max-width:380px;margin:60px auto;background:var(--papel);border:1px solid var(--linha);border-radius:14px;padding:26px}
+#login label{display:block;font-size:13px;color:var(--tinta-suave);margin:12px 0 5px}#login input{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--linha);border-radius:9px}
+#login .erro{color:var(--verm);font-size:13.5px;min-height:20px;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--tinta);color:#fff;padding:10px 18px;border-radius:99px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:30}#toast.on{opacity:1;transform:translateX(-50%)}
+@media(max-width:900px){.th{display:none}.row{grid-template-columns:48px 1fr 110px}.row .mini9,.row .pill{display:none}.row .sc{grid-column:3}}
+</style>
+</head>
+<body>
+<main>
+<div id="login">
+  <h2 style="margin:0;font-size:20px">Entrar</h2>
+  <p class="nota" style="margin:6px 0 0">Mesmo login do Raio-X e da Central POP. Se o Raio-X já estiver aberto neste navegador, entra sozinho.</p>
+  <form id="loginForm"><label>E-mail</label><input id="loginEmail" type="email" autocomplete="username" required><label>Senha</label><input id="loginSenha" type="password" autocomplete="current-password" required><div class="erro" id="loginErro"></div><button class="btn laranja" id="loginBtn" type="submit" style="width:100%">Entrar</button></form>
+</div>
+<div id="app" style="display:none">
+  <div class="cab">
+    <div><h1>Clusters da rede e score do franqueado</h1><div class="s">Quadro "Clusters Rede POP" e critérios do score da reunião de 21/09/2026, sobre os 12 meses fechados do Raio-X.</div></div>
+    <nav><a href="./">Raio-X</a><a href="dash.html">Acompanhamento</a><a href="#" id="btnSair">Sair</a></nav>
+  </div>
+  <div class="aviso"><b>Score parcial.</b> Dos 9 critérios do quadro, 4 têm régua e dado (faturamento, nº de lojas, potencial × realizado, serviços). Engajamento com a franqueadora e com parceiros, delivery, lucratividade e inadimplência aparecem como etiqueta de cluster, mas ainda não entram na média. Nº de lojas usa o responsável do cadastro como grupo — aproximação até existir vínculo de franqueado. Use para escolher quem olhar, não como ranking público.</div>
+  <div class="meta"><span id="meta"></span><button class="btn mini" id="btnRecarregar" type="button">↻ Atualizar</button></div>
+  <div class="cards" id="cards"></div>
+  <div class="filtros">
+    <div><label>Buscar loja, FRA ou cidade</label><input id="fBusca" placeholder="Ex.: 117, Anápolis, Bueno" style="min-width:210px"></div>
+    <div><label>Consultor</label><select id="fCons"><option value="">Todos</option></select></div>
+    <div><label>UF</label><select id="fUf"><option value="">Todas</option></select></div>
+    <div><label>Ver rede por cluster</label><select id="fDim"><option value="">Escolher dimensão…</option></select></div>
+    <div><label>Ordenar por</label><select id="fOrd"><option value="sf_asc">Menor score do franqueado</option><option value="sf_desc">Maior score do franqueado</option><option value="score_asc">Menor nota da loja</option><option value="rec_desc">Maior receita</option><option value="pot_asc">Mais abaixo do potencial</option><option value="tend_asc">Maior queda</option><option value="inad_desc">Maior inadimplência</option><option value="fra">FRA</option></select></div>
+    <span class="esp"></span><span class="cont" id="cont"></span>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="th"><span>FRA</span><span>Loja</span><span>Situação</span><span>9 critérios do score (hachurado = sem régua)</span><span style="text-align:right">Score franq.</span></div>
+  <div class="lista" id="lista"></div>
+</div>
+</main>
+<div class="fundo" id="fundo"></div>
+<aside class="pn" id="pn"></aside>
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+'use strict';
+const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+const VERSAO = 'clusters v1.0'; // 22/09/2026
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const br = (n, d = 0) => (n == null || !isFinite(n)) ? '—' : (+n).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+const kmil = n => n == null ? '—' : n >= 995000 ? 'R$ ' + br(n / 1e6, 2) + ' mi' : 'R$ ' + br(n / 1000, n >= 100000 ? 0 : 1) + ' mil';
+const pc = (n, d = 0) => n == null ? '—' : br(n, d) + '%';
+const sinal = n => n == null ? '—' : (n > 0 ? '+' : '') + br(n, 0) + '%';
+const dBR = iso => iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : '—';
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 1600); }
+
+const CRIT = [['nota_faturamento', 'Faturamento', '100 mil → 5 · 200 → 7 · 300 → 9'], ['nota_lojas', 'Nº de lojas', '1 → 5 · 2 → 6 · 3 → 7 · 4 → 8 · 5+ → 9'], ['nota_potencial', 'Potencial × realizado', '10 × receita ÷ potencial típico (P50)'], ['nota_servicos', 'Serviços', '% da venda em serviço ÷ 3,3'],
+  [null, 'Engaj. franqueadora', 'régua a definir'], [null, 'Engaj. parceiros', 'dado a construir (acordos)'], [null, 'Delivery', 'régua a definir'], [null, 'Lucratividade', 'régua a definir'], [null, 'Inadimplência', 'régua a definir']];
+const DIM = { faixa_faturamento: 'Faturamento', faixa_multi: 'Multifranqueado', faixa_score: 'Nota da loja (Raio-X)', faixa_potencial: 'Potencial', faixa_engaj_franqueadora: 'Engajamento com a franqueadora', faixa_maturidade: 'Maturidade', faixa_delivery: 'Delivery', faixa_servicos: 'Serviços', faixa_tendencia: 'Tendência', faixa_lucratividade: 'Lucratividade', faixa_inadimplencia: 'Inadimplência' };
+const ORDEM = { faixa_potencial: ['muito abaixo do potencial', 'abaixo do potencial', 'no potencial', 'acima do potencial', 'sem dado'], faixa_score: ['prioridade', 'atenção', 'saudável', 'referência', 'sem nota'], faixa_tendencia: ['caindo', 'estável', 'crescendo', 'sem dado'], faixa_maturidade: ['nova (< 1 ano)', '1–3 anos', '3–7 anos', 'madura (> 7 anos)', 'sem dado'], faixa_delivery: ['sem delivery', 'baixo (< 5%)', 'médio (5–15%)', 'alto (≥ 15%)', 'sem dado'], faixa_servicos: ['sem serviço', 'baixo (< 5%)', 'médio (5–15%)', 'alto (≥ 15%)', 'sem dado'], faixa_lucratividade: ['baixa (< 35%)', 'média (35–42%)', 'alta (≥ 42%)', 'sem dado'], faixa_inadimplencia: ['em dia', 'até 5 mil vencido', '5–20 mil vencido', '> 20 mil vencido'], faixa_engaj_franqueadora: ['baixo', 'parcial', 'engajado', 'consultoria iniciada', 'sem consultoria'] };
+const FAIXA_SF = [['ru', 'Prioridade', 'score < 4', v => v < 4], ['at', 'Atenção', 'score de 4 a 6', v => v >= 4 && v < 6], ['ok', 'Saudável', 'score de 6 a 8', v => v >= 6 && v < 8], ['ref', 'Referência', 'score ≥ 8', v => v >= 8]];
+const clsSf = v => v == null ? 'sd' : (FAIXA_SF.find(f => f[3](v)) || ['sd'])[0];
+const clsNota = v => v >= 7 ? '' : v >= 4 ? 'm' : 'b';
+const tagCls = (k, v) => { if (!v || /sem dado|sem nota|sem consultoria|iniciada/.test(v)) return 'p-sd'; if (/muito abaixo|caindo|prioridade|> 20 mil|baixo$|baixa \(|^sem (delivery|serviço)/.test(v)) return 'p-ru'; if (/abaixo|atenção|5–20|parcial|^baixo|nova|< 60/.test(v)) return 'p-at'; if (/acima|referência|crescendo|engajado|alto|alta|em dia|madura|> 200/.test(v)) return 'p-ref'; return 'p-ok'; };
+
+let sb, usuario, FRQ = [], CL = [], F = { busca: '', cons: '', uf: '', dim: '', ord: 'sf_asc', sf: '', cl: {} }, aberto = null;
+
+async function iniciar() {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await entrou(session);
+  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT') location.reload(); });
+}
+$('loginForm').onsubmit = async ev => {
+  ev.preventDefault(); const b = $('loginBtn'), er = $('loginErro'); b.disabled = true; er.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginSenha').value });
+  b.disabled = false; if (error) { er.textContent = 'E-mail ou senha inválidos.'; return; } await entrou(data.session);
+};
+$('btnSair').onclick = ev => { ev.preventDefault(); sb.auth.signOut(); };
+async function entrou(session) {
+  usuario = session.user; $('login').style.display = 'none'; $('app').style.display = '';
+  try { await carregar(); } catch (e) { console.error(e); alert('Erro ao carregar: ' + (e.message || e)); }
+}
+async function fetchAll(b, step = 1000) { let all = [], from = 0; while (true) { const { data, error } = await b().range(from, from + step - 1); if (error) throw error; all = all.concat(data || []); if (!data || data.length < step) break; from += step; } return all; }
+async function carregar() {
+  const [fq, cl] = await Promise.all([
+    sb.from('franquias').select('fra,nome,cidade,estado,consultor,ativo').order('fra'),
+    fetchAll(() => sb.from('v_loja_clusters').select('*').order('fra'))
+  ]);
+  if (fq.error) throw fq.error;
+  FRQ = fq.data || []; CL = cl.map(c => { const f = FRQ.find(x => x.fra === c.fra) || {}; c.consultor = (f.consultor || '').trim(); return c; });
+  const sc = $('fCons'); sc.innerHTML = '<option value="">Todos</option>' + [...new Set(CL.map(c => c.consultor).filter(Boolean))].sort().map(c => `<option>${esc(c)}</option>`).join('');
+  const su = $('fUf'); su.innerHTML = '<option value="">Todas</option>' + [...new Set(CL.map(c => c.estado).filter(Boolean))].sort().map(u => `<option>${esc(u)}</option>`).join('');
+  $('fDim').innerHTML = '<option value="">Escolher dimensão…</option>' + Object.keys(DIM).map(k => `<option value="${k}">${DIM[k]}</option>`).join('');
+  const grupos = new Set(CL.map(c => c.grupo_id));
+  $('meta').textContent = `Dados de ${dBR(new Date().toISOString())} · ${CL.length} lojas ativas · ${grupos.size} franqueados (por responsável do cadastro) · ${CL.filter(c => c.score != null).length} com nota do Raio-X · ` + VERSAO;
+  desenhar();
+}
+$('btnRecarregar').onclick = async () => { $('btnRecarregar').disabled = true; try { await carregar(); toast('atualizado'); } catch (e) { alert(e.message || e); } $('btnRecarregar').disabled = false; };
+['fCons', 'fUf', 'fDim', 'fOrd'].forEach(id => $(id).onchange = () => { F[id.slice(1).toLowerCase()] = $(id).value; desenhar(); });
+$('fBusca').addEventListener('input', () => { clearTimeout(window._b); window._b = setTimeout(() => { F.busca = $('fBusca').value.trim().toLowerCase(); desenhar(); }, 180); });
+
+function grupoDe(c) { return CL.filter(x => x.grupo_id === c.grupo_id); }
+function filtrar(ignorarDim) {
+  const ligados = Object.keys(F.cl);
+  return CL.filter(c => {
+    if (F.cons && c.consultor !== F.cons) return false;
+    if (F.uf && c.estado !== F.uf) return false;
+    if (F.busca && !(('fra ' + c.fra + ' ' + (c.nome || '') + ' ' + (c.cidade || '')).toLowerCase().includes(F.busca))) return false;
+    if (F.sf && clsSf(c.score_franqueado_parcial) !== F.sf) return false;
+    return ligados.every(k => (ignorarDim && k === ignorarDim) || c[k] === F.cl[k]);
+  });
+}
+function desenhar() {
+  // cards por faixa do score do franqueado (contam grupos e lojas)
+  const base = filtrar(); const gruposVistos = {};
+  base.forEach(c => { gruposVistos[c.grupo_id] = c; });
+  const G = Object.values(gruposVistos);
+  const card = (k, t, d, nG, nL) => `<button class="card c-${k}${F.sf === k ? ' on' : ''}" data-sf="${k}" type="button"><div class="t"><i></i>${t}</div><div class="n">${nG}</div><div class="d">${d} · ${nL} loja(s)</div></button>`;
+  $('cards').innerHTML = FAIXA_SF.map(([k, t, d, fn]) => card(k, t, d, G.filter(g => g.score_franqueado_parcial != null && fn(g.score_franqueado_parcial)).length, base.filter(c => c.score_franqueado_parcial != null && fn(c.score_franqueado_parcial)).length)).join('')
+    + card('sd', 'Sem raio-x', 'loja sem nota nem receita na base', G.filter(g => g.score_franqueado_parcial == null).length, base.filter(c => c.score_franqueado_parcial == null).length);
+  $('cards').querySelectorAll('[data-sf]').forEach(b => b.onclick = () => { F.sf = F.sf === b.dataset.sf ? '' : b.dataset.sf; desenhar(); });
+
+  // chips da dimensão escolhida + filtros ligados
+  const ligados = Object.keys(F.cl);
+  let html = ligados.map(k => `<button class="chip on" data-off="${k}" type="button">${DIM[k]}: ${esc(F.cl[k])} ×</button>`).join('');
+  if (F.dim) {
+    const b2 = filtrar(F.dim), cont = {}; b2.forEach(c => { const v = c[F.dim] || 'sem dado'; cont[v] = (cont[v] || 0) + 1; });
+    const ord = ORDEM[F.dim] || Object.keys(cont).sort(); const chaves = ord.filter(k => cont[k]).concat(Object.keys(cont).filter(k => !ord.includes(k)).sort());
+    html += chaves.map(k => `<button class="chip${F.cl[F.dim] === k ? ' on' : ''}" data-val="${esc(k)}" type="button">${esc(k)}<b>${cont[k]}</b></button>`).join('');
+  }
+  if (ligados.length || F.sf) html += `<button class="chip limpa" id="chipLimpar" type="button">Limpar filtros</button>`;
+  $('chips').innerHTML = html;
+  $('chips').querySelectorAll('[data-off]').forEach(b => b.onclick = () => { delete F.cl[b.dataset.off]; desenhar(); });
+  $('chips').querySelectorAll('[data-val]').forEach(b => b.onclick = () => { const v = b.dataset.val; if (F.cl[F.dim] === v) delete F.cl[F.dim]; else F.cl[F.dim] = v; desenhar(); });
+  const lp = $('chipLimpar'); if (lp) lp.onclick = () => { F.cl = {}; F.sf = ''; desenhar(); };
+
+  // lista
+  const L = base.slice();
+  const val = { sf_asc: c => c.score_franqueado_parcial ?? 99, sf_desc: c => -(c.score_franqueado_parcial ?? -1), score_asc: c => c.score ?? 999, rec_desc: c => -(c.receita_mes ?? -1), pot_asc: c => c.realizado_pct ?? 9999, tend_asc: c => c.tendencia_pct ?? 9999, inad_desc: c => -(c.inad_vencido ?? 0), fra: c => c.fra }[F.ord];
+  L.sort((a, b) => val(a) - val(b) || a.fra - b.fra);
+  $('cont').textContent = `${L.length} de ${CL.length} lojas`;
+  $('lista').innerHTML = L.length ? L.map(c => {
+    const k = clsSf(c.score_franqueado_parcial);
+    const barras = CRIT.map(([col]) => col ? `<i class="${clsNota(c[col] ?? 0)}" style="height:${Math.max(6, (c[col] ?? 0) * 10)}%" title="${br(c[col], 1)}"></i>` : '<i class="off"></i>').join('');
+    const situ = c.faixa_potencial && c.faixa_potencial !== 'sem dado' ? c.faixa_potencial : (c.faixa_score || 'sem dado');
+    const situ2 = c.faixa_tendencia && c.faixa_tendencia !== 'sem dado' && c.faixa_tendencia !== 'estável' ? ' · ' + c.faixa_tendencia : '';
+    return `<button class="row${aberto === c.fra ? ' on' : ''}" data-fra="${c.fra}" type="button"><span class="fra">${c.fra}</span><span><div class="nome">${esc(c.nome)}</div><div class="sub">${esc(c.cidade || '')}${c.estado ? ' · ' + esc(c.estado) : ''}${c.consultor ? ' · ' + esc(c.consultor) : ''}${c.lojas_grupo > 1 ? ' · grupo de ' + c.lojas_grupo + ' lojas' : ''}</div></span><span><span class="pill ${tagCls('faixa_potencial', situ)}">${esc(situ + situ2)}</span></span><span class="mini9">${barras}</span><span class="sc ${k}"><b>${br(c.score_franqueado_parcial, 1)}</b><small>${c.score_franqueado_parcial == null ? 'sem raio-x' : c.score_franqueado_criterios + ' de 9 critérios'}</small></span></button>`;
+  }).join('') : '<div class="vazio">Nenhuma loja com esses filtros.</div>';
+  $('lista').querySelectorAll('[data-fra]').forEach(b => b.onclick = () => abrir(+b.dataset.fra));
+}
+
+function abrir(fra) {
+  const c = CL.find(x => x.fra === fra); if (!c) return; aberto = fra;
+  const g = grupoDe(c);
+  const usados = CRIT.filter(([col]) => col && c[col] != null);
+  const soma = usados.reduce((a, [col]) => a + c[col], 0);
+  const linhas = CRIT.map(([col, l, h]) => col && c[col] != null
+    ? `<div class="crit"><div class="l">${l}<small>${h}</small></div><div class="bar"><i class="${clsNota(c[col])}" style="width:${c[col] * 10}%"></i></div><div class="v">${br(c[col], 1)}</div></div>`
+    : `<div class="crit off"><div class="l">${l}<small>${h}</small></div><div class="bar"></div><div class="v">—</div></div>`).join('');
+  const tags = Object.keys(DIM).map(k => `<span class="pill ${tagCls(k, c[k])}" title="${DIM[k]}">${esc(c[k] || 'sem dado')}</span>`).join('');
+  const dims = `<div class="dim">
+    <div><span>Receita média/mês</span><b>${kmil(c.receita_mes)}</b></div><div><span>Potencial típico (P50)</span><b>${kmil(c.potencial_p50)}</b></div>
+    <div><span>Realizado ÷ potencial</span><b>${pc(c.realizado_pct)}</b></div><div><span>Tendência (3 m × 3 m)</span><b>${sinal(c.tendencia_pct)}</b></div>
+    <div><span>Serviços na venda</span><b>${pc(c.serv_share, 1)}</b></div><div><span>Delivery na venda</span><b>${pc(c.delivery_pct, 1)}</b></div>
+    <div><span>Margem ajustada</span><b>${pc(c.margem_adj, 1)}</b></div><div><span>Vencido (${c.inad_mes ? dBR(c.inad_mes).slice(3) : '—'})</span><b>${c.inad_vencido ? kmil(c.inad_vencido) : 'em dia'}</b></div>
+    <div><span>Inauguração</span><b>${dBR(c.inauguracao)}${c.idade_meses != null ? ' · ' + c.idade_meses + ' m' : ''}</b></div><div><span>Nota da loja (Raio-X)</span><b>${c.score ?? 'sem nota'}</b></div></div>`;
+  const tabG = g.length > 1 ? `<h3>Lojas do grupo (${g.length}) — o score é do grupo</h3><table class="tab"><thead><tr><th>FRA</th><th>Loja</th><th class="n">Receita/mês</th><th class="n">Realizado</th><th class="n">Serviços</th><th class="n">Nota</th></tr></thead><tbody>`
+    + g.map(x => `<tr><td><a href="#" data-ir="${x.fra}">${x.fra}</a></td><td>${esc(x.nome)}</td><td class="n">${kmil(x.receita_mes)}</td><td class="n">${pc(x.realizado_pct)}</td><td class="n">${pc(x.serv_share, 1)}</td><td class="n">${x.score ?? '—'}</td></tr>`).join('') + '</tbody></table>' : '';
+  const k = clsSf(c.score_franqueado_parcial);
+  $('pn').innerHTML = `<button class="x" id="pnX" type="button">×</button><div class="fra">FRA ${c.fra}</div><h2>${esc(c.nome)}</h2><div class="s">${esc(c.cidade || '')}${c.estado ? ' · ' + esc(c.estado) : ''}${c.consultor ? ' · consultor ' + esc(c.consultor) : ''}${g.length > 1 ? ' · grupo de ' + g.length + ' lojas' : ''}</div>
+  <h3>Score do franqueado (parcial)</h3>
+  <div class="big"><div><b class="sf-${k}">${br(c.score_franqueado_parcial, 1)}</b><span>${c.score_franqueado_parcial == null ? 'sem raio-x' : FAIXA_SF.find(f => f[0] === k)?.[1].toLowerCase() + ' · ' + c.score_franqueado_criterios + ' de 9 critérios'}</span></div><div><b>${c.score ?? '—'}</b><span>nota da loja (Raio-X, 0–100)</span></div><div><b>${g.length}</b><span>loja(s) do franqueado</span></div></div>
+  <h3>Como o score é formado</h3>${linhas}
+  ${usados.length ? `<div class="calc">(${usados.map(([col]) => br(c[col], 1)).join(' + ')}) ÷ ${usados.length} = <b>${br(soma / usados.length, 1)}</b> · ${9 - usados.length} critérios ainda fora da média${g.length > 1 ? ' · faturamento, potencial e serviços são a média das lojas do grupo' : ''}</div>` : '<div class="calc">Loja sem raio-x: só o critério nº de lojas tem dado — score não calculado.</div>'}
+  <h3>Clusters desta loja</h3><div class="tags">${tags}</div>
+  <h3>Números por trás</h3>${dims}
+  ${tabG}
+  <p class="nota" style="margin-top:22px">Ver no <a href="./?fra=${c.fra}">Raio-X</a> · <a href="./?fra=${c.fra}&aba=plano">plano de ação</a>. Potencial: modelo v1 por área de influência (confiança ${esc(c.potencial_conf || '—')}${c.potencial_motivo ? '; ' + esc(c.potencial_motivo) : ''}).</p>`;
+  $('pn').classList.add('on'); $('fundo').classList.add('on'); $('pn').scrollTop = 0;
+  $('pnX').onclick = fechar; $('pn').querySelectorAll('[data-ir]').forEach(a => a.onclick = ev => { ev.preventDefault(); abrir(+a.dataset.ir); });
+  desenhar();
+}
+function fechar() { aberto = null; $('pn').classList.remove('on'); $('fundo').classList.remove('on'); desenhar(); }
+$('fundo').onclick = fechar; document.addEventListener('keydown', ev => { if (ev.key === 'Escape') fechar(); });
+iniciar().catch(e => { console.error(e); alert('Erro: ' + (e.message || e)); });
+</script>
+</body>
+</html>

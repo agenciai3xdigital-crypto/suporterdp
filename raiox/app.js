@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.10'; // v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
+const VERSAO = 'v3.11'; // v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -23,6 +23,10 @@ function erro(e) { console.error(e); alert('Erro: ' + (e.message || e)); }
 let sb, usuario, perfil, PERFIS = [], FRQ = [], SNAPS = {}, CONS = [], ITENS = [], ESTQ = {}, FILA = new Set(), FQ_LOJAS = [], FQ_MAPA = [];
 let FQ_CARTEIRA = [], FQ_PAPEL = '', FQ_LISTA = {};
 let rdFiltro = 'todas', lojaAtual = null, rdOrd = { k: 'score', asc: true };
+// clusters da rede (reunião de 21/09/2026): CLUS[fra] = linha de v_loja_clusters; rdCl = filtros ligados {dimensao: faixa}; rdClDim = dimensão aberta nos chips
+let CLUS = {}, rdCl = {}, rdClDim = '';
+const CL_DIM = { faixa_faturamento: 'Faturamento', faixa_multi: 'Multifranqueado', faixa_score: 'Score da loja', faixa_potencial: 'Potencial', faixa_engaj_franqueadora: 'Engaj. franqueadora', faixa_maturidade: 'Maturidade', faixa_delivery: 'Delivery', faixa_servicos: 'Serviços', faixa_tendencia: 'Tendência', faixa_lucratividade: 'Lucratividade', faixa_inadimplencia: 'Inadimplência' };
+const CL_ORDEM = { faixa_potencial: ['muito abaixo do potencial', 'abaixo do potencial', 'no potencial', 'acima do potencial', 'sem dado'], faixa_score: ['prioridade', 'atenção', 'saudável', 'referência', 'sem nota'], faixa_tendencia: ['caindo', 'estável', 'crescendo', 'sem dado'], faixa_maturidade: ['nova (< 1 ano)', '1–3 anos', '3–7 anos', 'madura (> 7 anos)', 'sem dado'], faixa_delivery: ['sem delivery', 'baixo (< 5%)', 'médio (5–15%)', 'alto (≥ 15%)', 'sem dado'], faixa_servicos: ['sem serviço', 'baixo (< 5%)', 'médio (5–15%)', 'alto (≥ 15%)', 'sem dado'], faixa_lucratividade: ['baixa (< 35%)', 'média (35–42%)', 'alta (≥ 42%)', 'sem dado'], faixa_inadimplencia: ['em dia', 'até 5 mil vencido', '5–20 mil vencido', '> 20 mil vencido'], faixa_engaj_franqueadora: ['baixo', 'parcial', 'engajado', 'consultoria iniciada', 'sem consultoria'] };
 const ehAdmin = () => !!(perfil && perfil.is_admin);
 const ehFranq = () => !!(perfil && !perfil.is_admin && (perfil.papeis || []).includes('franqueado'));
 const ehConsultor = () => !!(perfil && !perfil.is_admin && (perfil.papeis || []).includes('consultor'));
@@ -67,6 +71,8 @@ async function entrou(session) {
   if (ehAdmin() || (perfil.papeis || []).some(p => ['supervisor', 'diretoria'].includes(p))) { const bd = $('btnDash'); if (bd) bd.style.display = ''; }
   const qs = new URLSearchParams(location.search), fraUrl = qs.get('fra');
   if (ehFranq()) { await entrouFranqueado(fraUrl ? +fraUrl : null, qs.get('aba')); return; }
+  // ?cl=faixa_potencial:muito%20abaixo%20do%20potencial — link vindo do Dash "Rede por cluster"
+  const clUrl = qs.get('cl'); if (clUrl && clUrl.includes(':')) { const i = clUrl.indexOf(':'), k = clUrl.slice(0, i); if (CL_DIM[k]) { rdCl[k] = clUrl.slice(i + 1); rdClDim = k; } }
   try { await carregarTudo(); desenharRede(); desenharConsultorias(); desenharArquivos(); if (podeFranq()) desenharFranqueados(); }
   catch (e) { erro(e); }
   if (fraUrl) abrirLoja(+fraUrl, qs.get('aba'));
@@ -112,16 +118,18 @@ async function fetchAll(builder, step = 1000) {
   return all;
 }
 async function carregarTudo() {
-  const [pf, fq, sn, cs, es, fl, it] = await Promise.all([
+  const [pf, fq, sn, cs, es, fl, it, cl] = await Promise.all([
     sb.from('perfis').select('id,nome,is_admin,papeis,nome_sults,cor').order('criado_em'),
     sb.from('franquias').select('fra,nome,cidade,estado,consultor,consultor_id,ativo').order('fra'),
     fetchAll(() => sb.from('raiox_snapshots_atual').select('fra,mes_ref,janela_meses,perfil,calculado_em,score,sem_nota_motivo,sub,kpis,tarefas').order('fra')),
     sb.from('raiox_consultorias').select('*').order('criado_em', { ascending: false }),
     fetchAll(() => sb.from('raiox_estoque').select('id,fra,tipo,arquivo,enviado_em,enviado_por,resumo').order('enviado_em', { ascending: false }).order('id')),
     sb.from('raiox_fila').select('fra').is('processado_em', null),
-    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).is('cancelado_em', null).order('data').order('id'))
+    fetchAll(() => sb.from('agenda_eventos').select('id,consultoria_id,titulo,tipo,data,prazo,concluida,concluida_em,user_id').not('consultoria_id', 'is', null).is('cancelado_em', null).order('data').order('id')),
+    fetchAll(() => sb.from('v_loja_clusters').select('fra,grupo_id,lojas_grupo,faixa_faturamento,faixa_multi,faixa_score,faixa_potencial,realizado_pct,potencial_p50,potencial_conf,potencial_motivo,faixa_engaj_franqueadora,engaj_tarefas_pct,faixa_engaj_parceiros,faixa_maturidade,idade_meses,inauguracao,faixa_delivery,delivery_pct,faixa_servicos,faixa_tendencia,tendencia_pct,faixa_lucratividade,faixa_inadimplencia,inad_vencido,nota_faturamento,nota_potencial,nota_servicos,nota_lojas,score_franqueado_parcial,score_franqueado_criterios,score_franqueado_criterios_total').order('fra'))
   ]);
   ITENS = it || [];
+  CLUS = {}; (cl || []).forEach(c => { CLUS[c.fra] = c; });
   PERFIS = (pf.data || []).filter(p => !/robo\.raiox/i.test(p.nome || ''));
   FRQ = (fq.data || []);
   SNAPS = {}; (sn || []).forEach(s => { SNAPS[s.fra] = s; });   // a vista já traz só o mais recente por loja
@@ -177,10 +185,29 @@ function desenharRede() {
   const su = $('rdUf'); if (su.options.length <= 1) { const ufs = [...new Set(FRQ.map(f => f.estado).filter(Boolean))].sort(); su.innerHTML = '<option value="">Todas as UFs</option>' + ufs.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join(''); }
   const busca = ($('rdBusca').value || '').trim().toLowerCase(), cons = sc.value, uf = su.value;
 
-  let lista = lojasAtivas.map(f => ({ f, s: SNAPS[f.fra] || null }));
-  lista = lista.filter(({ f, s }) => {
+  // ---- clusters (quadro "CLUSTERS REDE POP", 21/09/2026): escolher uma dimensão abre os chips com a contagem de cada faixa; clicar num chip filtra; vários filtros somam (E)
+  const sd = $('rdClDim'); if (sd.options.length <= 1) sd.innerHTML = '<option value="">Ver rede por cluster…</option>' + Object.keys(CL_DIM).map(k => `<option value="${k}">${CL_DIM[k]}</option>`).join('');
+  sd.value = rdClDim;
+  const ligados = Object.keys(rdCl);
+  const chipsOn = ligados.map(k => `<button class="pill on" data-cl="${k}" type="button" title="tirar este filtro">${CL_DIM[k]}: ${esc(rdCl[k])} ×</button>`).join('');
+  let chipsDim = '';
+  if (rdClDim) {
+    const base = lojasAtivas.filter(f => { const c = CLUS[f.fra]; return c && ligados.every(k => k === rdClDim || c[k] === rdCl[k]); });
+    const cont = {}; base.forEach(f => { const v = CLUS[f.fra][rdClDim] || 'sem dado'; cont[v] = (cont[v] || 0) + 1; });
+    const ordem = CL_ORDEM[rdClDim] || Object.keys(cont).sort();
+    const chaves = ordem.filter(k => cont[k]).concat(Object.keys(cont).filter(k => !ordem.includes(k)).sort());
+    chipsDim = chaves.map(k => `<button class="pill${rdCl[rdClDim] === k ? ' on' : ''}" data-cldim="${rdClDim}" data-clval="${esc(k)}" type="button">${esc(k)} <b>${cont[k]}</b></button>`).join('');
+  }
+  $('rdClChips').innerHTML = chipsOn + (chipsOn && chipsDim ? '<span style="width:1px;background:var(--linha);margin:0 4px"></span>' : '') + chipsDim;
+  $('rdClChips').querySelectorAll('[data-cl]').forEach(b => b.onclick = () => { delete rdCl[b.dataset.cl]; desenharRede(); });
+  $('rdClChips').querySelectorAll('[data-cldim]').forEach(b => b.onclick = () => { const k = b.dataset.cldim, v = b.dataset.clval; if (rdCl[k] === v) delete rdCl[k]; else rdCl[k] = v; desenharRede(); });
+  $('rdClLimpar').style.display = ligados.length ? '' : 'none';
+
+  let lista = lojasAtivas.map(f => ({ f, s: SNAPS[f.fra] || null, c: CLUS[f.fra] || null }));
+  lista = lista.filter(({ f, s, c }) => {
     if (cons && (f.consultor || '').trim() !== cons) return false;
     if (uf && f.estado !== uf) return false;
+    if (ligados.length && !(c && ligados.every(k => c[k] === rdCl[k]))) return false;
     if (busca && !(('fra ' + f.fra + ' ' + f.nome + ' ' + (f.cidade || '')).toLowerCase().includes(busca))) return false;
     if (rdFiltro === 'minha') return minhaCarteira(f.fra);
     if (rdFiltro === 'piores') return s && s.score != null && classeScore(s.score, Q) === 'q4';
@@ -197,6 +224,7 @@ function desenharRede() {
     if (k === 'loja') return x.f.nome || '';
     if (!x.s) return null;
     if (k === 'score') return x.s.score;
+    if (k === 'realizado_pct' || k === 'tendencia_pct' || k === 'score_franqueado_parcial') return x.c ? x.c[k] : null;
     return x.s.kpis[k];
   };
   lista.sort((a, b) => { const va = val(a, rdOrd.k), vb = val(b, rdOrd.k); if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return (va < vb ? -1 : va > vb ? 1 : 0) * (rdOrd.asc ? 1 : -1); });
@@ -205,8 +233,11 @@ function desenharRede() {
   const mini = (v, inv) => { if (v == null) return '—'; const p = Math.max(0, Math.min(100, v)); const cls = inv ? (p > 20 ? 'r' : p > 5 ? 'm' : '') : (p < 50 ? 'r' : p < 75 ? 'm' : ''); return `<span class="mini ${cls}"><i style="width:${p}%"></i></span>${br(v, 0)}%`; };
   const tab = $('rdTab');
   if (!lista.length) { tab.innerHTML = '<tr><td><div class="vazio">Nenhuma loja com esses filtros.</div></td></tr>'; return; }
-  tab.innerHTML = '<thead><tr>' + th('fra', 'FRA') + th('loja', 'Loja') + th('score', 'Nota', 'r') + th('ident_pct', 'Identificação') + th('cz_rec_pct', 'Sem custo') + th('ret45', 'Ração em dia') + th('vaz_total', 'Vazamento/mês', 'r') + th('tarefas_alta', 'Graves', 'r') + '<th>Situação</th></tr></thead><tbody>'
-    + lista.map(({ f, s }) => {
+  const tend = c => { if (!c || c.tendencia_pct == null) return '—'; const v = c.tendencia_pct; const cls = v <= -5 ? 'q4' : v >= 5 ? 'q1' : 'cinza'; return `<span class="st ${cls}" title="últimos 3 meses contra os 3 anteriores">${v > 0 ? '+' : ''}${br(v, 0)}%</span>`; };
+  const pot = c => { if (!c || c.realizado_pct == null) return '—'; const v = c.realizado_pct; const cls = v < 70 ? 'q4' : v < 100 ? 'q3' : v < 130 ? 'q2' : 'q1'; return `<span class="st ${cls}" title="${esc((c.potencial_motivo || '') + ' · potencial típico ' + kmil(c.potencial_p50) + '/mês · confiança ' + (c.potencial_conf || '—'))}">${br(v, 0)}%</span>`; };
+  const sfq = c => { if (!c || c.score_franqueado_parcial == null) return '—'; return `<span class="num" title="score do franqueado (parcial: ${c.score_franqueado_criterios} de ${c.score_franqueado_criterios_total} critérios) · ${c.lojas_grupo} loja(s) no grupo">${br(c.score_franqueado_parcial, 1)}</span>`; };
+  tab.innerHTML = '<thead><tr>' + th('fra', 'FRA') + th('loja', 'Loja') + th('score', 'Nota', 'r') + th('realizado_pct', 'Potencial', 'r') + th('tendencia_pct', 'Tend.', 'r') + th('ident_pct', 'Identificação') + th('cz_rec_pct', 'Sem custo') + th('ret45', 'Ração em dia') + th('vaz_total', 'Vazamento/mês', 'r') + th('tarefas_alta', 'Graves', 'r') + th('score_franqueado_parcial', 'Franq.', 'r') + '<th>Situação</th></tr></thead><tbody>'
+    + lista.map(({ f, s, c: cl }) => {
       const c = consAtiva(f.fra);
       const situ = !s ? '<span class="st cinza">aguardando carga</span>'
         : [(s.kpis.defasagem_meses || 0) >= 2 ? `<span class="st lar" title="último mês com venda: ${mesBR(s.mes_ref)}">dado de ${mesBR(s.mes_ref)}</span>` : '',
@@ -215,13 +246,16 @@ function desenharRede() {
           FILA.has(f.fra) ? '<span class="st cinza">↻ na fila</span>' : ''].filter(Boolean).join(' ');
       return `<tr data-fra="${f.fra}"><td class="num">${f.fra}</td><td><div class="t">${esc(f.nome)}</div><div class="s">${esc((f.cidade || '') + (f.estado ? '/' + f.estado : ''))}${f.consultor ? ' · ' + esc(f.consultor) : ''}</div></td>`
         + `<td class="r">${s ? (s.score == null ? '<span class="score sn" title="' + esc(s.sem_nota_motivo || '') + '">sem nota</span>' : `<span class="score ${classeScore(s.score, Q)}">${s.score}</span>`) : '—'}</td>`
+        + `<td class="r">${pot(cl)}</td><td class="r">${tend(cl)}</td>`
         + `<td>${s ? mini(s.kpis.ident_pct) : '—'}</td><td>${s ? mini(s.kpis.cz_rec_pct, true) : '—'}</td><td>${s ? mini(s.kpis.ret45) : '—'}</td>`
-        + `<td class="r num">${s ? kmil(s.kpis.vaz_total) : '—'}</td><td class="r num">${s ? (s.kpis.tarefas_alta || 0) : '—'}</td><td>${situ}</td></tr>`;
+        + `<td class="r num">${s ? kmil(s.kpis.vaz_total) : '—'}</td><td class="r num">${s ? (s.kpis.tarefas_alta || 0) : '—'}</td><td class="r">${sfq(cl)}</td><td>${situ}</td></tr>`;
     }).join('') + '</tbody>';
   tab.querySelectorAll('th[data-k]').forEach(t => t.onclick = () => { const k = t.dataset.k; rdOrd = { k, asc: rdOrd.k === k ? !rdOrd.asc : (k === 'score' || k === 'fra' || k === 'loja' || k === 'ident_pct' || k === 'ret45') }; desenharRede(); });
   tab.querySelectorAll('tr[data-fra]').forEach(tr => tr.onclick = () => abrirLoja(+tr.dataset.fra));
 }
 ['rdCons', 'rdUf'].forEach(id => $(id).onchange = desenharRede);
+$('rdClDim').onchange = () => { rdClDim = $('rdClDim').value; desenharRede(); };
+$('rdClLimpar').onclick = () => { rdCl = {}; desenharRede(); };
 $('rdBusca').addEventListener('input', () => { clearTimeout(window._b); window._b = setTimeout(desenharRede, 180); });
 $('btnRecalcRede').onclick = async () => {
   if (!confirm('Pedir o recálculo de todas as lojas? A rotina atende na próxima rodada (a cada 2 horas). Lojas sem venda no banco são ignoradas por ela.')) return;

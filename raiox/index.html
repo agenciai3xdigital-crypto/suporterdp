@@ -377,8 +377,14 @@ BarraPop.montar({el:'barraPop',classe:'pb-raiox',sistema:'raiox',logo:'../logo-p
       <a class="btn claro" id="btnDash" href="dash.html" style="display:none" title="Acompanhamento da consultoria — diretoria e supervisão">📊 Acompanhamento</a>
       <button class="btn claro" id="btnRecalcRede" style="display:none" title="Pede à rotina que recalcule a rede inteira na próxima rodada (a cada 2 horas)">↻ Recalcular rede</button>
     </div>
+    <div class="barra" id="rdClBarra" title="Clusters da rede — reunião de 21/09/2026. Escolha uma dimensão para ver quantas lojas há em cada faixa; clique na faixa para filtrar. Filtros de dimensões diferentes somam.">
+      <select id="rdClDim"><option value="">Ver rede por cluster…</option></select>
+      <div class="pills" id="rdClChips"></div>
+      <span class="esp"></span>
+      <button class="btn claro" id="rdClLimpar" style="display:none" type="button">Limpar clusters</button>
+    </div>
     <div class="painel"><div class="tw"><table class="rede" id="rdTab"></table></div></div>
-    <p class="aviso">Nota de 0 a 100 pela fórmula da Máquina de Análise de Lojas, sobre os últimos 12 meses fechados. Piores primeiro. Loja com mais de 20% da receita de produto sem custo cadastrado fica sem nota até corrigir o cadastro.</p>
+    <p class="aviso">Nota de 0 a 100 pela fórmula da Máquina de Análise de Lojas, sobre os últimos 12 meses fechados. Piores primeiro. Loja com mais de 20% da receita de produto sem custo cadastrado fica sem nota até corrigir o cadastro. <b>Potencial</b> = receita da loja em % do potencial típico (P50) estimado pela área de influência; <b>Tend.</b> = venda dos últimos 3 meses contra os 3 anteriores; <b>Franq.</b> = score do franqueado (0–10, parcial) pelos critérios da reunião de 21/09: faturamento, nº de lojas, potencial × realizado e serviços — engajamento, delivery, lucratividade e inadimplência entram quando as réguas forem aprovadas.</p>
   </div>
 
   <!-- ===== LOJA ===== -->
@@ -421,6 +427,6 @@ BarraPop.montar({el:'barraPop',classe:'pb-raiox',sistema:'raiox',logo:'../logo-p
 <div class="toast" id="toast">salvo ✓</div>
 
 <script src="motor.js?v=2.1"></script>
-<script src="app.js?v=3.10"></script>
+<script src="app.js?v=3.11"></script>
 </body>
 </html>

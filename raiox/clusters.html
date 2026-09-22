@@ -54,6 +54,30 @@ h1{font-size:26px;font-weight:800;margin:0;letter-spacing:-.01em}
 .sc{text-align:right}.sc b{font-size:22px;font-weight:800;letter-spacing:-.02em}.sc small{display:block;font-size:12px;color:var(--tinta-suave)}
 .sc.ru b{color:var(--verm)}.sc.at b{color:var(--laranja)}.sc.ok b{color:var(--azul)}.sc.ref b{color:var(--verde)}
 .vazio{padding:30px;text-align:center;color:var(--tinta-suave)}
+.abas{display:flex;gap:6px;margin:0 0 16px}
+.abas button{font:inherit;font-size:15px;font-weight:600;padding:9px 18px;border-radius:10px;border:1.5px solid var(--linha);background:var(--papel);color:var(--tinta-suave);cursor:pointer}
+.abas button[aria-selected="true"]{background:var(--verde);border-color:var(--verde);color:#fff}
+.fq-grade{display:grid;grid-template-columns:1fr;gap:10px}
+.fq-cartao{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:14px 16px}
+.fq-cartao.alerta{border-color:var(--laranja);background:var(--laranja-suave)}
+.fq-cartao h4{margin:0 0 8px;font-size:15px;font-weight:700}
+.fq-linha{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--claro);font-size:14px}
+.fq-linha:last-child{border-bottom:0}
+.fq-linha .nm{font-weight:600;flex:1;min-width:180px}
+.fq-linha .qt{font-size:13px;color:var(--tinta-suave)}
+.fq-linha select{font:inherit;font-size:14px;padding:6px 8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--papel);color:inherit;max-width:100%;min-width:0}
+.fq-cartao{min-width:0;overflow-wrap:anywhere}
+.fq-tab{width:100%;border-collapse:collapse;font-size:14px}
+.fq-tab th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave);padding:8px 8px;border-bottom:1px solid var(--linha);font-weight:600;position:sticky;top:0;background:var(--papel)}
+.fq-tab td{padding:7px 8px;border-bottom:1px solid var(--claro);vertical-align:middle}
+.fq-tab tr.mudou td{background:var(--verde-suave)}
+.fq-tab select{font:inherit;font-size:14px;padding:6px 8px;border:1.5px solid var(--linha);border-radius:8px;background:var(--papel);color:inherit;max-width:280px}
+.fq-tab .txt{color:var(--tinta-suave);font-size:13px}
+.fq-cx{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:6px 16px 10px;max-height:60vh;overflow:auto}
+.fq-topo{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+.fq-topo label{display:block;font-size:13px;color:var(--tinta-suave);margin-bottom:5px}
+.fq-topo input,.fq-topo select{font:inherit;font-size:14.5px;padding:9px 12px;border:1.5px solid var(--linha);border-radius:9px;background:var(--papel);color:inherit}
+.btn.mini{padding:5px 10px;font-size:13px}
 /* painel lateral */
 .pn{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--papel);box-shadow:var(--sombra);transform:translateX(105%);transition:transform .2s;overflow-y:auto;padding:26px 28px 40px;z-index:20}
 .pn.on{transform:none}
@@ -286,6 +310,11 @@ BarraPop.montar({el:'barraPop',classe:'pb-dash',sistema:'clusters',logo:'../logo
     <div><h1>Clusters da rede e score do franqueado</h1><div class="s">Quadro "Clusters Rede POP" e critérios do score da reunião de 21/09/2026, sobre os 12 meses fechados do Raio-X.</div></div>
     <nav><a href="./">Raio-X</a><a href="dash.html">Acompanhamento</a><a href="https://agenciai3xdigital-crypto.github.io/analise-geral-franquia/potencial.html">Potencial das lojas</a></nav>
   </div>
+  <div class="abas" role="tablist">
+    <button type="button" role="tab" id="ab-clusters" aria-selected="true">Clusters</button>
+    <button type="button" role="tab" id="ab-franq" aria-selected="false">Franqueados</button>
+  </div>
+  <section id="aba-clusters">
   <div class="aviso"><b>Score parcial.</b> Dos 9 critérios do quadro, 4 têm régua e dado (faturamento, nº de lojas, potencial × realizado, serviços). Engajamento com a franqueadora e com parceiros, delivery, lucratividade e inadimplência aparecem como etiqueta de cluster, mas ainda não entram na média. Nº de lojas usa o responsável do cadastro como grupo — aproximação até existir vínculo de franqueado. Use para escolher quem olhar, não como ranking público.</div>
   <div class="meta"><span id="meta"></span><button class="btn mini" id="btnRecarregar" type="button">↻ Atualizar</button></div>
   <div class="cards" id="cards"></div>
@@ -300,6 +329,21 @@ BarraPop.montar({el:'barraPop',classe:'pb-dash',sistema:'clusters',logo:'../logo
   <div class="chips" id="chips"></div>
   <div class="th"><span>FRA</span><span>Loja</span><span>Situação</span><span>9 critérios do score (hachurado = sem régua)</span><span style="text-align:right">Score franq.</span></div>
   <div class="lista" id="lista"></div>
+  </section>
+
+  <section id="aba-franq" hidden>
+    <div class="aviso"><b>Quem é o dono de cada loja.</b> Até 22/09 o agrupamento saía do texto do campo "responsável" no cadastro — por isso KLENIO, KLENIO (TIO MARKINHOS) e KLENIO (LEON ADMINISTRA…) contavam como três franqueados. Agora cada loja aponta para um franqueado de verdade. A carga inicial copiou os textos como estavam, <b>sem juntar nada por conta própria</b>: o que está marcado em laranja são nomes que começam igual e talvez sejam a mesma pessoa. Mudar aqui muda na hora o cluster Multifranqueado e a nota "nº de lojas" do score.</div>
+    <div id="fqConferir"></div>
+    <div class="fq-topo">
+      <div><label>Buscar loja, FRA, cidade ou franqueado</label><input id="fqBusca" placeholder="Ex.: 206, Klenio, Goiânia" style="min-width:260px"></div>
+      <div><label>Mostrar</label><select id="fqFiltro"><option value="">Todas as lojas</option><option value="multi">Só de multifranqueados</option><option value="uma">Só de quem tem 1 loja</option></select></div>
+      <div><label>Novo franqueado</label><input id="fqNovo" placeholder="Nome de quem não está na lista"></div>
+      <button class="btn" id="fqCriar" type="button">Criar</button>
+      <span class="esp" style="flex:1"></span><span class="nota" id="fqCont"></span>
+    </div>
+    <div class="fq-cx"><table class="fq-tab" id="fqTab"></table></div>
+    <p class="nota" style="margin-top:12px">Toda alteração fica registrada em <code>franqueados_log</code> com quem fez e quando. Só admin edita; consultor e franqueado veem a página de clusters normalmente.</p>
+  </section>
 </div>
 </main>
 <div class="fundo" id="fundo"></div>
@@ -310,7 +354,7 @@ BarraPop.montar({el:'barraPop',classe:'pb-dash',sistema:'clusters',logo:'../logo
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'clusters v1.0'; // 22/09/2026
+const VERSAO = 'clusters v1.1'; // v1.1 · 22/09/2026 · aba Franqueados (vínculo loja ↔ dono) · v1.0 clusters e score
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const br = (n, d = 0) => (n == null || !isFinite(n)) ? '—' : (+n).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -329,7 +373,7 @@ const clsSf = v => v == null ? 'sd' : (FAIXA_SF.find(f => f[3](v)) || ['sd'])[0]
 const clsNota = v => v >= 7 ? '' : v >= 4 ? 'm' : 'b';
 const tagCls = (k, v) => { if (!v || /sem dado|sem nota|sem consultoria|iniciada/.test(v)) return 'p-sd'; if (/muito abaixo|caindo|prioridade|> 20 mil|baixo$|baixa \(|^sem (delivery|serviço)/.test(v)) return 'p-ru'; if (/abaixo|atenção|5–20|parcial|^baixo|nova|< 60/.test(v)) return 'p-at'; if (/acima|referência|crescendo|engajado|alto|alta|em dia|madura|> 200/.test(v)) return 'p-ref'; return 'p-ok'; };
 
-let sb, usuario, perfil, FRQ = [], CL = [], F = { busca: '', cons: '', uf: '', dim: '', ord: 'sf_asc', sf: '', cl: {} }, aberto = null;
+let sb, usuario, perfil, FRQ = [], CL = [], FQ = null, fqMudou = new Set(), F = { busca: '', cons: '', uf: '', dim: '', ord: 'sf_asc', sf: '', cl: {} }, aberto = null;
 
 async function iniciar() {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -352,6 +396,8 @@ async function entrou(session) {
     BarraPop.sessao(); BarraPop.sairVisivel(true);
   }
   try { await carregar(); } catch (e) { console.error(e); alert('Erro ao carregar: ' + (e.message || e)); }
+  let ab = 'clusters'; try { ab = sessionStorage.getItem('clusters-aba') || 'clusters'; } catch (e) {}
+  abrirAba(ab);
 }
 async function fetchAll(b, step = 1000) { let all = [], from = 0; while (true) { const { data, error } = await b().range(from, from + step - 1); if (error) throw error; all = all.concat(data || []); if (!data || data.length < step) break; from += step; } return all; }
 async function carregar() {
@@ -369,6 +415,94 @@ async function carregar() {
   desenhar();
 }
 $('btnRecarregar').onclick = async () => { $('btnRecarregar').disabled = true; try { await carregar(); toast('atualizado'); } catch (e) { alert(e.message || e); } $('btnRecarregar').disabled = false; };
+/* ================= abas ================= */
+function abrirAba(q) {
+  const ehF = q === 'franq';
+  $('ab-clusters').setAttribute('aria-selected', !ehF); $('ab-franq').setAttribute('aria-selected', ehF);
+  $('aba-clusters').hidden = ehF; $('aba-franq').hidden = !ehF;
+  try { sessionStorage.setItem('clusters-aba', q); } catch (e) {}
+  if (ehF && !FQ) carregarFranq();
+}
+$('ab-clusters').onclick = () => abrirAba('clusters');
+$('ab-franq').onclick = () => abrirAba('franq');
+
+/* ================= aba Franqueados ================= */
+async function carregarFranq() {
+  const { data, error } = await sb.rpc('franqueados_listar');
+  if (error) { alert('Erro ao carregar franqueados: ' + error.message); return; }
+  FQ = data; desenharFranq();
+}
+function ehAdmin() { return !!(perfil && perfil.is_admin); }
+function desenharFranq() {
+  if (!FQ) return;
+  const porId = {}; FQ.franqueados.forEach(g => { porId[g.id] = g; });
+
+  // candidatos a fusão: nomes que começam com a mesma palavra
+  const conf = (FQ.conferir || []).filter(x => x.ids.length > 1);
+  $('fqConferir').innerHTML = conf.length
+    ? `<div class="fq-cartao alerta"><h4>${conf.length} nome(s) parecido(s) — pode ser a mesma pessoa</h4>`
+      + conf.map(x => {
+          const itens = x.ids.map((id, i) => ({ id, nome: x.nomes[i], lojas: (porId[id] || {}).lojas || 0 }));
+          const sel = `<select data-fundir-em="${x.chave}">${itens.map(o => `<option value="${o.id}">${esc(o.nome)} (${o.lojas})</option>`).join('')}</select>`;
+          return `<div class="fq-linha"><span class="nm">${itens.map(o => esc(o.nome) + ' <span class="qt">' + o.lojas + ' loja(s)</span>').join(' · ')}</span>`
+            + (ehAdmin() ? `<span class="qt">juntar tudo em</span>${sel}<button class="btn mini" data-fundir="${x.chave}" type="button">Juntar</button>` : '') + `</div>`;
+        }).join('') + '</div>'
+    : '';
+  $('fqConferir').querySelectorAll('[data-fundir]').forEach(b => b.onclick = () => fundir(b.dataset.fundir));
+
+  // tabela de lojas
+  const busca = ($('fqBusca').value || '').trim().toLowerCase(), filtro = $('fqFiltro').value;
+  const opcoes = FQ.franqueados.filter(g => g.ativo).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const linhas = FQ.lojas.filter(l => {
+    const g = porId[l.franqueado_id] || {};
+    if (filtro === 'multi' && !(g.lojas > 1)) return false;
+    if (filtro === 'uma' && !(g.lojas === 1)) return false;
+    if (busca && !((' fra ' + l.fra + ' ' + (l.nome || '') + ' ' + (l.cidade || '') + ' ' + (g.nome || '') + ' ' + (l.responsavel || '')).toLowerCase().includes(busca))) return false;
+    return true;
+  });
+  $('fqCont').textContent = `${linhas.length} de ${FQ.lojas.length} lojas · ${opcoes.length} franqueados`;
+  $('fqTab').innerHTML = '<thead><tr><th style="width:56px">FRA</th><th>Loja</th><th>Responsável no cadastro</th><th style="width:300px">Franqueado</th><th style="width:70px">Lojas</th></tr></thead><tbody>'
+    + (linhas.length ? linhas.map(l => {
+        const g = porId[l.franqueado_id] || {};
+        return `<tr data-fra="${l.fra}"><td class="num">${l.fra}</td>`
+          + `<td><b>${esc(l.nome || '')}</b><div class="txt">${esc((l.cidade || '') + (l.uf ? ' · ' + l.uf : ''))}</div></td>`
+          + `<td class="txt">${esc(l.responsavel || '—')}</td>`
+          + `<td><select data-fra="${l.fra}"${ehAdmin() ? '' : ' disabled'}><option value="">— sem franqueado —</option>`
+          + opcoes.map(o => `<option value="${o.id}"${o.id === l.franqueado_id ? ' selected' : ''}>${esc(o.nome)}</option>`).join('')
+          + `</select></td><td class="num">${g.lojas != null ? g.lojas : '—'}</td></tr>`;
+      }).join('') : '<tr><td colspan="5"><div class="vazio">Nenhuma loja com esse filtro.</div></td></tr>')
+    + '</tbody>';
+  $('fqTab').querySelectorAll('select[data-fra]').forEach(s => s.onchange = () => vincular(+s.dataset.fra, s.value || null, s));
+}
+async function vincular(fra, id, sel) {
+  sel.disabled = true;
+  const { error } = await sb.rpc('franqueado_vincular', { p_fra: fra, p_id: id });
+  sel.disabled = false;
+  if (error) { alert('Não gravou: ' + error.message); return; }
+  const tr = sel.closest('tr'); if (tr) tr.classList.add('mudou');
+  toast('FRA ' + fra + ' atualizada');
+  await carregarFranq(); await carregar();          // a contagem de lojas e o score mudam na hora
+}
+async function fundir(chave) {
+  const x = (FQ.conferir || []).find(c => c.chave === chave); if (!x) return;
+  const destino = $('fqConferir').querySelector(`[data-fundir-em="${chave}"]`).value;
+  const nomes = x.nomes.join(' + ');
+  const alvo = FQ.franqueados.find(g => g.id === destino) || {};
+  if (!confirm('Juntar ' + nomes + ' em "' + alvo.nome + '"?\n\nAs lojas passam para ele e os outros nomes saem da lista. Dá para desfazer religando as lojas uma a uma.')) return;
+  for (const id of x.ids) { if (id === destino) continue;
+    const { error } = await sb.rpc('franqueado_fundir', { p_origem: id, p_destino: destino });
+    if (error) { alert('Não juntou: ' + error.message); break; } }
+  await carregarFranq(); await carregar(); toast('juntado');
+}
+$('fqCriar').onclick = async () => {
+  const nome = ($('fqNovo').value || '').trim(); if (!nome) return;
+  const { error } = await sb.rpc('franqueado_criar', { p_nome: nome });
+  if (error) { alert('Não criou: ' + error.message); return; }
+  $('fqNovo').value = ''; await carregarFranq(); toast('franqueado criado');
+};
+$('fqFiltro').onchange = desenharFranq;
+$('fqBusca').addEventListener('input', () => { clearTimeout(window._fq); window._fq = setTimeout(desenharFranq, 180); });
+
 ['fCons', 'fUf', 'fDim', 'fOrd'].forEach(id => $(id).onchange = () => { F[id.slice(1).toLowerCase()] = $(id).value; desenhar(); });
 $('fBusca').addEventListener('input', () => { clearTimeout(window._b); window._b = setTimeout(() => { F.busca = $('fBusca').value.trim().toLowerCase(); desenhar(); }, 180); });
 

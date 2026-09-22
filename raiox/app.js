@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.11'; // v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
+const VERSAO = 'v3.12'; // v3.12 · 22/09/2026 · aba Roteiro da visita; barra de abas não segue mais a rolagem; sai o botão Imprimir (o Exportar já faz) · v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -267,6 +267,198 @@ $('btnRecalcRede').onclick = async () => {
   fras.forEach(f => FILA.add(f)); toast(fras.length + ' loja(s) na fila'); desenharRede();
 };
 
+/* ================= ROTEIRO DA VISITA (v3.12 · 22/09/2026) =================
+   O passo a passo que o consultor segue na reunião com o franqueado.
+   Um roteiro por reunião da consultoria (decisão 1a). Ferramenta do consultor:
+   o franqueado não abre esta aba, e o que for marcado "interno" não sai em nada
+   que ele veja (decisão 2a). Tudo pode ser corrigido depois, com histórico (decisão 3a).
+   Os números vêm do raio-x já calculado (kpis) e dos clusters (potencial, tendência,
+   inadimplência) — a tela não recalcula nada, só conduz a conversa.                        */
+let RT = null, rtEvento = null, rtSalvando = false;
+
+const PASSOS = [
+  { k: 'abertura', t: 'Abertura', p: 'Combinar o que a conversa é e conferir se o dado bate com o que ele vê.',
+    dados: (f, s) => [['Período', mesBR(s.kpis.mes_ini) + ' a ' + mesBR(s.mes_ref)], ['Vendas no período', br(s.kpis.cupons_mes * (s.kpis.meses || 12), 0)], ['Calculado em', dBR(s.calculado_em)]],
+    perg: 'Esses números batem com o que você vê no OnePet? Se não bate, o que está diferente?',
+    dica: 'Se ele disser que não bate, pare aqui: o resto da conversa depende deste acordo. Anote o que ele aponta e confira a carga do BI antes de seguir.' },
+
+  { k: 'solidez', t: '1. Solidez', p: 'Sem capital e sem crédito com fornecedor, qualquer plano de mix ou ação patina. É o primeiro pilar.',
+    dados: (f, s, c) => [['Lucro bruto/mês', kmil(s.kpis.lucro_mes)], ['Margem ajustada', pc(s.kpis.margem_adj)], ['Vencido com a franqueadora', c && c.inad_vencido ? kmil(c.inad_vencido) + (c.inad_mes ? ' (' + mesBR(String(c.inad_mes).slice(0, 7)) + ')' : '') : 'em dia']],
+    perg: 'Como está o capital de giro? Tem crédito aberto com os fornecedores? Está pagando em dia?',
+    dica: 'A franqueadora não enxerga o caixa da loja — esse dado só existe se ele contar. Anote valores aproximados, não precisa de extrato.' },
+
+  { k: 'pessoas', t: '2. Pessoas', p: 'Quem produz e quem não produz. Observação do consultor, reportada à franqueadora — não é conversa de feedback na loja.',
+    dados: () => [['O sistema não mede pessoas', 'só a sua observação']],
+    perg: 'Quantas pessoas trabalham hoje? Quem vende bem? Tem alguém que já devia ter saído?',
+    dica: 'Este passo nasce marcado como interno: não sai em nada que o franqueado veja. Escreva o que observou, não o que combinou com ele.', interno: true },
+
+  { k: 'alavancas', t: '3. As quatro alavancas', p: 'Venda = clientes × conversão × ticket × frequência. Mexer em qualquer uma muda o resultado.',
+    dados: (f, s) => [['Ticket médio', money(s.kpis.ticket)], ['Vendas/mês', br(s.kpis.cupons_mes, 0)], ['Receita identificada', pc(s.kpis.ident_pct)], ['Fluxo e conversão', 'não medidos — só com contador de fluxo']],
+    perg: 'Quantas pessoas entram na loja por dia, no seu chute? Quantas saem comprando?',
+    dica: 'Abra o Simulador de alavancas com o número que ele chutar: mostrar na tela quanto 10% a mais de ticket faz no ano costuma ser o momento em que a conversa vira.', link: (f, s) => linkSimulador(f, s), linkT: '📈 Abrir o Simulador com os números desta loja' },
+
+  { k: 'potencial', t: '4. Potencial', p: 'Quanto vendem as lojas mais parecidas com esta — mesma região, mesmo porte, mesmo perfil.',
+    dados: (f, s, c) => c ? [['Vende hoje', kmil(s.kpis.receita_mes) + '/mês'], ['Típico das semelhantes', kmil(c.potencial_p50) + '/mês'], ['Realizado', c.realizado_pct != null ? c.realizado_pct + '% do típico' : '—'], ['Leitura', c.potencial_motivo || '—'], ['Confiança', c.potencial_conf || '—']] : [['Sem cálculo de potencial para esta loja', '']],
+    perg: 'O que explica a diferença para as lojas parecidas? O que tem aqui que elas não têm, e o contrário?',
+    dica: 'É estimativa, não meta: o modelo explica pouco da diferença entre lojas. Use como ponto de conversa. Se ele apontar um motivo real (rua sem movimento, concorrente novo), anote — vale mais que o modelo.',
+    link: () => 'https://agenciai3xdigital-crypto.github.io/analise-geral-franquia/potencial.html', linkT: '🎯 Ver as 7 lojas semelhantes' },
+
+  { k: 'mix', t: '5. Mix e serviços', p: 'Serviço segura cliente e puxa margem. Delivery traz fluxo que a loja não teria.',
+    dados: (f, s, c) => [['Serviços na venda', pc(s.kpis.serv_share)], ['Faixa', c ? c.faixa_servicos : '—'], ['Delivery na venda', c && c.delivery_pct != null ? pc(c.delivery_pct) : 'sem dado']],
+    perg: 'Tem banho e tosa? Está cheio ou tem agenda vaga? E os apps de entrega, está nos dois?',
+    dica: 'Loja sem serviço e sem delivery depende só de quem passa na porta. Se ele já tem e não usa, o problema é de operação, não de investimento.' },
+
+  { k: 'clientes', t: '6. Clientes', p: 'Ração é compra que se repete. Cliente que não volta em 45 dias comprou em outro lugar.',
+    dados: (f, s) => [['Ração em dia', pc(s.kpis.ret45)], ['Clientes identificados', pc(s.kpis.ident_pct)], ['Inativos de ração', br(s.kpis.inativos_racao, 0)]],
+    perg: 'Vocês ligam para quem sumiu? Quem faz isso e quando? O balconista pede o cadastro em toda venda?',
+    dica: 'A lista de resgate está na aba Clientes, com telefone. Se ele disser que não tem tempo, combine um número pequeno por dia — 5 ligações rendem mais que uma promessa de 50.' },
+
+  { k: 'dado', t: '7. Qualidade do dado', p: 'Custo sem cadastro infla a margem e cega a análise. É o passo que destrava todos os outros.',
+    dados: (f, s) => [['Receita sem custo cadastrado', pc(s.kpis.cz_rec_pct)], ['Itens sem custo', pc(s.kpis.cz_pct)], ['Achados graves', br(s.kpis.tarefas_alta, 0)]],
+    perg: 'Quem cadastra produto na loja? A nota de entrada é lançada sempre?',
+    dica: 'Se a receita sem custo passa de 20%, a loja fica sem nota — e sem nota não dá para medir evolução. Esse costuma ser o primeiro compromisso a cobrar.' },
+
+  { k: 'lucro', t: '8. Lucro', p: 'O objetivo é lucro, não faturamento. Loja de 80 mil pode lucrar mais que loja de 200 mil.',
+    dados: (f, s) => [['Margem reportada', pc(s.kpis.margem_rep)], ['Margem ajustada', pc(s.kpis.margem_adj)], ['Vazamento/mês', kmil(s.kpis.vaz_total)]],
+    perg: 'Você sabe quanto sobra no fim do mês? Compra direto da indústria ou de distribuidor?',
+    dica: 'A diferença entre margem reportada e ajustada é o tamanho do erro de cadastro. Vazamento é dinheiro que sai sem virar venda: desconto sem critério, perda, item vendido abaixo do custo.' },
+
+  { k: 'fechamento', t: '9. Fechamento', p: 'Três prioridades, com prazo e dono. Mais que três não sai do papel.',
+    dados: (f, s) => [['Achados do raio-x', br((s.tarefas || []).length, 0)], ['Nota de hoje', s.score == null ? 'sem nota' : s.score + '/100']],
+    perg: 'Dos pontos que vimos, quais três você começa esta semana? O que você precisa da franqueadora?',
+    dica: 'Escreva o compromisso com as palavras dele. Na próxima reunião, a primeira pergunta é sobre estes três itens.', fecha: true }
+];
+
+function mostrarRoteiro(on) {
+  const r = $('ljRoteiro'), pf = $('ljPainelFrame');
+  if (!r || !pf) return;
+  r.hidden = !on; pf.style.display = on ? 'none' : '';
+  if (on) desenharRoteiro();
+}
+async function carregarRoteiro(fra, evento) {
+  const { data, error } = await sb.rpc('roteiro_abrir', { p_fra: fra, p_evento: evento || null });
+  if (error) { RT = { erro: error.message }; return; }
+  RT = data; RT.fra = fra;
+}
+async function desenharRoteiro() {
+  const box = $('ljRoteiro'); if (!box) return;
+  const fra = lojaAtual, f = frqDe(fra), s = SNAPS[fra], c = CLUS[fra] || null;
+  if (!s) { box.innerHTML = '<div class="painel"><div class="vazio">Sem raio-x calculado.</div></div>'; return; }
+  if (!RT || RT.fra !== fra) { box.innerHTML = '<div class="painel"><div class="vazio">Carregando o roteiro…</div></div>'; await carregarRoteiro(fra, rtEvento); }
+  if (RT && RT.erro) { box.innerHTML = `<div class="painel"><div class="vazio">${esc(RT.erro)}</div></div>`; return; }
+
+  const feito = {}; (RT.passos || []).forEach(p => { feito[p.passo] = p; });
+  const reun = RT.reunioes || [];
+  if (rtEvento === null && reun.length) {
+    const prox = reun.find(r => !r.concluida) || reun[reun.length - 1];
+    rtEvento = prox.id; await carregarRoteiro(fra, rtEvento);
+    (RT.passos || []).forEach(p => { feito[p.passo] = p; });
+  }
+  const preenchidos = PASSOS.filter(x => feito[x.k] && (feito[x.k].situacao || feito[x.k].anotacao)).length;
+
+  const cab = `<div class="painel" style="margin-bottom:10px">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <b style="font-family:'Archivo';font-size:17px">Roteiro da visita</b>
+      ${reun.length ? `<select id="rtReuniao" style="padding:7px 10px;border:1.5px solid var(--linha);border-radius:9px;font:inherit;font-size:13.5px">
+        ${reun.map(r => `<option value="${r.id}"${r.id === rtEvento ? ' selected' : ''}>${dBR(r.data)} · ${esc(r.titulo || 'reunião')}${r.concluida ? ' ✓' : ''}</option>`).join('')}</select>`
+        : '<span class="st lar">sem consultoria ativa — o roteiro fica avulso, sem reunião ligada</span>'}
+      <span style="flex:1"></span>
+      <span style="font-size:13px;color:var(--tinta-suave)">${preenchidos} de ${PASSOS.length} passos</span>
+      <span class="mini" style="width:120px"><i style="width:${Math.round(100 * preenchidos / PASSOS.length)}%"></i></span>
+    </div>
+    <p class="aviso" style="margin:10px 0 0">Ferramenta do consultor: o franqueado não vê esta aba. O que estiver marcado <b>interno</b> não entra em nenhum resumo que chegue a ele. Dá para voltar e corrigir depois — fica o histórico de quem mudou.</p>
+  </div>`;
+
+  const corpo = PASSOS.map(x => {
+    const v = feito[x.k] || {};
+    const dd = (x.dados ? x.dados(f, s, c) : []).map(([l, val]) => `<div class="rt-dado"><span>${esc(l)}</span><b>${esc(String(val))}</b></div>`).join('');
+    const lk = x.link ? x.link(f, s) : null;
+    const sit = (kk, rot) => `<button type="button" class="rt-sit${v.situacao === kk ? ' on ' + kk : ''}" data-sit="${kk}" data-passo="${x.k}">${rot}</button>`;
+    const prio = x.fecha ? `<div class="rt-prio"><div class="rt-rot">Prioridades desta visita <small>marque até 3</small></div>${
+      (s.tarefas || []).length ? (s.tarefas || []).slice(0, 12).map((t, i) => {
+        const marc = ((v.dados && v.dados.prioridades) || []).includes(t.chave);
+        return `<label class="rt-chk"><input type="checkbox" data-prio="${esc(t.chave)}" data-passo="${x.k}"${marc ? ' checked' : ''}> ${txtTarefa(t)}</label>`;
+      }).join('') : '<span class="rt-vazio">Sem achados no raio-x desta loja.</span>'}</div>` : '';
+    return `<section class="rt-passo${v.situacao ? ' ok' : ''}" data-p="${x.k}">
+      <div class="rt-cab"><h3>${esc(x.t)}</h3><span class="rt-por">${esc(x.p)}</span></div>
+      ${dd ? `<div class="rt-dados">${dd}</div>` : ''}
+      <div class="rt-perg">${esc(x.perg)}</div>
+      <div class="rt-dica">${esc(x.dica)}</div>
+      ${lk ? `<a class="btn claro" href="${lk}" target="_blank" rel="noopener" style="margin:8px 0">${x.linkT}</a>` : ''}
+      <div class="rt-acoes">${sit('confere', '✓ Confere')}${sit('nao_confere', '✗ Não confere')}${sit('nao_se_aplica', '— Não se aplica')}
+        <input class="rt-valor" data-passo="${x.k}" placeholder="O que o franqueado informou (valor certo, número dele)" value="${esc(v.valor_informado || '')}">
+      </div>
+      ${prio}
+      <textarea class="rt-nota" data-passo="${x.k}" rows="2" placeholder="Anotação da conversa">${esc(v.anotacao || '')}</textarea>
+      <div class="rt-rod">
+        <label class="rt-chk"><input type="checkbox" data-int="${x.k}"${(v.interno != null ? v.interno : !!x.interno) ? ' checked' : ''}> interno (não sai para o franqueado)</label>
+        <span style="flex:1"></span>
+        ${consAtiva(fra) ? `<button class="btn claro mini" data-tarefa="${x.k}" type="button">+ virar tarefa</button>` : ''}
+        <span class="rt-salvo" data-salvo="${x.k}">${v.atualizado_em ? 'salvo ' + dBR(v.atualizado_em) : ''}</span>
+      </div>
+    </section>`;
+  }).join('');
+
+  box.innerHTML = cab + `<div class="painel rt-lista">${corpo}</div>`;
+  ligarRoteiro(fra);
+}
+function ligarRoteiro(fra) {
+  const box = $('ljRoteiro');
+  const rs = $('rtReuniao'); if (rs) rs.onchange = async () => { rtEvento = rs.value; await carregarRoteiro(fra, rtEvento); desenharRoteiro(); };
+  box.querySelectorAll('[data-sit]').forEach(b => b.onclick = () => {
+    const p = b.dataset.passo, atual = box.querySelector(`.rt-sit.on[data-passo="${p}"]`);
+    const novo = (atual && atual.dataset.sit === b.dataset.sit) ? null : b.dataset.sit;
+    box.querySelectorAll(`.rt-sit[data-passo="${p}"]`).forEach(x => { x.classList.remove('on', 'confere', 'nao_confere', 'nao_se_aplica'); });
+    if (novo) b.classList.add('on', novo);
+    salvarPasso(fra, p);
+  });
+  box.querySelectorAll('.rt-valor, .rt-nota').forEach(el => { el.onblur = () => salvarPasso(fra, el.dataset.passo); });
+  box.querySelectorAll('[data-int]').forEach(el => { el.onchange = () => salvarPasso(fra, el.dataset.int); });
+  box.querySelectorAll('[data-prio]').forEach(el => el.onchange = () => {
+    const p = el.dataset.passo, marcados = [...box.querySelectorAll(`[data-prio][data-passo="${p}"]:checked`)];
+    if (marcados.length > 3) { el.checked = false; toast('escolha no máximo 3'); return; }
+    salvarPasso(fra, p);
+  });
+  box.querySelectorAll('[data-tarefa]').forEach(b => b.onclick = () => virarTarefa(fra, b.dataset.tarefa));
+}
+async function salvarPasso(fra, passo) {
+  if (rtSalvando) return; rtSalvando = true;
+  const box = $('ljRoteiro');
+  const sel = box.querySelector(`.rt-sit.on[data-passo="${passo}"]`);
+  const val = box.querySelector(`.rt-valor[data-passo="${passo}"]`);
+  const not = box.querySelector(`.rt-nota[data-passo="${passo}"]`);
+  const int = box.querySelector(`[data-int="${passo}"]`);
+  const prios = [...box.querySelectorAll(`[data-prio][data-passo="${passo}"]:checked`)].map(x => x.dataset.prio);
+  const marca = box.querySelector(`[data-salvo="${passo}"]`);
+  const { error } = await sb.rpc('roteiro_salvar', {
+    p_fra: fra, p_evento: rtEvento || null, p_passo: passo,
+    p_situacao: sel ? sel.dataset.sit : null,
+    p_valor: val && val.value.trim() ? val.value.trim() : null,
+    p_anotacao: not && not.value.trim() ? not.value.trim() : null,
+    p_interno: !!(int && int.checked),
+    p_dados: prios.length ? { prioridades: prios } : null
+  });
+  rtSalvando = false;
+  if (error) { if (marca) { marca.textContent = 'não salvou: ' + error.message; marca.classList.add('erro'); } return; }
+  if (marca) { marca.classList.remove('erro'); marca.textContent = 'salvo agora'; }
+  const sec = box.querySelector(`.rt-passo[data-p="${passo}"]`); if (sec) sec.classList.toggle('ok', !!sel);
+}
+async function virarTarefa(fra, passo) {
+  const c = consAtiva(fra); if (!c) return;
+  const x = PASSOS.find(p => p.k === passo);
+  const box = $('ljRoteiro');
+  const not = box.querySelector(`.rt-nota[data-passo="${passo}"]`);
+  const titulo = prompt('O que precisa ser feito?', (not && not.value.trim()) || x.t);
+  if (!titulo) return;
+  const prazo = prompt('Prazo (dd/mm/aaaa)', dBR(addDias(hojeISO(), 14)));
+  if (!prazo) return;
+  const iso = String(prazo).split('/').reverse().join('-');
+  const { error } = await sb.rpc('raiox_tarefa_gerir', { p_acao: 'criar', p_consultoria: c.id, p_titulo: titulo.slice(0, 160),
+    p_descricao: 'Nasceu no roteiro da visita · passo ' + x.t, p_prazo: iso, p_responsavel: 'franqueado' });
+  if (error) { alert('Não criou a tarefa: ' + error.message); return; }
+  toast('tarefa criada na agenda'); await recarregar('cons');
+}
+
 /* ================= LOJA ================= */
 async function abrirLoja(fra, aba) {
   lojaAtual = fra;
@@ -279,7 +471,7 @@ async function abrirLoja(fra, aba) {
   const s = SNAPS[fra], f = frqDe(fra);
   if (!s) { box.innerHTML = cabecaLoja(f, null) + '<div class="vazio">Esta loja ainda não tem raio-x: o banco de compras não recebeu o BI de vendas dela. Depois da carga, a rotina noturna calcula sozinha.</div>'; return; }
   // o relatório completo (motor visual original da máquina) roda em relatorio.html, alimentado pelo banco
-  box.innerHTML = cabecaLoja(f, s) + `<div class="abas-pai" id="ljAbas"></div><div class="painel" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}${aba ? '&aba=' + encodeURIComponent(aba) : ''}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
+  box.innerHTML = cabecaLoja(f, s) + `<div class="abas-pai" id="ljAbas"></div><div id="ljRoteiro" hidden></div><div class="painel" id="ljPainelFrame" style="padding:0;overflow:hidden"><iframe id="ljFrame" src="relatorio.html?fra=${fra}${aba ? '&aba=' + encodeURIComponent(aba) : ''}&v=${encodeURIComponent(VERSAO)}" title="Raio-X completo da FRA ${fra}" style="width:100%;border:0;min-height:70vh;display:block;background:#F6FAF7"></iframe></div>`;
   ligarFicha(f, s, { tarefas: s.tarefas || [] });
 }
 window.addEventListener('message', ev => {
@@ -287,20 +479,26 @@ window.addEventListener('message', ev => {
   const fr = $('ljFrame'); if (!fr) return;
   if (ev.data.raiox === 'altura') fr.style.height = Math.max(400, ev.data.altura + 24) + 'px';
   if (ev.data.raiox === 'topo') rolarInicioLoja();
-  if (ev.data.raiox === 'abas') desenharAbasPai(ev.data);
+  if (ev.data.raiox === 'abas') { desenharAbasPai(ev.data); mostrarRoteiro(false); }
 });
 // ao trocar de aba o conteúdo muda de tamanho; a página volta ao início da ficha da loja (nota, cabeçalho), logo abaixo da barra fixa de abas
 function rolarInicioLoja() {
   const box = $('ljConteudo'); if (!box) return;
   window.scrollTo({ top: Math.max(0, box.getBoundingClientRect().top + window.scrollY - 12), behavior: 'smooth' });
 }
-const ABAS_REL = [['diag', 'Diagnóstico'], ['tarefas', 'Tarefas'], ['clientes', 'Clientes'], ['estoque', 'Estoque'], ['evolucao', 'Evolução'], ['consultoria', 'Consultoria'], ['avaliacao', 'Avaliação'], ['historico', 'Histórico']];
+const ABAS_REL = [['roteiro', 'Roteiro da visita'], ['diag', 'Diagnóstico'], ['tarefas', 'Tarefas'], ['clientes', 'Clientes'], ['estoque', 'Estoque'], ['evolucao', 'Evolução'], ['consultoria', 'Consultoria'], ['avaliacao', 'Avaliação'], ['historico', 'Histórico']];
 const EXPORTS_REL = [['btnPDF', '⬇ Relatório em PDF'], ['btnCSV', '⬇ Lista de resgate (CSV)'], ['btnTarefasCSV', '⬇ Achados do raio-x (CSV)'], ['btnPlanoCSV', '⬇ Plano da consultoria (CSV)'], ['btnEvolucaoCSV', '⬇ Evolução mensal (CSV)'], ['btnSnapshot', '⬇ Instantâneo (JSON)']];
 function desenharAbasPai(d) {
   const box = $('ljAbas'), fr = $('ljFrame'); if (!box || !fr) return;
   const bd = d.badges || {};
   box.innerHTML = `<div class="abas-pai-in">${ABAS_REL.map(([k, t]) => `<button type="button" class="aba-rel${d.atual === k ? ' on' : ''}" data-aba="${k}">${t}${k === 'tarefas' && bd.tarefas ? ` <b class="bd">${bd.tarefas}</b>` : ''}${k === 'avaliacao' && bd.avaliacao ? ' <b class="bd">!</b>' : ''}</button>`).join('')}<span style="flex:1"></span><div class="exp-pai"><button type="button" class="btn claro" id="btnExpPai">⬇ Exportar ▾</button><div class="menu" id="menuExpPai">${EXPORTS_REL.map(([id, t]) => `<button type="button" data-exp="${id}">${t}</button>`).join('')}</div></div></div>`;
-  box.querySelectorAll('.aba-rel').forEach(b => b.onclick = () => { fr.contentWindow.postMessage({ raiox: 'aba', aba: b.dataset.aba }, location.origin); box.querySelectorAll('.aba-rel').forEach(x => x.classList.toggle('on', x === b)); rolarInicioLoja(); });
+  box.querySelectorAll('.aba-rel').forEach(b => b.onclick = () => {
+    const k = b.dataset.aba;
+    box.querySelectorAll('.aba-rel').forEach(x => x.classList.toggle('on', x === b));
+    mostrarRoteiro(k === 'roteiro');
+    if (k !== 'roteiro') fr.contentWindow.postMessage({ raiox: 'aba', aba: k }, location.origin);
+    rolarInicioLoja();
+  });
   const m = $('menuExpPai'); $('btnExpPai').onclick = ev => { ev.stopPropagation(); m.classList.toggle('on'); };
   box.querySelectorAll('[data-exp]').forEach(b => b.onclick = () => { m.classList.remove('on'); fr.contentWindow.postMessage({ raiox: 'exportar', botao: b.dataset.exp }, location.origin); });
   document.addEventListener('click', () => m.classList.remove('on'), { once: true });
@@ -341,7 +539,6 @@ function cabecaLoja(f, s) {
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
         ${c ? `<span class="st roxo" style="align-self:center">consultoria ativa desde ${dBR(c.inicio)} · ${esc(primeiro(nomeDe(c.consultor_id)))}</span>` : (podeIniciar && s ? '<button class="btn laranja" id="btnIniciarCons">▶ Iniciar consultoria de faturamento</button>' : '')}
         ${s && !ehFranq() ? `<button class="btn claro" id="btnRecalc"${FILA.has(f.fra) ? ' disabled' : ''}>${FILA.has(f.fra) ? '↻ na fila' : '↻ Recalcular'}</button>` : ''}
-        ${s ? '<button class="btn claro" id="btnImprimir">🖨 Imprimir / PDF</button>' : ''}
         ${s && s.score != null && s.sub ? `<a class="btn verde" id="btnScore" href="${linkScore(f, s)}" target="_blank" rel="noopener" title="O que cada nota mede, o que ela diz da loja e o que fazer primeiro">💡 Entenda aqui seu score (nota)</a>` : ''}
         ${s && linkSimulador(f, s) ? `<a class="btn claro" id="btnSimulador" href="${linkSimulador(f, s)}" target="_blank" rel="noopener" title="Clientes × conversão × ticket × frequência: quanto cada alavanca muda o faturamento desta loja">📈 Simular alavancas</a>` : ''}
       </div>
@@ -377,7 +574,6 @@ const sevOk = s => ['alta', 'media', 'baixa'].includes(s) ? s : 'baixa';
 function ligarFicha(f, s, R) {
   const bi = $('btnIniciarCons'); if (bi) bi.onclick = () => abrirModalConsultoria(f, s, R);
   const br_ = $('btnRecalc'); if (br_) br_.onclick = async () => { const { error } = await sb.from('raiox_fila').insert({ fra: f.fra, pedido_por: usuario.id }); if (error) return erro(error); FILA.add(f.fra); br_.disabled = true; br_.textContent = '↻ na fila'; toast('pedido registrado — a rotina atende em até 2 h'); };
-  const bp = $('btnImprimir'); if (bp) bp.onclick = () => { const fr = $('ljFrame'); if (fr && fr.contentWindow) fr.contentWindow.print(); else window.print(); };
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

@@ -41,6 +41,11 @@ h1{font-size:26px;font-weight:800;margin:0;letter-spacing:-.01em}
 .chip b{color:var(--tinta);margin-left:3px}.chip.on{background:var(--tinta);border-color:var(--tinta);color:#fff}.chip.on b{color:#fff}
 .chip.limpa{border-style:dashed}
 .th{display:grid;grid-template-columns:56px 1fr 190px 240px 130px;gap:14px;padding:6px 16px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave);font-weight:600}
+.th button{font:inherit;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left;display:inline-flex;gap:5px;align-items:baseline}
+.th button:hover{color:var(--verde)}
+.th button.on{color:var(--verde)}
+.th button i{font-style:normal;font-size:10px}
+.th .r{justify-content:flex-end;width:100%}
 .lista{display:flex;flex-direction:column;gap:8px}
 .row{display:grid;grid-template-columns:56px 1fr 190px 240px 130px;gap:14px;align-items:center;background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;cursor:pointer;font:inherit;text-align:left;color:inherit;width:100%}
 .row:hover{border-color:var(--verde)}.row.on{border-color:var(--verde);box-shadow:inset 0 0 0 1.5px var(--verde)}
@@ -323,11 +328,17 @@ BarraPop.montar({el:'barraPop',classe:'pb-dash',sistema:'clusters',logo:'../logo
     <div><label>Consultor</label><select id="fCons"><option value="">Todos</option></select></div>
     <div><label>UF</label><select id="fUf"><option value="">Todas</option></select></div>
     <div><label>Ver rede por cluster</label><select id="fDim"><option value="">Escolher dimensão…</option></select></div>
-    <div><label>Ordenar por</label><select id="fOrd"><option value="sf_asc">Menor score do franqueado</option><option value="sf_desc">Maior score do franqueado</option><option value="score_asc">Menor nota da loja</option><option value="rec_desc">Maior receita</option><option value="pot_asc">Mais abaixo do potencial</option><option value="tend_asc">Maior queda</option><option value="inad_desc">Maior inadimplência</option><option value="fra">FRA</option></select></div>
+    <div><label>Ordenar por</label><select id="fOrd"><option value="">Pela coluna clicada</option><option value="sf_asc" selected>Menor score do franqueado</option><option value="sf_desc">Maior score do franqueado</option><option value="score_asc">Menor nota da loja</option><option value="rec_desc">Maior receita</option><option value="pot_asc">Mais abaixo do potencial</option><option value="tend_asc">Maior queda</option><option value="inad_desc">Maior inadimplência</option><option value="fra">FRA</option></select></div>
     <span class="esp"></span><span class="cont" id="cont"></span>
   </div>
   <div class="chips" id="chips"></div>
-  <div class="th"><span>FRA</span><span>Loja</span><span>Situação</span><span>9 critérios do score (hachurado = sem régua)</span><span style="text-align:right">Score franq.</span></div>
+  <div class="th" id="th">
+    <button type="button" data-k="fra" title="Ordenar pelo número da franquia">FRA<i></i></button>
+    <button type="button" data-k="nome" title="Ordenar pelo nome da loja">Loja<i></i></button>
+    <button type="button" data-k="situacao" title="Ordenar pelo quanto a loja realiza do potencial típico">Situação<i></i></button>
+    <button type="button" data-k="criterios" title="Ordenar por quantos dos 9 critérios já têm dado nesta loja">9 critérios do score (hachurado = sem régua)<i></i></button>
+    <button type="button" class="r" data-k="sf" title="Ordenar pelo score do franqueado">Score franq.<i></i></button>
+  </div>
   <div class="lista" id="lista"></div>
   </section>
 
@@ -354,7 +365,7 @@ BarraPop.montar({el:'barraPop',classe:'pb-dash',sistema:'clusters',logo:'../logo
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'clusters v1.1'; // v1.1 · 22/09/2026 · aba Franqueados (vínculo loja ↔ dono) · v1.0 clusters e score
+const VERSAO = 'clusters v1.2'; // v1.2 · 22/09/2026 · cabeçalho da lista ordena ao clicar · v1.1 · 22/09/2026 · aba Franqueados (vínculo loja ↔ dono) · v1.0 clusters e score
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const br = (n, d = 0) => (n == null || !isFinite(n)) ? '—' : (+n).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -373,7 +384,7 @@ const clsSf = v => v == null ? 'sd' : (FAIXA_SF.find(f => f[3](v)) || ['sd'])[0]
 const clsNota = v => v >= 7 ? '' : v >= 4 ? 'm' : 'b';
 const tagCls = (k, v) => { if (!v || /sem dado|sem nota|sem consultoria|iniciada/.test(v)) return 'p-sd'; if (/muito abaixo|caindo|prioridade|> 20 mil|baixo$|baixa \(|^sem (delivery|serviço)/.test(v)) return 'p-ru'; if (/abaixo|atenção|5–20|parcial|^baixo|nova|< 60/.test(v)) return 'p-at'; if (/acima|referência|crescendo|engajado|alto|alta|em dia|madura|> 200/.test(v)) return 'p-ref'; return 'p-ok'; };
 
-let sb, usuario, perfil, FRQ = [], CL = [], FQ = null, fqMudou = new Set(), F = { busca: '', cons: '', uf: '', dim: '', ord: 'sf_asc', sf: '', cl: {} }, aberto = null;
+let sb, usuario, perfil, FRQ = [], CL = [], FQ = null, fqMudou = new Set(), F = { busca: '', cons: '', uf: '', dim: '', ord: 'sf_asc', k: 'sf', asc: true, sf: '', cl: {} }, aberto = null;
 
 async function iniciar() {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -503,8 +514,29 @@ $('fqCriar').onclick = async () => {
 $('fqFiltro').onchange = desenharFranq;
 $('fqBusca').addEventListener('input', () => { clearTimeout(window._fq); window._fq = setTimeout(desenharFranq, 180); });
 
-['fCons', 'fUf', 'fDim', 'fOrd'].forEach(id => $(id).onchange = () => { F[id.slice(1).toLowerCase()] = $(id).value; desenhar(); });
+['fCons', 'fUf', 'fDim'].forEach(id => $(id).onchange = () => { F[id.slice(1).toLowerCase()] = $(id).value; desenhar(); });
+$('fOrd').onchange = () => { const o = ORD[$('fOrd').value]; if (o) { F.k = o[0]; F.asc = o[1]; } desenhar(); };
+$('th').querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+  const k = b.dataset.k;
+  if (F.k === k) F.asc = !F.asc;                     // mesma coluna: inverte
+  else { F.k = k; F.asc = true; }                    // coluna nova sempre começa crescente: no Score, os piores primeiro
+  $('fOrd').value = '';                              // quem manda agora é o cabeçalho
+  desenhar();
+});
 $('fBusca').addEventListener('input', () => { clearTimeout(window._b); window._b = setTimeout(() => { F.busca = $('fBusca').value.trim().toLowerCase(); desenhar(); }, 180); });
+
+// como cada coluna é ordenada. Nulo nunca entra na conta: vai para o fim nos dois sentidos.
+const VAL = {
+  fra: c => c.fra,
+  nome: c => (c.nome || '').toLowerCase(),
+  situacao: c => c.realizado_pct,                 // % do potencial típico
+  criterios: c => c.score_franqueado_criterios,   // quantos dos 9 já têm dado
+  sf: c => c.score_franqueado_parcial,
+  score: c => c.score, rec: c => c.receita_mes, tend: c => c.tendencia_pct, inad: c => c.inad_vencido
+};
+// atalhos do seletor "Ordenar por" → [coluna, crescente?]
+const ORD = { sf_asc: ['sf', true], sf_desc: ['sf', false], score_asc: ['score', true], rec_desc: ['rec', false],
+              pot_asc: ['situacao', true], tend_asc: ['tend', true], inad_desc: ['inad', false], fra: ['fra', true] };
 
 function grupoDe(c) { return CL.filter(x => x.grupo_id === c.grupo_id); }
 function filtrar(ignorarDim) {
@@ -542,9 +574,22 @@ function desenhar() {
   const lp = $('chipLimpar'); if (lp) lp.onclick = () => { F.cl = {}; F.sf = ''; desenhar(); };
 
   // lista
+  // ordenação: clicar no cabeçalho manda; o seletor "Ordenar por" é um atalho para as combinações mais usadas
   const L = base.slice();
-  const val = { sf_asc: c => c.score_franqueado_parcial ?? 99, sf_desc: c => -(c.score_franqueado_parcial ?? -1), score_asc: c => c.score ?? 999, rec_desc: c => -(c.receita_mes ?? -1), pot_asc: c => c.realizado_pct ?? 9999, tend_asc: c => c.tendencia_pct ?? 9999, inad_desc: c => -(c.inad_vencido ?? 0), fra: c => c.fra }[F.ord];
-  L.sort((a, b) => val(a) - val(b) || a.fra - b.fra);
+  const vv = VAL[F.k] || VAL.sf;
+  L.sort((x, y) => {
+    const a = vv(x), b = vv(y);
+    if (a == null && b == null) return x.fra - y.fra;
+    if (a == null) return 1;            // sem dado vai sempre para o fim
+    if (b == null) return -1;
+    if (a === b) return x.fra - y.fra;
+    return (a < b ? -1 : 1) * (F.asc ? 1 : -1);
+  });
+  $('th').querySelectorAll('[data-k]').forEach(b => {
+    const on = b.dataset.k === F.k;
+    b.classList.toggle('on', on);
+    b.querySelector('i').textContent = on ? (F.asc ? '▲' : '▼') : '';
+  });
   $('cont').textContent = `${L.length} de ${CL.length} lojas`;
   $('lista').innerHTML = L.length ? L.map(c => {
     const k = clsSf(c.score_franqueado_parcial);

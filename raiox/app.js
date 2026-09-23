@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.12'; // v3.12 · 22/09/2026 · aba Roteiro da visita; barra de abas não segue mais a rolagem; sai o botão Imprimir (o Exportar já faz) · v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
+const VERSAO = 'v3.13'; // v3.13 · 23/09/2026 · franqueado ganha a aba Tarefas da loja (Consultoria de campo, mesmo login) · v3.12 · 22/09/2026 · aba Roteiro da visita; barra de abas não segue mais a rolagem; sai o botão Imprimir (o Exportar já faz) · v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -87,6 +87,17 @@ $('loginForm').onsubmit = async ev => {
 $('btnSair').onclick = async () => { await sb.auth.signOut(); };
 
 /* ================= modo FRANQUEADO ================= */
+// v3.13: quantas tarefas da Consultoria de campo estão abertas para as lojas do franqueado (mesmo login)
+async function contarTarefas() {
+  try {
+    const { data: { session } } = await sb.auth.getSession(); if (!session) return;
+    const mes = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+    const r = await fetch(SUPABASE_URL + '/functions/v1/campo-api?consultant=eduardo&month=' + mes, { headers: { Authorization: 'Bearer ' + session.access_token, apikey: SUPABASE_ANON_KEY } });
+    if (!r.ok) return; const d = await r.json();
+    const n = (d.blocks || []).filter(b => b.status === 'approved').reduce((t, b) => t + (b.tasks || []).filter(x => ['open', 'reopened'].includes(x.status)).length, 0);
+    if (n) { $('cntTar').textContent = n; $('cntTar').style.display = ''; }
+  } catch (e) { /* sem contagem: a aba continua funcionando */ }
+}
 async function entrouFranqueado(fraPedida, aba) {
   // esconde tudo que não é dele: abas de rede/consultorias/arquivos e o link para a Central
   document.querySelectorAll('.aba[data-v=rede],.aba[data-v=consult],.aba[data-v=arquivos],.aba[data-v=franq]').forEach(a => a.style.display = 'none');
@@ -104,6 +115,7 @@ async function entrouFranqueado(fraPedida, aba) {
     sb.from('raiox_consultorias').select('*').in('fra', FQ_LOJAS).order('criado_em', { ascending: false })
   ]);
   SNAPS = {}; (sn || []).forEach(x => { SNAPS[x.fra] = x; }); CONS = cs || [];
+  $('abaTarefas').style.display = ''; contarTarefas();
   const barra = $('fqBarra'); barra.style.display = FQ_LOJAS.length > 1 ? '' : 'none';
   $('fqLojas').innerHTML = FQ_LOJAS.map(f => `<button class="pill" data-fra="${f}" type="button">FRA ${f} · ${esc(frqDe(f).nome)}</button>`).join('');
   $('fqLojas').querySelectorAll('.pill').forEach(b => b.onclick = () => abrirLoja(+b.dataset.fra));

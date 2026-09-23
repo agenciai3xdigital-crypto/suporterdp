@@ -1,0 +1,11 @@
+CONSULTORIA DE CAMPO v6.1 + RAIO-X v3.13 · 23/09/2026
+
+Repositório suporterdp, substituir:
+  campo/gestor.html, campo/consultor.html, campo/franqueado.html  (campo/index.html não mudou, mas pode subir junto)
+  raiox/app.js e raiox/index.html   (só esses dois do raiox; os outros arquivos da pasta ficam como estão)
+
+O que muda:
+  - "Adicionar loja" só aparece para administrador (e o servidor recusa loja nova de quem não é admin).
+  - Consultor ganha a aba "Acesso dos franqueados": cria o login do franqueado das lojas em que já iniciou a conferência.
+    É o MESMO login do Raio-X (um acesso só para o franqueado).
+  - Franqueado: no Raio-X aparece a aba "Tarefas da loja"; no portal de tarefas aparece a aba "Raio-X da loja".

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Simulador de Alavancas POP</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;800&display=swap">
+
 <style>
 :root{
   --bg:#f6f8f6; --surface:#ffffff; --ink:#173026; --muted:#5d6f66; --line:#d9e3dd;
@@ -22,7 +22,7 @@
   --verde:#2bb573; --verde-esc:#A8D3C4; --verde-tint:#173627; --laranja-tint:#3a2414; --neg:#ff8a80; --neg-tint:#3a1c1a;
 }
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:Poppins,"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.5;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Inter,"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.5;margin:0}
 .wrap{max-width:980px;margin:0 auto;padding-block:28px 48px;padding-inline:16px}
 header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:22px;position:relative;overflow:hidden}
 h1{font-size:clamp(22px,3.4vw,30px);font-weight:800;color:var(--verde-esc);margin:0;text-wrap:balance;line-height:1.15}
@@ -79,8 +79,238 @@ h2{font-size:17px;font-weight:800;color:var(--verde-esc);margin:32px 0 4px}
 .foot{margin-top:28px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
 @media (max-width:560px){ input[type=number]{width:92px} th,td{padding:10px 8px} }
 </style>
+<!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+     Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
+     expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
+     Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
+     só para quem está em hub_acesso; para os outros mostra apenas os atalhos do papel (links) ou nada.
+     Para alterar o visual, altere aqui e cole o bloco inteiro nas outras páginas. ===== -->
+<style id="pb-css">
+.pb{--pb-bg:#fff;--pb-ink:#14332A;--pb-muted:#5A7268;--pb-line:#D3DFD8;--pb-soft:#EEF3F0;--pb-lar:#FF6B15;--pb-lar-soft:#FFEDE1;--pb-verde:#009150;--pb-verm:#C0392B;
+  display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--pb-bg);border-bottom:1px solid var(--pb-line);position:relative;flex-wrap:wrap;
+  font-family:'Inter',system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:var(--pb-ink);line-height:1.3;box-sizing:border-box}
+.pb *{box-sizing:border-box}
+.pb-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+.pb-logo{height:38px;width:auto;display:block}
+.pb-trilha{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:19px;letter-spacing:-.3px;line-height:1.1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pb-trilha a.pb-pai{color:var(--pb-muted);font-weight:600;font-size:14px;text-decoration:none;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
+.pb-trilha a.pb-pai:hover{color:var(--pb-lar)}
+.pb-sep{color:var(--pb-line);font-weight:400}
+.pb-trilha em{font-style:normal;color:var(--pb-lar)}
+.pb-trilha small{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:12px;color:var(--pb-muted);letter-spacing:0;margin-top:2px}
+.pb-esp{flex:1 1 8px}
+.pb-quem{font-size:12.5px;color:var(--pb-muted);text-align:right;line-height:1.25;max-width:220px}
+.pb-quem b{display:block;color:var(--pb-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-ico{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--pb-line);background:var(--pb-bg);display:grid;place-items:center;color:var(--pb-ink);cursor:pointer;position:relative;flex:none;padding:0;font:inherit}
+.pb-ico svg{width:19px;height:19px;display:block}
+.pb-ico:hover{border-color:var(--pb-muted)}
+.pb-ico.on,.pb-ico.tem{border-color:var(--pb-lar);color:var(--pb-lar)}
+.pb-ico.on{background:var(--pb-lar-soft)}
+.pb-ico:focus-visible,.pb-sair:focus-visible,.pb-item:focus-visible{outline:2px solid var(--pb-lar);outline-offset:2px}
+.pb-bd{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;line-height:17px;padding:0 4px;border-radius:9px;background:var(--pb-verm);color:#fff;font-size:10.5px;font-weight:700;text-align:center}
+.pb-sair{border:1.5px solid var(--pb-line);background:var(--pb-bg);color:var(--pb-ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.3}
+.pb-sair:hover{border-color:var(--pb-muted)}
+.pb-relogio{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;line-height:1;text-align:right}
+.pb-relogio .sync{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--pb-verde);margin-top:2px}
+.pb-veu{display:none;position:fixed;inset:0;background:rgba(20,51,42,.35);z-index:180}
+.pb-veu.on{display:block}
+.pb-pop{display:none;position:absolute;right:16px;top:calc(100% - 4px);width:min(560px,calc(100vw - 32px));background:var(--pb-bg);border:1px solid var(--pb-line);border-radius:14px;box-shadow:0 10px 30px rgba(20,51,42,.16);padding:14px;z-index:190;color:var(--pb-ink)}
+.pb-pop.on{display:block}
+.pb-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.pb-cab b{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:15px}
+.pb-cab span{font-size:12px;color:var(--pb-muted)}
+.pb-cab a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--pb-verde);text-decoration:none;white-space:nowrap}
+.pb-cab a:hover{text-decoration:underline}
+.pb-x{display:none;margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--pb-muted);cursor:pointer;padding:0 4px}
+.pb-grupo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--pb-muted);margin:10px 0 6px}
+.pb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.pb-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;text-decoration:none;color:var(--pb-ink);border:1px solid transparent;min-width:0}
+.pb-item:hover{background:var(--pb-soft)}
+.pb-item.atual{background:var(--pb-lar-soft);cursor:default}
+.pb-q{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:900;font-size:11px;flex:none;letter-spacing:.02em}
+.pb-t{font-size:13px;font-weight:600;line-height:1.15;min-width:0}
+.pb-t small{display:block;font-weight:500;font-size:11px;color:var(--pb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-item.ext .pb-t::after{content:" ↗";color:var(--pb-muted);font-weight:400}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chips a{font-size:12px;font-weight:600;color:var(--pb-muted);text-decoration:none;border:1px solid var(--pb-line);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.pb-chips a:hover{color:var(--pb-ink);border-color:var(--pb-muted)}
+.pb-aviso{font-size:11.5px;color:var(--pb-muted);margin-top:10px;border-top:1px solid var(--pb-line);padding-top:8px}
+@media(max-width:640px){
+  .pb{padding:8px 12px;gap:8px;flex-wrap:nowrap}.pb-logo{height:32px}
+  .pb-marca{flex:1 1 0;min-width:0}.pb-trilha{font-size:16px;flex-wrap:nowrap;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb-trilha a.pb-pai,.pb-sep,.pb-trilha small{display:none} /* no celular o logo já leva à Central */
+  .pb-esp{display:none}.pb-sair{padding:7px 10px}
+  .pb-quem,.pb-relogio{display:none}
+  .pb-pop{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;border-radius:18px 18px 0 0;max-height:80vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .pb-x{display:block}.pb-cab a{margin-left:0;flex-basis:100%}
+  .pb-grade{grid-template-columns:1fr 1fr}
+}
+@media print{.pb{display:none!important}}
+</style>
+<script id="pb-js">
+/* BarraPop — API: BarraPop.montar(opts) → depois BarraPop.sessao() quando houver login, BarraPop.quem(nome,sub), BarraPop.sairVisivel(bool). */
+window.BarraPop=(function(){
+  'use strict';
+  var SB_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+  var SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+  var HUB_URL='https://agenciai3xdigital-crypto.github.io/painel-master-pop/';
+  var GRID='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>';
+  var O=null, el={}, carregou=false;
+
+  function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.role==='authenticated'&&(String(p.iss||'').indexOf('klcxavgxonpsbsbzqcil')>=0||p.ref==='klcxavgxonpsbsbzqcil'));} /* v1.0.1: token de login traz o projeto em iss, não em ref */
+  /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
+  function tokenPadrao(){
+    var melhor=null;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v;
+        try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}
+        var c=v&&(typeof v.access_token==='string'?v:(v.currentSession||v.session));
+        if(!c||typeof c.access_token!=='string'||!doProjeto(c.access_token))continue;
+        var exp=Number(c.expires_at)||(jwtPayload(c.access_token)||{}).exp||0;
+        if(exp*1000<Date.now()+15000)continue;
+        if(!melhor||exp>melhor.exp)melhor={t:c.access_token,exp:exp};
+      }
+    }catch(e){}
+    return Promise.resolve(melhor?melhor.t:null);
+  }
+  function rpc(nome,token,corpo,keep){
+    return fetch(SB_URL+'/rest/v1/rpc/'+nome,{method:'POST',keepalive:!!keep,
+      headers:{'apikey':SB_ANON,'Authorization':'Bearer '+token,'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(corpo||{})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }
+  function h(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function iniciais(n){var p=String(n||'').replace(/[—–-].*$/,'').trim().split(/\s+/).filter(function(w){return w.length>2||/^[A-Z0-9]+$/.test(w);});return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase();}
+  function escura(hex){var m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));if(!m)return true;var n=parseInt(m[1],16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)<150;}
+  function urlOk(u){try{var x=new URL(u,location.href);return x.protocol==='https:'?x:null;}catch(e){return null;}}
+
+  function montar(o){
+    O=o||{};var raiz=typeof O.el==='string'?document.getElementById(O.el):O.el;if(!raiz)return;
+    var extras=[];while(raiz.firstChild){extras.push(raiz.firstChild);raiz.removeChild(raiz.firstChild);}
+    raiz.className='pb'+(O.classe?' '+O.classe:'');raiz.setAttribute('role','banner');
+    var marca=h('a','pb-marca');marca.href=O.logoHref||O.central||'./';marca.title='Ir para a Central POP';
+    var img=h('img','pb-logo');img.src=O.logo||'logo-pop.png';img.alt='Rede POP Pet Center';img.onerror=function(){img.style.display='none';};marca.appendChild(img);
+    var tr=h('div','pb-trilha');
+    (O.trilha||[]).forEach(function(t){var a=h('a','pb-pai',t.nome);a.href=t.href;tr.appendChild(a);tr.appendChild(h('span','pb-sep','/'));});
+    var tit=h('span');tit.innerHTML=O.titulo||'';if(O.sub){tit.appendChild(h('small',null,O.sub));}tr.appendChild(tit);
+    marca.appendChild(tr);raiz.appendChild(marca);
+    raiz.appendChild(h('span','pb-esp'));
+    extras.forEach(function(n){raiz.appendChild(n);});
+    el.quem=h('div','pb-quem');el.quemN=h('b');el.quemS=h('span');el.quem.appendChild(el.quemN);el.quem.appendChild(el.quemS);el.quem.style.display='none';raiz.appendChild(el.quem);
+    el.btn=h('button','pb-ico');el.btn.type='button';el.btn.title='Sistemas';el.btn.setAttribute('aria-label','Sistemas');el.btn.setAttribute('aria-expanded','false');el.btn.innerHTML=GRID;el.btn.style.display='none';raiz.appendChild(el.btn);
+    if(O.sair){el.sair=h('button','pb-sair','Sair');el.sair.type='button';el.sair.id=O.sairId||'pbSair';el.sair.onclick=function(){O.sair();};if(O.sairOculto)el.sair.style.display='none';raiz.appendChild(el.sair);}
+    el.veu=h('div','pb-veu');el.pop=h('div','pb-pop');el.pop.setAttribute('role','dialog');el.pop.setAttribute('aria-label','Sistemas');
+    raiz.appendChild(el.veu);raiz.appendChild(el.pop);
+    el.btn.onclick=function(){alternar();};el.veu.onclick=fechar;
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
+    document.addEventListener('click',function(e){if(el.pop.classList.contains('on')&&!el.pop.contains(e.target)&&!el.btn.contains(e.target))fechar();});
+    if(O.quem)quem(O.quem.nome,O.quem.sub);
+    if(O.auto!==false)sessao();
+  }
+  function alternar(){el.pop.classList.contains('on')?fechar():abrir();}
+  function abrir(){el.pop.classList.add('on');el.veu.classList.add('on');el.btn.classList.add('on');el.btn.setAttribute('aria-expanded','true');}
+  function fechar(){if(!el.pop)return;el.pop.classList.remove('on');el.veu.classList.remove('on');el.btn.classList.remove('on');el.btn.setAttribute('aria-expanded','false');}
+  function quem(nome,sub){if(!el.quem)return;el.quemN.textContent=nome||'';el.quemS.textContent=sub||'';el.quem.style.display=nome?'':'none';}
+  function sairVisivel(v){if(el.sair)el.sair.style.display=v?'':'none';}
+
+  /* Carrega o menu: catálogo completo para quem está em hub_acesso; senão só os atalhos do papel (O.links). */
+  function sessao(){
+    if(!O||!el.pop)return Promise.resolve();
+    var get=O.token||tokenPadrao;
+    return Promise.resolve().then(function(){return get();}).then(function(tok){
+      if(!tok)return desenhar(null,null);
+      return rpc('barra_sistemas',tok,{}).then(function(r){desenhar(r&&r.ok?r:null,tok);});
+    }).catch(function(){desenhar(null,null);});
+  }
+  function desenhar(r,tok){
+    el.pop.innerHTML='';carregou=true;
+    var itens=r?(r.paineis||[]):[];
+    var links=(O.links||[]).filter(function(l){return urlOk(l.url);});
+    var paineis=itens.filter(function(p){return p.grupo==='painel';});
+    var bastidor=itens.filter(function(p){return p.grupo!=='painel';});
+    if(!paineis.length&&!links.length){el.btn.style.display='none';return;}
+    var cab=h('div','pb-cab');cab.appendChild(h('b',null,'Sistemas'));
+    cab.appendChild(h('span',null,r?'catálogo do Painel Master':'atalhos do seu perfil'));
+    var x=h('button','pb-x','×');x.type='button';x.setAttribute('aria-label','Fechar');x.onclick=fechar;
+    if(r){var hub=h('a',null,'Abrir Painel Master →');hub.href=HUB_URL;hub.target='_blank';hub.rel='noopener';cab.appendChild(hub);}
+    cab.appendChild(x);el.pop.appendChild(cab);
+    el.pop.appendChild(h('div','pb-grupo','Painéis'));
+    var g=h('div','pb-grade');
+    (paineis.length?paineis:links).forEach(function(p){
+      var u=urlOk(p.url);if(!u)return;
+      var atual=(p.chave&&p.chave===O.sistema);
+      var a=h(atual?'span':'a','pb-item'+(atual?' atual':''));
+      if(!atual){a.href=u.href;if(u.origin!==location.origin){a.target='_blank';a.rel='noopener';a.classList.add('ext');}
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};}
+      var q=h('span','pb-q',iniciais(p.nome));var cor=/^#[0-9a-f]{6}$/i.test(p.cor||'')?p.cor:'#00573F';q.style.background=cor;q.style.color=escura(cor)?'#fff':'#14332A';
+      var t=h('span','pb-t',p.nome);var sub=atual?'você está aqui':(p.descricao||p.sub||'');if(sub)t.appendChild(h('small',null,sub));
+      if(p.aviso)a.title=p.aviso;
+      a.appendChild(q);a.appendChild(t);g.appendChild(a);
+    });
+    el.pop.appendChild(g);
+    if(bastidor.length){
+      el.pop.appendChild(h('div','pb-grupo','Bastidor'));var c=h('div','pb-chips');
+      bastidor.forEach(function(p){var u=urlOk(p.url);if(!u)return;var a=h('a',null,p.nome+' ↗');a.href=u.href;a.target='_blank';a.rel='noopener';if(p.aviso)a.title=p.aviso;
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};c.appendChild(a);});
+      el.pop.appendChild(c);
+    }
+    if(r)el.pop.appendChild(h('div','pb-aviso','Quem vê este botão é definido em Central POP → Admin → Equipe → "Botão Sistemas". Endereços e cards: pelo Painel Master.'));
+    el.btn.style.display='';
+  }
+  return {montar:montar,sessao:sessao,quem:quem,sairVisivel:sairVisivel,fechar:fechar,rpc:rpc,token:tokenPadrao};
+})();
+</script>
+<!-- ===== fim BARRA POP ===== -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado.
+   Base: o visual da Central POP (porcelana + papel, tinta petróleo, Archivo nos títulos, Inter no texto,
+   laranja como ação principal e aba ativa). A parte "página" no fim traz só o que cada tela precisa
+   para cair nesse padrão. Para alterar o visual da rede toda: altere o bloco comum em tema-pop.snippet.html
+   e cole nas páginas. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* padrão de tela de login — cada página aponta a sua caixa para cá (parte "página") */
+
+/* ----- página: simulador-alavancas-pop.html ----- */
+:root{--bg:var(--pop-fundo);--surface:var(--pop-papel);--ink:var(--pop-tinta);--muted:var(--pop-tinta-2);--line:var(--pop-linha);--verde:var(--pop-verde);--verde-esc:var(--pop-petroleo);--laranja:var(--pop-laranja);--amarelo:var(--pop-amarelo);--verde-claro:var(--pop-verde-claro);--verde-tint:var(--pop-verde-suave);--laranja-tint:var(--pop-laranja-suave);--neg:var(--pop-verm);--neg-tint:var(--pop-verm-suave)}
+
+h1,h2{color:var(--pop-tinta)!important;font-weight:800}
+header .hex{display:none}
+.eyebrow{background:var(--pop-laranja-suave)!important;color:var(--pop-laranja-texto)!important}
+button{border-radius:var(--pop-r-sm)}
+button.primary{background:var(--pop-laranja)!important;border-color:var(--pop-laranja)!important;color:#fff!important;box-shadow:none!important;border-radius:var(--pop-r-sm)!important;font-weight:700!important}
+thead th{background:var(--pop-papel-2)!important}
+
+</style>
+<!-- ===== fim TEMA POP ===== -->
 </head>
 <body>
+<div id="barraPop"></div>
 
 <div class="wrap">
   <header>
@@ -317,6 +547,11 @@ h2{font-size:17px;font-weight:800;color:var(--verde-esc);margin:32px 0 4px}
   })();
   calc();
 })();
+</script>
+<script>/* TEMA POP: cabeçalho único (Barra POP) */
+(function(){var f=new URLSearchParams(location.search).get('fra');
+BarraPop.montar({el:'barraPop',classe:'pb-simulador',sistema:'simulador',logo:'../logo-pop.png',logoHref:'../',
+  trilha:[{nome:'Raio-X',href:'./'+(f?'?fra='+encodeURIComponent(f):'')}],titulo:'Simulador de <em>alavancas</em>',sub:'consultoria de faturamento'});})();
 </script>
 </body>
 </html>

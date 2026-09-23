@@ -298,6 +298,59 @@ window.BarraPop=(function(){
 })();
 </script>
 <!-- ===== fim BARRA POP ===== -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado.
+   Base: o visual da Central POP (porcelana + papel, tinta petróleo, Archivo nos títulos, Inter no texto,
+   laranja como ação principal e aba ativa). A parte "página" no fim traz só o que cada tela precisa
+   para cair nesse padrão. Para alterar o visual da rede toda: altere o bloco comum em tema-pop.snippet.html
+   e cole nas páginas. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* padrão de tela de login — cada página aponta a sua caixa para cá (parte "página") */
+
+/* ----- página: dash.html ----- */
+:root{--verde:var(--pop-verde);--verde2:var(--pop-petroleo);--laranja:var(--pop-laranja);--amarelo:var(--pop-amarelo);--verm:var(--pop-verm);--roxo:var(--pop-foco);--fundo:var(--pop-fundo);--papel:var(--pop-papel);--tinta:var(--pop-tinta);--tinta-suave:var(--pop-tinta-2);--linha:var(--pop-linha);--claro:var(--pop-papel-2)}
+#login{background:var(--pop-papel)!important;border:1px solid var(--pop-linha)!important;border-top:5px solid var(--pop-verde)!important;border-radius:var(--pop-r-lg)!important;box-shadow:0 8px 30px rgba(0,87,63,.08)!important;padding:28px!important}
+#login::before{content:"";display:block;height:48px;margin:0 0 14px;background:url("../logo-pop.png") left center/contain no-repeat}
+#login h2{font-family:var(--pop-fonte-titulo)!important;font-weight:800!important;font-size:24px!important;letter-spacing:-.3px;line-height:1.1;color:var(--pop-tinta)!important}
+#login label{font-size:12px!important;font-weight:600!important;color:var(--pop-tinta-2)!important}
+#login input{border:1.5px solid var(--pop-linha)!important;border-radius:var(--pop-r-sm)!important;background:#fff!important;padding:10px 12px!important;font-size:15px!important;color:var(--pop-tinta)!important;box-shadow:none!important;width:100%;box-sizing:border-box}
+#login input:focus{outline:2px solid var(--pop-laranja)!important;outline-offset:0;border-color:var(--pop-linha)!important}
+#login .btn{background:var(--pop-laranja)!important;border:0!important;color:#fff!important;border-radius:var(--pop-r-sm)!important;padding:11px!important;font-weight:700!important;font-size:15px!important;width:100%!important;box-shadow:none!important;filter:none!important}
+
+section>h2{color:var(--pop-tinta)!important;font-weight:800!important}
+.kpi .n{color:var(--pop-tinta)}
+.btn{background:var(--pop-verde)}
+.btn.claro{color:var(--pop-tinta)!important;border:1.5px solid var(--pop-linha)!important}
+.nav a:hover{background:var(--pop-papel)!important;color:var(--pop-tinta)!important}
+.filtros select{border:1.5px solid var(--pop-linha)!important}
+
+</style>
+<!-- ===== fim TEMA POP ===== -->
 </head>
 <body>
 <!-- dash v1.4: Barra POP (cabeçalho único). O botão Imprimir vai como "extra" da barra; dash.js liga Sair (id btnSair). -->

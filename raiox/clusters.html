@@ -6,12 +6,12 @@
 <title>Clusters e Score do Franqueado · Raio-X POP</title>
 <link rel="icon" href="../icone-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{--fundo:#f3f4f1;--papel:#fff;--tinta:#1c2b23;--tinta-suave:#5f6b65;--linha:#e3e6e1;--claro:#eef1ec;
 --verde:#1f5f3f;--verde-suave:#dcebe1;--faixa:#cfe3d6;--laranja:#c6521f;--laranja-suave:#fbe4d8;--ambar:#9a6a08;--ambar-suave:#fbeecd;--verm:#b23a2f;--verm-suave:#f8e0dc;--azul:#2b4f7a;--azul-suave:#e1e9f3;--hachura:repeating-linear-gradient(135deg,#dfe3dc 0 4px,transparent 4px 8px);--sombra:0 10px 40px rgba(20,40,30,.14)}
 *{box-sizing:border-box}html,body{margin:0}
-body{background:var(--fundo);color:var(--tinta);font-family:'Figtree',system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45}
+body{background:var(--fundo);color:var(--tinta);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45}
 main{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
 a{color:var(--verde)}
 h1{font-size:26px;font-weight:800;margin:0;letter-spacing:-.01em}
@@ -295,6 +295,62 @@ window.BarraPop=(function(){
 })();
 </script>
 <!-- ===== fim BARRA POP ===== -->
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado.
+   Base: o visual da Central POP (porcelana + papel, tinta petróleo, Archivo nos títulos, Inter no texto,
+   laranja como ação principal e aba ativa). A parte "página" no fim traz só o que cada tela precisa
+   para cair nesse padrão. Para alterar o visual da rede toda: altere o bloco comum em tema-pop.snippet.html
+   e cole nas páginas. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* padrão de tela de login — cada página aponta a sua caixa para cá (parte "página") */
+
+/* ----- página: clusters.html ----- */
+:root{--fundo:var(--pop-fundo);--papel:var(--pop-papel);--tinta:var(--pop-tinta);--tinta-suave:var(--pop-tinta-2);--linha:var(--pop-linha);--claro:var(--pop-fundo);--verde:var(--pop-petroleo);--verde-suave:var(--pop-verde-suave);--laranja:var(--pop-laranja);--laranja-suave:var(--pop-laranja-suave);--ambar:var(--pop-ambar);--ambar-suave:var(--pop-ambar-suave);--verm:var(--pop-verm);--verm-suave:var(--pop-verm-suave);--azul:var(--pop-azul);--azul-suave:var(--pop-azul-suave);--sombra:var(--pop-sombra-alta)}
+#login{background:var(--pop-papel)!important;border:1px solid var(--pop-linha)!important;border-top:5px solid var(--pop-verde)!important;border-radius:var(--pop-r-lg)!important;box-shadow:0 8px 30px rgba(0,87,63,.08)!important;padding:28px!important}
+#login::before{content:"";display:block;height:48px;margin:0 0 14px;background:url("../logo-pop.png") left center/contain no-repeat}
+#login h2{font-family:var(--pop-fonte-titulo)!important;font-weight:800!important;font-size:24px!important;letter-spacing:-.3px;line-height:1.1;color:var(--pop-tinta)!important}
+#login label{font-size:12px!important;font-weight:600!important;color:var(--pop-tinta-2)!important}
+#login input{border:1.5px solid var(--pop-linha)!important;border-radius:var(--pop-r-sm)!important;background:#fff!important;padding:10px 12px!important;font-size:15px!important;color:var(--pop-tinta)!important;box-shadow:none!important;width:100%;box-sizing:border-box}
+#login input:focus{outline:2px solid var(--pop-laranja)!important;outline-offset:0;border-color:var(--pop-linha)!important}
+#login .btn{background:var(--pop-laranja)!important;border:0!important;color:#fff!important;border-radius:var(--pop-r-sm)!important;padding:11px!important;font-weight:700!important;font-size:15px!important;width:100%!important;box-shadow:none!important;filter:none!important}
+.abas button{background:none!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;padding:10px 14px!important;font-weight:700!important;font-size:14px!important;color:var(--pop-tinta-2)!important;box-shadow:none!important}
+.abas button:hover{color:var(--pop-tinta)!important}
+.abas button[aria-selected="true"]{color:var(--pop-tinta)!important;border-bottom-color:var(--pop-laranja)!important;background:none!important}
+.abas{background:none!important;border:0!important;border-bottom:1px solid var(--pop-linha)!important;border-radius:0!important;padding:0!important;box-shadow:none!important;gap:2px!important}
+
+h1,.pn h2{font-weight:800}
+.card .n,.sc b,.big b{font-family:var(--pop-fonte-titulo)}
+.btn{background:#fff!important;border:1.5px solid var(--pop-linha)!important;color:var(--pop-tinta)!important;box-shadow:none!important;border-radius:var(--pop-r-sm)!important;font-weight:700!important}
+.btn.laranja{background:var(--pop-laranja)!important;border-color:var(--pop-laranja)!important;color:#fff!important;box-shadow:none!important;border-radius:var(--pop-r-sm)!important;font-weight:700!important}
+.c-at .t,.p-at,.sc.at b{color:var(--pop-laranja-texto)!important}
+.aviso{background:var(--pop-ambar-suave)!important;color:var(--pop-tinta)!important;border-left:3px solid var(--pop-ambar);border-radius:0 10px 10px 0!important}
+
+</style>
+<!-- ===== fim TEMA POP ===== -->
 </head>
 <body>
 <!-- clusters v1.0: Barra POP (cabeçalho único dos painéis). O script abaixo liga nome, Sair e o botão Sistemas. -->

@@ -1,0 +1,40 @@
+<!-- ===== TEMA POP v1.0 · 23/09/2026 · bloco-fonte da identidade visual única =====
+     Cole antes do </head> de qualquer página nova da rede, junto com a linha de fontes abaixo e depois do
+     bloco da Barra POP. Em seguida acrescente, dentro do mesmo <style>, só o que a página precisar para
+     apontar as próprias variáveis para as --pop-* (veja a parte "página" nas telas existentes). ===== -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado.
+   Base: o visual da Central POP (porcelana + papel, tinta petróleo, Archivo nos títulos, Inter no texto,
+   laranja como ação principal e aba ativa). A parte "página" no fim traz só o que cada tela precisa
+   para cair nesse padrão. Para alterar o visual da rede toda: altere o bloco comum em tema-pop.snippet.html
+   e cole nas páginas. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* padrão de tela de login — cada página aponta a sua caixa para cá (parte "página") */
+
+</style>
+<!-- ===== fim TEMA POP ===== -->

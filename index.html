@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- v8.2 · 23/09/2026 · login de franqueado criado no Raio-X não entra mais na base da agenda (Equipe hoje, responsáveis, filtros, Admin → Equipe). Identidade visual única do Sistema POP. -->
 <!-- v8.1 · 21/09/2026 · Seu dia: card de tarefa abre o pop-up; no pop-up, responsável/criador/admin acrescentam subtarefas e anotações (coluna anotacoes); quem recebeu a tarefa de outra pessoa não edita a principal — trava também no banco (trg_agenda_trava_delegada). -->
 <!-- v8.0 · 21/09/2026 · Barra POP: cabeçalho único (logo → Central, trilha, relógio só no computador, sino, botão Sistemas com o catálogo do Painel Master para quem está em hub_acesso, Sair). Some com os links soltos Raio-X/Esteira/IC. Aba Admin → Equipe ganha "Botão Sistemas" para liberar pessoas. -->
 <!-- Central POP v7.0 · 02/09/2026 · frente Fluxos (demandas) -->
@@ -759,6 +760,45 @@ window.BarraPop=(function(){
 })();
 </script>
 <!-- ===== fim BARRA POP ===== -->
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado.
+   Base: o visual da Central POP (porcelana + papel, tinta petróleo, Archivo nos títulos, Inter no texto,
+   laranja como ação principal e aba ativa). A parte "página" no fim traz só o que cada tela precisa
+   para cair nesse padrão. Para alterar o visual da rede toda: altere o bloco comum em tema-pop.snippet.html
+   e cole nas páginas. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* padrão de tela de login — cada página aponta a sua caixa para cá (parte "página") */
+
+/* ----- página: index.html ----- */
+
+/* Central POP é a referência do tema: nada a converter. */
+
+</style>
+<!-- ===== fim TEMA POP ===== -->
 </head>
 <body>
 
@@ -1220,7 +1260,7 @@ let sb=null, usuarioAtual=null, admReguaDraft=null;
 let CFG={usuarios:[],rodizio:{dupla:[],produtos:null,sabadoFixo:null,ancoraISO:'2026-07-06'}};
 let REGUAS={}, TAREFAS={}, checksHoje={}, atividades={}, agenda={};
 let ABAS=[], ITENS=[], abaAtualId=null, VIG={};
-const uPorId=id=>CFG.usuarios.find(u=>u.id===id);
+const uPorId=id=>CFG.usuarios.find(u=>u.id===id)||(CFG.foraEquipe||[]).find(u=>u.id===id); // v8.2: resolve nome de quem está fora da equipe (franqueado), sem pôr na lista
 const corDe=uid=>{const u=uPorId(uid); if(u&&u.cor)return u.cor; const i=CFG.usuarios.findIndex(x=>x.id===uid); return PALETA[((i%PALETA.length)+PALETA.length)%PALETA.length];};
 function piscar(){const el=$('statusSalvo');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1200);}
 function erroDB(e){console.error(e);alert('Erro ao salvar no banco: '+(e.message||e));}
@@ -1231,7 +1271,14 @@ function erroDB(e){console.error(e);alert('Erro ao salvar no banco: '+(e.message
 async function carregarBase(){
   const {data:perfis,error:e1}=await sb.from('perfis').select('*').order('criado_em');
   if(e1)throw e1;
-  CFG.usuarios=perfis.filter(p=>!/robo\.raiox/i.test(p.nome||'')).map(p=>({id:p.id,nome:p.nome,admin:p.is_admin,cor:p.cor,nomeSults:p.nome_sults||'',feriasAte:p.ferias_ate||null,papeis:p.papeis||[]}));
+  const todos=perfis.filter(p=>!/robo\.raiox/i.test(p.nome||'')).map(p=>({id:p.id,nome:p.nome,admin:p.is_admin,cor:p.cor,nomeSults:p.nome_sults||'',feriasAte:p.ferias_ate||null,papeis:p.papeis||[]}));
+  // v8.2: login de franqueado criado no Raio-X mora na mesma tabela perfis, mas não é equipe da agenda —
+  // fica fora de Equipe hoje, responsáveis, filtros, Insights e Admin → Equipe. Quem também tem papel da
+  // franqueadora (admin, consultor, expansão, supervisor, diretoria, canais, páginas) continua na equipe.
+  const PAPEIS_EQUIPE=['consultor','expansao','supervisor','diretoria','canais','paginas'];
+  const soFranqueado=u=>!u.admin&&u.papeis.includes('franqueado')&&!u.papeis.some(x=>PAPEIS_EQUIPE.includes(x));
+  CFG.usuarios=todos.filter(u=>!soFranqueado(u));
+  CFG.foraEquipe=todos.filter(soFranqueado);
   const {data:cfg,error:e2}=await sb.from('config_rodizio').select('*').eq('id',1).single();
   if(e2)throw e2;
   CFG.rodizio={dupla:cfg.dupla||[],produtos:cfg.produtos,sabadoFixo:cfg.sabado_fixo,ancoraISO:cfg.ancora};

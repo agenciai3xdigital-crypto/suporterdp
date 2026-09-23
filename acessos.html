@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>POP · Central de acessos</title><link rel="icon" href="logo-pop.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
+<!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+     Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
+     expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
+     Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
+     só para quem está em hub_acesso; para os outros mostra apenas os atalhos do papel (links) ou nada.
+     Para alterar o visual, altere aqui e cole o bloco inteiro nas outras páginas. ===== -->
+<style id="pb-css">
+.pb{--pb-bg:#fff;--pb-ink:#14332A;--pb-muted:#5A7268;--pb-line:#D3DFD8;--pb-soft:#EEF3F0;--pb-lar:#FF6B15;--pb-lar-soft:#FFEDE1;--pb-verde:#009150;--pb-verm:#C0392B;
+  display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--pb-bg);border-bottom:1px solid var(--pb-line);position:relative;flex-wrap:wrap;
+  font-family:'Inter',system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:var(--pb-ink);line-height:1.3;box-sizing:border-box}
+.pb *{box-sizing:border-box}
+.pb-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+.pb-logo{height:38px;width:auto;display:block}
+.pb-trilha{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:19px;letter-spacing:-.3px;line-height:1.1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pb-trilha a.pb-pai{color:var(--pb-muted);font-weight:600;font-size:14px;text-decoration:none;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
+.pb-trilha a.pb-pai:hover{color:var(--pb-lar)}
+.pb-sep{color:var(--pb-line);font-weight:400}
+.pb-trilha em{font-style:normal;color:var(--pb-lar)}
+.pb-trilha small{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:12px;color:var(--pb-muted);letter-spacing:0;margin-top:2px}
+.pb-esp{flex:1 1 8px}
+.pb-quem{font-size:12.5px;color:var(--pb-muted);text-align:right;line-height:1.25;max-width:220px}
+.pb-quem b{display:block;color:var(--pb-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-ico{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--pb-line);background:var(--pb-bg);display:grid;place-items:center;color:var(--pb-ink);cursor:pointer;position:relative;flex:none;padding:0;font:inherit}
+.pb-ico svg{width:19px;height:19px;display:block}
+.pb-ico:hover{border-color:var(--pb-muted)}
+.pb-ico.on,.pb-ico.tem{border-color:var(--pb-lar);color:var(--pb-lar)}
+.pb-ico.on{background:var(--pb-lar-soft)}
+.pb-ico:focus-visible,.pb-sair:focus-visible,.pb-item:focus-visible{outline:2px solid var(--pb-lar);outline-offset:2px}
+.pb-bd{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;line-height:17px;padding:0 4px;border-radius:9px;background:var(--pb-verm);color:#fff;font-size:10.5px;font-weight:700;text-align:center}
+.pb-sair{border:1.5px solid var(--pb-line);background:var(--pb-bg);color:var(--pb-ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.3}
+.pb-sair:hover{border-color:var(--pb-muted)}
+.pb-relogio{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;line-height:1;text-align:right}
+.pb-relogio .sync{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--pb-verde);margin-top:2px}
+.pb-veu{display:none;position:fixed;inset:0;background:rgba(20,51,42,.35);z-index:180}
+.pb-veu.on{display:block}
+.pb-pop{display:none;position:absolute;right:16px;top:calc(100% - 4px);width:min(560px,calc(100vw - 32px));background:var(--pb-bg);border:1px solid var(--pb-line);border-radius:14px;box-shadow:0 10px 30px rgba(20,51,42,.16);padding:14px;z-index:190;color:var(--pb-ink)}
+.pb-pop.on{display:block}
+.pb-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.pb-cab b{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:15px}
+.pb-cab span{font-size:12px;color:var(--pb-muted)}
+.pb-cab a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--pb-verde);text-decoration:none;white-space:nowrap}
+.pb-cab a:hover{text-decoration:underline}
+.pb-x{display:none;margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--pb-muted);cursor:pointer;padding:0 4px}
+.pb-grupo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--pb-muted);margin:10px 0 6px}
+.pb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.pb-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;text-decoration:none;color:var(--pb-ink);border:1px solid transparent;min-width:0}
+.pb-item:hover{background:var(--pb-soft)}
+.pb-item.atual{background:var(--pb-lar-soft);cursor:default}
+.pb-q{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:900;font-size:11px;flex:none;letter-spacing:.02em}
+.pb-t{font-size:13px;font-weight:600;line-height:1.15;min-width:0}
+.pb-t small{display:block;font-weight:500;font-size:11px;color:var(--pb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-item.ext .pb-t::after{content:" ↗";color:var(--pb-muted);font-weight:400}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chips a{font-size:12px;font-weight:600;color:var(--pb-muted);text-decoration:none;border:1px solid var(--pb-line);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.pb-chips a:hover{color:var(--pb-ink);border-color:var(--pb-muted)}
+.pb-aviso{font-size:11.5px;color:var(--pb-muted);margin-top:10px;border-top:1px solid var(--pb-line);padding-top:8px}
+@media(max-width:640px){
+  .pb{padding:8px 12px;gap:8px;flex-wrap:nowrap}.pb-logo{height:32px}
+  .pb-marca{flex:1 1 0;min-width:0}.pb-trilha{font-size:16px;flex-wrap:nowrap;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb-trilha a.pb-pai,.pb-sep,.pb-trilha small{display:none} /* no celular o logo já leva à Central */
+  .pb-esp{display:none}.pb-sair{padding:7px 10px}
+  .pb-quem,.pb-relogio{display:none}
+  .pb-pop{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;border-radius:18px 18px 0 0;max-height:80vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .pb-x{display:block}.pb-cab a{margin-left:0;flex-basis:100%}
+  .pb-grade{grid-template-columns:1fr 1fr}
+}
+@media print{.pb{display:none!important}}
+</style>
+<script id="pb-js">
+/* BarraPop — API: BarraPop.montar(opts) → depois BarraPop.sessao() quando houver login, BarraPop.quem(nome,sub), BarraPop.sairVisivel(bool). */
+window.BarraPop=(function(){
+  'use strict';
+  var SB_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+  var SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+  var HUB_URL='https://agenciai3xdigital-crypto.github.io/painel-master-pop/';
+  var GRID='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>';
+  var O=null, el={}, carregou=false;
+
+  function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.role==='authenticated'&&(String(p.iss||'').indexOf('klcxavgxonpsbsbzqcil')>=0||p.ref==='klcxavgxonpsbsbzqcil'));} /* v1.0.1: token de login traz o projeto em iss, não em ref */
+  /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
+  function tokenPadrao(){
+    var melhor=null;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v;
+        try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}
+        var c=v&&(typeof v.access_token==='string'?v:(v.currentSession||v.session));
+        if(!c||typeof c.access_token!=='string'||!doProjeto(c.access_token))continue;
+        var exp=Number(c.expires_at)||(jwtPayload(c.access_token)||{}).exp||0;
+        if(exp*1000<Date.now()+15000)continue;
+        if(!melhor||exp>melhor.exp)melhor={t:c.access_token,exp:exp};
+      }
+    }catch(e){}
+    return Promise.resolve(melhor?melhor.t:null);
+  }
+  function rpc(nome,token,corpo,keep){
+    return fetch(SB_URL+'/rest/v1/rpc/'+nome,{method:'POST',keepalive:!!keep,
+      headers:{'apikey':SB_ANON,'Authorization':'Bearer '+token,'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(corpo||{})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }
+  function h(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function iniciais(n){var p=String(n||'').replace(/[—–-].*$/,'').trim().split(/\s+/).filter(function(w){return w.length>2||/^[A-Z0-9]+$/.test(w);});return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase();}
+  function escura(hex){var m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));if(!m)return true;var n=parseInt(m[1],16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)<150;}
+  function urlOk(u){try{var x=new URL(u,location.href);return x.protocol==='https:'?x:null;}catch(e){return null;}}
+
+  function montar(o){
+    O=o||{};var raiz=typeof O.el==='string'?document.getElementById(O.el):O.el;if(!raiz)return;
+    var extras=[];while(raiz.firstChild){extras.push(raiz.firstChild);raiz.removeChild(raiz.firstChild);}
+    raiz.className='pb'+(O.classe?' '+O.classe:'');raiz.setAttribute('role','banner');
+    var marca=h('a','pb-marca');marca.href=O.logoHref||O.central||'./';marca.title='Ir para a Central POP';
+    var img=h('img','pb-logo');img.src=O.logo||'logo-pop.png';img.alt='Rede POP Pet Center';img.onerror=function(){img.style.display='none';};marca.appendChild(img);
+    var tr=h('div','pb-trilha');
+    (O.trilha||[]).forEach(function(t){var a=h('a','pb-pai',t.nome);a.href=t.href;tr.appendChild(a);tr.appendChild(h('span','pb-sep','/'));});
+    var tit=h('span');tit.innerHTML=O.titulo||'';if(O.sub){tit.appendChild(h('small',null,O.sub));}tr.appendChild(tit);
+    marca.appendChild(tr);raiz.appendChild(marca);
+    raiz.appendChild(h('span','pb-esp'));
+    extras.forEach(function(n){raiz.appendChild(n);});
+    el.quem=h('div','pb-quem');el.quemN=h('b');el.quemS=h('span');el.quem.appendChild(el.quemN);el.quem.appendChild(el.quemS);el.quem.style.display='none';raiz.appendChild(el.quem);
+    el.btn=h('button','pb-ico');el.btn.type='button';el.btn.title='Sistemas';el.btn.setAttribute('aria-label','Sistemas');el.btn.setAttribute('aria-expanded','false');el.btn.innerHTML=GRID;el.btn.style.display='none';raiz.appendChild(el.btn);
+    if(O.sair){el.sair=h('button','pb-sair','Sair');el.sair.type='button';el.sair.id=O.sairId||'pbSair';el.sair.onclick=function(){O.sair();};if(O.sairOculto)el.sair.style.display='none';raiz.appendChild(el.sair);}
+    el.veu=h('div','pb-veu');el.pop=h('div','pb-pop');el.pop.setAttribute('role','dialog');el.pop.setAttribute('aria-label','Sistemas');
+    raiz.appendChild(el.veu);raiz.appendChild(el.pop);
+    el.btn.onclick=function(){alternar();};el.veu.onclick=fechar;
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
+    document.addEventListener('click',function(e){if(el.pop.classList.contains('on')&&!el.pop.contains(e.target)&&!el.btn.contains(e.target))fechar();});
+    if(O.quem)quem(O.quem.nome,O.quem.sub);
+    if(O.auto!==false)sessao();
+  }
+  function alternar(){el.pop.classList.contains('on')?fechar():abrir();}
+  function abrir(){el.pop.classList.add('on');el.veu.classList.add('on');el.btn.classList.add('on');el.btn.setAttribute('aria-expanded','true');}
+  function fechar(){if(!el.pop)return;el.pop.classList.remove('on');el.veu.classList.remove('on');el.btn.classList.remove('on');el.btn.setAttribute('aria-expanded','false');}
+  function quem(nome,sub){if(!el.quem)return;el.quemN.textContent=nome||'';el.quemS.textContent=sub||'';el.quem.style.display=nome?'':'none';}
+  function sairVisivel(v){if(el.sair)el.sair.style.display=v?'':'none';}
+
+  /* Carrega o menu: catálogo completo para quem está em hub_acesso; senão só os atalhos do papel (O.links). */
+  function sessao(){
+    if(!O||!el.pop)return Promise.resolve();
+    var get=O.token||tokenPadrao;
+    return Promise.resolve().then(function(){return get();}).then(function(tok){
+      if(!tok)return desenhar(null,null);
+      return rpc('barra_sistemas',tok,{}).then(function(r){desenhar(r&&r.ok?r:null,tok);});
+    }).catch(function(){desenhar(null,null);});
+  }
+  function desenhar(r,tok){
+    el.pop.innerHTML='';carregou=true;
+    var itens=r?(r.paineis||[]):[];
+    var links=(O.links||[]).filter(function(l){return urlOk(l.url);});
+    var paineis=itens.filter(function(p){return p.grupo==='painel';});
+    var bastidor=itens.filter(function(p){return p.grupo!=='painel';});
+    if(!paineis.length&&!links.length){el.btn.style.display='none';return;}
+    var cab=h('div','pb-cab');cab.appendChild(h('b',null,'Sistemas'));
+    cab.appendChild(h('span',null,r?'catálogo do Painel Master':'atalhos do seu perfil'));
+    var x=h('button','pb-x','×');x.type='button';x.setAttribute('aria-label','Fechar');x.onclick=fechar;
+    if(r){var hub=h('a',null,'Abrir Painel Master →');hub.href=HUB_URL;hub.target='_blank';hub.rel='noopener';cab.appendChild(hub);}
+    cab.appendChild(x);el.pop.appendChild(cab);
+    el.pop.appendChild(h('div','pb-grupo','Painéis'));
+    var g=h('div','pb-grade');
+    (paineis.length?paineis:links).forEach(function(p){
+      var u=urlOk(p.url);if(!u)return;
+      var atual=(p.chave&&p.chave===O.sistema);
+      var a=h(atual?'span':'a','pb-item'+(atual?' atual':''));
+      if(!atual){a.href=u.href;if(u.origin!==location.origin){a.target='_blank';a.rel='noopener';a.classList.add('ext');}
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};}
+      var q=h('span','pb-q',iniciais(p.nome));var cor=/^#[0-9a-f]{6}$/i.test(p.cor||'')?p.cor:'#00573F';q.style.background=cor;q.style.color=escura(cor)?'#fff':'#14332A';
+      var t=h('span','pb-t',p.nome);var sub=atual?'você está aqui':(p.descricao||p.sub||'');if(sub)t.appendChild(h('small',null,sub));
+      if(p.aviso)a.title=p.aviso;
+      a.appendChild(q);a.appendChild(t);g.appendChild(a);
+    });
+    el.pop.appendChild(g);
+    if(bastidor.length){
+      el.pop.appendChild(h('div','pb-grupo','Bastidor'));var c=h('div','pb-chips');
+      bastidor.forEach(function(p){var u=urlOk(p.url);if(!u)return;var a=h('a',null,p.nome+' ↗');a.href=u.href;a.target='_blank';a.rel='noopener';if(p.aviso)a.title=p.aviso;
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};c.appendChild(a);});
+      el.pop.appendChild(c);
+    }
+    if(r)el.pop.appendChild(h('div','pb-aviso','Quem vê este botão é definido em Central POP → Admin → Equipe → "Botão Sistemas". Endereços e cards: pelo Painel Master.'));
+    el.btn.style.display='';
+  }
+  return {montar:montar,sessao:sessao,quem:quem,sairVisivel:sairVisivel,fechar:fechar,rpc:rpc,token:tokenPadrao};
+})();
+</script>
+<!-- ===== fim BARRA POP ===== -->
+
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* padrão de tela de login — cada página aponta a sua caixa para cá (parte "página") */
+
+/* ---- parte "página" · Central de acessos ---- */
+*{box-sizing:border-box}body{margin:0;background:var(--pop-fundo);color:var(--pop-tinta);font-family:var(--pop-fonte);font-size:14px;overflow-x:hidden}
+#barraPop{position:sticky;top:0;z-index:30}
+main{max-width:1180px;margin:0 auto;padding:22px 16px 60px}
+h1{font-family:var(--pop-fonte-titulo);font-weight:800;font-size:clamp(22px,2.4vw,28px);margin:0 0 4px}h1 em{font-style:normal;color:var(--pop-laranja)}
+.sub{color:var(--pop-tinta-2);margin:0 0 16px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:var(--pop-r);padding:12px 14px}.kpi b{display:block;font-family:var(--pop-fonte-titulo);font-weight:800;font-size:26px}.kpi span{font-size:12px;color:var(--pop-tinta-2)}
+.abas{display:flex;gap:4px;border-bottom:1px solid var(--pop-linha);margin-bottom:14px;overflow-x:auto}
+.aba{background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;font:inherit;font-weight:700;color:var(--pop-tinta-2);cursor:pointer;white-space:nowrap}.aba.ativa{color:var(--pop-tinta);border-bottom-color:var(--pop-laranja)}
+.ferr{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}.ferr input{flex:1;min-width:200px}
+input,select,textarea{font:inherit;border:1.5px solid var(--pop-linha);border-radius:var(--pop-r-sm);padding:9px 11px;background:#fff;color:var(--pop-tinta);width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pop-laranja);border-color:var(--pop-laranja)}
+.btn{font:inherit;font-weight:700;border:1.5px solid var(--pop-linha);background:#fff;color:var(--pop-tinta);border-radius:var(--pop-r-sm);padding:9px 14px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--pop-tinta-2)}.btn.laranja{background:var(--pop-laranja);border-color:var(--pop-laranja);color:#fff}.btn.mini{padding:5px 10px;font-size:12.5px}.btn.verm{color:var(--pop-verm)}.btn:disabled{opacity:.55;cursor:default}
+.lista{display:grid;gap:10px}
+.pessoa{background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:var(--pop-r);padding:14px 16px}.pessoa.off{opacity:.65}
+.pessoa header{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.pessoa header b{font-size:15px}
+small{display:block;color:var(--pop-tinta-2);font-size:12px;margin-top:2px;word-break:break-word}
+.acoes{display:flex;gap:6px;flex-wrap:wrap}
+.linhas{display:grid;gap:8px;margin-top:10px}.linha{display:grid;grid-template-columns:170px 1fr;gap:10px;align-items:center}
+.rot{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--pop-tinta-2)}
+.linha select{max-width:320px}
+.pilulas{display:flex;gap:6px;flex-wrap:wrap}.pil{font:inherit;font-size:12.5px;font-weight:700;border:1.5px solid var(--pop-linha);background:#fff;color:var(--pop-tinta-2);border-radius:99px;padding:5px 11px;cursor:pointer}.pil.on{background:var(--pop-tinta);border-color:var(--pop-tinta);color:#fff}
+.chave{display:flex;gap:8px;align-items:center;cursor:pointer}.chave input{width:18px;height:18px;accent-color:var(--pop-laranja)}
+.acessa{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--pop-linha-2)}.acessa .rot{margin-right:4px}
+.chip{display:inline-block;font-size:12px;background:var(--pop-papel-2);border:1px solid var(--pop-linha-2);border-radius:99px;padding:3px 9px;margin:2px 4px 2px 0}.chip b{font-weight:700}
+.tag{font-size:10.5px;font-weight:800;border-radius:99px;padding:2px 8px;background:var(--pop-laranja-suave);color:var(--pop-laranja-texto);vertical-align:middle}.tag.verm{background:var(--pop-verm-suave);color:var(--pop-verm)}
+.tabela-wrap{overflow-x:auto;background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:var(--pop-r)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--pop-tinta-2);background:var(--pop-papel-2);text-align:left;padding:10px 12px}
+td{padding:10px 12px;border-top:1px solid var(--pop-linha);vertical-align:top}tr.off td{opacity:.6}tbody tr:hover td{background:var(--pop-fundo)}
+.vazio{color:var(--pop-tinta-3)}.carregando{padding:30px;text-align:center;color:var(--pop-tinta-2)}
+.dica{font-size:13px;color:var(--pop-tinta-2);background:var(--pop-papel);border-left:3px solid var(--pop-verde);border-radius:var(--pop-r-sm);padding:10px 12px}
+.aviso.erro{background:var(--pop-verm-suave);border-left:3px solid var(--pop-verm);padding:12px 14px;border-radius:var(--pop-r-sm)}
+dialog{border:0;border-radius:var(--pop-r-lg);box-shadow:var(--pop-sombra-alta);padding:0;width:min(480px,calc(100% - 24px))}dialog::backdrop{background:rgba(20,51,42,.35)}
+#jf{padding:20px}#jf h2{font-family:var(--pop-fonte-titulo);font-size:19px;margin:0 0 12px}.jc label{display:block;font-size:13px;font-weight:600;margin-bottom:10px}.jc label input{margin-top:4px}
+.jc fieldset{border:0;padding:0;margin:0 0 8px}.jc legend{font-size:13px;font-weight:600;margin-bottom:6px}.jc label.ck{display:flex;gap:8px;align-items:center;font-weight:500}.jc label.ck input{width:auto;margin:0}
+.jb{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.erro-j{color:var(--pop-verm);font-size:13px;min-height:16px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--pop-tinta);color:#fff;padding:12px 18px;border-radius:10px;z-index:300;max-width:calc(100% - 32px)}
+.login-wrap{min-height:70vh;display:grid;place-items:center}.login{width:100%;max-width:420px;background:#fff;border:1px solid var(--pop-linha);border-top:5px solid var(--pop-verde);border-radius:var(--pop-r-lg);box-shadow:0 8px 30px rgba(0,87,63,.08);padding:28px}
+.login img{height:48px;display:block;margin-bottom:12px}.login h1{font-size:24px}.login p{font-size:13px;color:var(--pop-tinta-2)}.login label{display:block;font-size:13px;font-weight:600;margin-bottom:10px}.login .btn{width:100%;margin-top:6px}
+@media(max-width:760px){.kpis{grid-template-columns:1fr 1fr}.linha{grid-template-columns:1fr;gap:4px}.linha select{max-width:none}}
+</style>
+</head><body>
+<div id="barraPop"></div>
+<main id="main"><div class="carregando">Carregando…</div></main>
+<dialog id="janela"></dialog>
+<noscript>Ative o JavaScript para usar a Central de acessos.</noscript>
+<script>
+/* Central de acessos · v1.0 · 23/09/2026 · só admin
+   Um lugar para ver e mudar quem acessa o quê na rede. Não cria lista paralela: lê e grava onde cada painel já decide
+   (perfis.is_admin, perfis.papeis, hub_acesso, campo.members, franqueado_lojas) pelas RPCs acessos_* e pela função
+   raiox-franqueados (logins). Painel IC e Potencial ficam em outro banco, com login próprio: aparecem só como informação. */
+'use strict';
+const SB_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co', SB_REF = 'klcxavgxonpsbsbzqcil';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+const SB_KEY = 'sb-' + SB_REF + '-auth-token', FN_FQ = SB_URL + '/functions/v1/raiox-franqueados', VERSAO = 'v1.0';
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dataBR = v => v ? new Date(v).toLocaleDateString('pt-BR') : 'nunca entrou';
+const horaBR = v => v ? new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+
+/* ---------- sessão (a mesma da Central) ---------- */
+function jwtP(t) { try { return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { return null; } }
+function sessao() { let m = null; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); let v; try { v = JSON.parse(localStorage.getItem(k)); } catch { continue; } const c = v && (typeof v.access_token === 'string' ? v : (v.currentSession || v.session)); if (!c || typeof c.access_token !== 'string') continue; const p = jwtP(c.access_token); if (!p || p.role !== 'authenticated' || !(String(p.iss || '').includes(SB_REF) || p.ref === SB_REF)) continue; const exp = Number(c.expires_at) || p.exp || 0; if (!m || exp > m.exp) m = { ...c, exp, _key: k }; } } catch { } return m; }
+function guardar(s) { const exp = s.expires_at || Math.floor(Date.now() / 1000) + (Number(s.expires_in) || 3600); try { localStorage.setItem(SB_KEY, JSON.stringify({ access_token: s.access_token, refresh_token: s.refresh_token, token_type: 'bearer', expires_in: s.expires_in || 3600, expires_at: exp, user: s.user || null })); } catch { } }
+let renovando = null;
+async function token() { const s = sessao(); if (!s) return null; if (s.exp * 1000 > Date.now() + 60000) return s.access_token; if (!s.refresh_token) return null;
+  renovando = renovando || (async () => { try { const r = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: SB_ANON, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: s.refresh_token }) }); if (!r.ok) { const n = sessao(); return n && n.exp * 1000 > Date.now() + 15000 ? n.access_token : null; } const d = await r.json(); guardar(d); return d.access_token; } catch { return null; } finally { setTimeout(() => { renovando = null; }, 0); } })();
+  return renovando; }
+async function entrar(email, senha) { const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: SB_ANON, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: String(email).trim().toLowerCase(), password: senha }) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw Error(/invalid/i.test(d.error_description || d.msg || d.error || '') ? 'E-mail ou senha não conferem.' : 'Não foi possível entrar agora.'); guardar(d); }
+async function sair() { const t = await token(); if (t) { try { await fetch(SB_URL + '/auth/v1/logout?scope=local', { method: 'POST', headers: { apikey: SB_ANON, Authorization: 'Bearer ' + t } }); } catch { } } const s = sessao(); try { if (s?._key) localStorage.removeItem(s._key); localStorage.removeItem(SB_KEY); } catch { } location.reload(); }
+async function rpc(nome, corpo) { const t = await token(); if (!t) throw Error('Entre de novo com o seu login.'); const r = await fetch(SB_URL + '/rest/v1/rpc/' + nome, { method: 'POST', headers: { apikey: SB_ANON, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo || {}) }); const d = await r.json().catch(() => null); if (!r.ok) throw Error(String((d && d.message) || 'Não foi possível concluir.').replace(/^acessos: /, '')); return d; }
+async function fq(corpo) { const t = await token(); if (!t) throw Error('Entre de novo com o seu login.'); const r = await fetch(FN_FQ, { method: 'POST', headers: { apikey: SB_ANON, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }); const d = await r.json().catch(() => ({})); if (!r.ok) throw Error(d.erro || 'Não foi possível concluir.'); return d; }
+
+/* ---------- regras de cada painel (espelho do código de cada tela, conferido em 23/09/2026) ---------- */
+const PAPEIS = [['consultor', 'Consultor'], ['supervisor', 'Supervisor'], ['diretoria', 'Diretoria'], ['expansao', 'Expansão'], ['canais', 'Canais digitais'], ['paginas', 'Editor de páginas']];
+const ehFranq = p => !p.is_admin && p.papeis.includes('franqueado');
+function paineisDe(p) {
+  const tem = x => p.papeis.includes(x), a = p.is_admin, soFranq = ehFranq(p) && !p.papeis.some(x => PAPEIS.some(([k]) => k === x));
+  const out = [];
+  if (!soFranq) out.push(['Central POP', a ? 'admin' : 'equipe']);
+  if (a) out.push(['Raio-X', 'rede toda']); else if (ehFranq(p)) out.push(['Raio-X', p.lojas.length ? 'lojas ' + p.lojas.join(', ') : 'sem loja ligada']); else if (tem('consultor')) out.push(['Raio-X', 'carteira: ' + p.carteira + ' lojas']); else out.push(['Raio-X', 'rede']);
+  if (a || tem('expansao')) out.push(['Esteira', 'edita']); else if (tem('diretoria')) out.push(['Esteira', 'leitura']);
+  if (a || tem('canais')) out.push(['Canais digitais', a ? 'admin' : 'papel']);
+  if (a || tem('paginas')) out.push(['Editor de páginas', a ? 'admin' : 'papel']);
+  if (a) out.push(['Consultoria de campo', 'admin (corrige dados)']); else if (p.campo === 'manager') out.push(['Consultoria de campo', 'gestor']); else if (p.campo === 'consultant') out.push(['Consultoria de campo', 'consultor']); else if (ehFranq(p)) out.push(['Consultoria de campo', 'tarefas da loja']);
+  if (p.sistemas) out.push(['Painel Master e botão Sistemas', 'liberado']);
+  return out;
+}
+
+/* ---------- estado e desenho ---------- */
+let D = null, FQ = null, aba = 'equipe', busca = '';
+function toast(t) { $('.toast')?.remove(); const e = document.createElement('div'); e.className = 'toast'; e.role = 'status'; e.textContent = t; document.body.append(e); setTimeout(() => e.remove(), 4500); }
+function senhaNova() { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789', v = new Uint32Array(10); crypto.getRandomValues(v); return Array.from(v, x => a[x % a.length]).join(''); }
+function lojaNome(f) { return (D && D.lojas_nome && D.lojas_nome[String(f)]) || ''; }
+
+async function carregar() {
+  try { D = await rpc('acessos_listar'); } catch (e) { $('#main').innerHTML = `<div class="aviso erro">${esc(e.message)}${/administrador/.test(e.message) ? ' Esta página é só para administradores.' : ''}</div>`; return; }
+  const eu = D.pessoas.find(p => p.id === D.eu); if (eu && window.BarraPop) BarraPop.quem(eu.nome, 'admin · ' + VERSAO);
+  desenhar(); if (aba === 'franq') carregarFq(); if (aba === 'hist') carregarHist();
+}
+function desenhar() {
+  const equipe = D.pessoas.filter(p => !ehFranq(p)), franqs = D.pessoas.filter(ehFranq);
+  $('#main').innerHTML = `<h1>Central de <em>acessos</em></h1><p class="sub">Quem acessa o quê em cada painel da rede. Toda mudança vale na hora e fica no histórico.</p>
+  <div class="kpis"><div class="kpi"><b>${equipe.length}</b><span>pessoas da equipe</span></div><div class="kpi"><b>${equipe.filter(p => p.is_admin).length}</b><span>admins</span></div><div class="kpi"><b>${franqs.length}</b><span>logins de franqueado</span></div><div class="kpi"><b>${equipe.filter(p => p.sistemas).length}</b><span>com botão Sistemas</span></div></div>
+  <nav class="abas" role="tablist">${[['equipe', 'Equipe'], ['franq', 'Franqueados'], ['regras', 'Painéis e regras'], ['hist', 'Histórico']].map(([k, t]) => `<button role="tab" class="aba ${aba === k ? 'ativa' : ''}" data-aba="${k}" aria-selected="${aba === k}">${t}</button>`).join('')}</nav>
+  <section id="corpo"></section>`;
+  desenharAba();
+}
+function desenharAba() {
+  const c = $('#corpo'); if (!c) return;
+  if (aba === 'equipe') c.innerHTML = abaEquipe();
+  if (aba === 'franq') c.innerHTML = FQ ? abaFranq() : '<div class="carregando">Carregando franqueados…</div>';
+  if (aba === 'regras') c.innerHTML = abaRegras();
+  if (aba === 'hist') c.innerHTML = '<div class="carregando">Carregando histórico…</div>';
+}
+function abaEquipe() {
+  const q = busca.trim().toLowerCase();
+  const lista = D.pessoas.filter(p => !ehFranq(p)).filter(p => !q || (p.nome + ' ' + p.email).toLowerCase().includes(q));
+  return `<div class="ferr"><input id="busca" type="search" placeholder="Buscar por nome ou e-mail" value="${esc(busca)}" aria-label="Buscar"><button class="btn laranja" data-acao="novo-equipe">+ Novo login da equipe</button></div>
+  <div class="lista">${lista.map(p => cartaoPessoa(p)).join('') || '<p class="vazio">Ninguém encontrado.</p>'}</div>`;
+}
+function cartaoPessoa(p) {
+  const eu = p.id === D.eu, pain = paineisDe(p);
+  return `<article class="pessoa ${p.desativado ? 'off' : ''}" data-id="${p.id}">
+   <header><div><b>${esc(p.nome)}</b>${eu ? ' <span class="tag">você</span>' : ''}${p.desativado ? ' <span class="tag verm">desativado</span>' : ''}<small>${esc(p.email || '')} · último acesso: ${esc(dataBR(p.ultimo_login))}</small></div>
+    <div class="acoes">${!eu && !p.is_admin ? `<button class="btn mini" data-acao="senha" data-id="${p.id}">Trocar senha</button><button class="btn mini ${p.desativado ? '' : 'verm'}" data-acao="ativo" data-id="${p.id}" data-ativo="${p.desativado}">${p.desativado ? 'Reativar' : 'Desativar'}</button>` : ''}</div></header>
+   <div class="linhas">
+    <div class="linha"><span class="rot">Admin</span><label class="chave"><input type="checkbox" data-acao="admin" data-id="${p.id}" ${p.is_admin ? 'checked' : ''} ${eu ? 'disabled title="Você não pode tirar o próprio admin"' : ''}><span>${p.is_admin ? 'sim · vê e muda tudo' : 'não'}</span></label></div>
+    <div class="linha"><span class="rot">Papéis</span><div class="pilulas">${PAPEIS.map(([k, t]) => `<button class="pil ${p.papeis.includes(k) ? 'on' : ''}" data-acao="papel" data-id="${p.id}" data-papel="${k}" aria-pressed="${p.papeis.includes(k)}">${t}</button>`).join('')}</div></div>
+    <div class="linha"><span class="rot">Consultoria de campo</span><select data-acao="campo" data-id="${p.id}" aria-label="Consultoria de campo"><option value="" ${!p.campo ? 'selected' : ''}>${p.is_admin ? 'como admin' : 'sem acesso'}</option><option value="consultant" ${p.campo === 'consultant' ? 'selected' : ''}>consultor (faz a conferência)</option><option value="manager" ${p.campo === 'manager' ? 'selected' : ''}>gestor (valida)</option></select></div>
+    <div class="linha"><span class="rot">Botão Sistemas</span><label class="chave"><input type="checkbox" data-acao="sistemas" data-id="${p.id}" ${p.sistemas ? 'checked' : ''} ${eu && p.sistemas ? 'disabled title="Você não pode tirar o próprio acesso"' : ''}><span>${p.sistemas ? 'vê o catálogo e o Painel Master' : 'só os atalhos do papel'}</span></label></div>
+   </div>
+   <div class="acessa"><span class="rot">Acessa hoje</span>${pain.map(([n, c]) => `<span class="chip"><b>${esc(n)}</b> ${esc(c)}</span>`).join('')}</div>
+  </article>`;
+}
+async function carregarFq() { try { FQ = await fq({ acao: 'listar' }); } catch (e) { FQ = { erro: e.message, franqueados: [] }; } if (aba === 'franq') desenharAba(); }
+function abaFranq() {
+  if (FQ.erro) return `<div class="aviso erro">${esc(FQ.erro)}</div>`;
+  const q = busca.trim().toLowerCase(), lista = (FQ.franqueados || []).filter(p => !q || (p.nome + ' ' + (p.email || '') + ' ' + p.lojas.join(' ')).toLowerCase().includes(q));
+  return `<p class="dica">O login do franqueado é um só: com ele, o franqueado vê o Raio-X e as tarefas das lojas dele. Consultores do Raio-X e o consultor de campo também criam logins, só nas lojas deles.</p>
+  <div class="ferr"><input id="busca" type="search" placeholder="Buscar por nome, e-mail ou FRA" value="${esc(busca)}" aria-label="Buscar"><button class="btn laranja" data-acao="novo-franq">+ Novo login de franqueado</button></div>
+  <div class="tabela-wrap"><table><thead><tr><th>Franqueado</th><th>Lojas</th><th>Último acesso</th><th></th></tr></thead><tbody>${lista.map(p => `<tr class="${p.banido ? 'off' : ''}"><td><b>${esc(p.nome)}</b>${p.banido ? ' <span class="tag verm">desativado</span>' : ''}<small>${esc(p.email || '')}</small></td><td>${p.lojas.map(f => `<span class="chip"><b>FRA ${f}</b> ${esc(lojaNome(f))}</span>`).join('') || '<span class="vazio">sem loja</span>'}</td><td>${esc(dataBR(p.ultimo_login))}<small>${p.n30} acesso(s) em 30 dias</small></td><td class="acoes"><button class="btn mini" data-acao="fq-senha" data-id="${p.id}">Senha</button><button class="btn mini" data-acao="fq-lojas" data-id="${p.id}">Lojas</button>${p.banido ? '' : `<button class="btn mini verm" data-acao="fq-desativar" data-id="${p.id}">Desativar</button>`}</td></tr>`).join('') || '<tr><td colspan="4" class="vazio">Nenhum franqueado.</td></tr>'}</tbody></table></div>`;
+}
+function abaRegras() {
+  const R = [
+    ['Central POP', 'Toda a equipe. Login só de franqueado vai direto para o Raio-X.', 'Admin: esta página (Admin) · equipe: qualquer papel'],
+    ['Raio-X POP', 'Admin: rede toda. Consultor: carteira dele (lojas em que é o consultor). Franqueado: só as lojas dele. Demais da equipe: rede.', 'Papel Consultor + carteira na Central · lojas do franqueado aqui'],
+    ['Esteira de Expansão', 'Admin e Expansão editam; Diretoria só lê.', 'Papéis Expansão / Diretoria'],
+    ['Canais digitais', 'Admin e papel Canais digitais.', 'Papel Canais digitais'],
+    ['Editor de páginas', 'Admin e papel Editor de páginas.', 'Papel Editor de páginas'],
+    ['Consultoria de campo', 'Admin: tudo, inclusive corrigir dados dos painéis. Gestor: valida. Consultor: conferência das lojas e login de franqueado. Franqueado: tarefas da loja.', 'Campo "Consultoria de campo" · franqueado pela lista de franqueados'],
+    ['Painel Master e botão Sistemas', 'Quem tem o botão Sistemas ligado vê o catálogo completo e entra no Painel Master. Os demais veem só os atalhos do papel.', 'Chave "Botão Sistemas"'],
+    ['Inteligência Comercial e Potencial das lojas', 'Outro banco (rede-pop-compras), com login próprio. Não é gerido aqui.', 'Painel IC'],
+  ];
+  const cards = (D.paineis || []).filter(x => x.so_perfis && x.so_perfis.length);
+  return `<div class="tabela-wrap"><table><thead><tr><th>Painel</th><th>Quem entra</th><th>Onde se muda</th></tr></thead><tbody>${R.map(r => `<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</tbody></table></div>
+  ${cards.length ? `<p class="dica">Cards do botão Sistemas com público restrito: ${cards.map(x => `<b>${esc(x.nome)}</b> (${x.so_perfis.map(id => esc((D.pessoas.find(p => p.id === id) || {}).nome || 'removido')).join(', ')})`).join(' · ')}. Esse filtro só esconde o card do menu; ajuste pelo Painel Master.</p>` : ''}`;
+}
+async function carregarHist() { let h; try { h = await rpc('acessos_historico'); } catch (e) { $('#corpo').innerHTML = `<div class="aviso erro">${esc(e.message)}</div>`; return; }
+  if (aba !== 'hist') return; $('#corpo').innerHTML = `<div class="tabela-wrap"><table><thead><tr><th>Quando</th><th>Quem fez</th><th>Em quem</th><th>O quê</th><th>De → para</th></tr></thead><tbody>${h.map(x => `<tr><td>${esc(horaBR(x.em))}</td><td>${esc(x.autor || '—')}</td><td>${esc(x.alvo || '—')}</td><td>${esc(x.acao)}</td><td>${esc(x.antes ?? '')}${x.antes != null || x.depois != null ? ' → ' : ''}${esc(x.depois ?? '')}</td></tr>`).join('') || '<tr><td colspan="5" class="vazio">Nenhuma mudança registrada ainda.</td></tr>'}</tbody></table></div>`; }
+
+/* ---------- janelas ---------- */
+function janela(titulo, corpo, onOk, rotulo = 'Confirmar') {
+  const d = $('#janela'); d.innerHTML = `<form method="dialog" id="jf"><h2>${esc(titulo)}</h2><div class="jc">${corpo}</div><div class="erro-j" role="alert"></div><div class="jb"><button type="button" class="btn" data-fechar>Voltar</button><button class="btn laranja">${esc(rotulo)}</button></div></form>`;
+  d.showModal(); d.querySelector('[data-fechar]').onclick = () => d.close();
+  d.querySelector('#jf').onsubmit = async ev => { ev.preventDefault(); const b = d.querySelector('.laranja'); b.disabled = true; d.querySelector('.erro-j').textContent = ''; try { const r = await onOk(new FormData(ev.target)); if (r !== false) d.close(); } catch (e) { d.querySelector('.erro-j').textContent = e.message; } finally { b.disabled = false; } };
+}
+function mensagem(nome, email, senha, url) { return `Olá, ${nome}! Seu acesso à Rede POP está pronto.\n\nEndereço: ${url}\nE-mail: ${email}\nSenha: ${senha}`; }
+function mostrarMensagem(txt) { janela('Envie ao usuário', `<p>Mande por um canal seguro. A senha não aparece de novo depois que você fechar.</p><textarea id="msg" rows="7" readonly>${esc(txt)}</textarea>`, async () => { try { await navigator.clipboard.writeText(txt); toast('Mensagem copiada.'); } catch { $('#msg').select(); toast('Selecione e copie.'); return false; } }, 'Copiar mensagem'); }
+
+/* ---------- eventos ---------- */
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.aba) { aba = b.dataset.aba; busca = ''; desenhar(); if (aba === 'franq' && !FQ) carregarFq(); if (aba === 'hist') carregarHist(); return; }
+  const a = b.dataset.acao, id = b.dataset.id, p = D && D.pessoas.find(x => x.id === id);
+  if (a === 'papel') { b.disabled = true; try { await rpc('acessos_papel', { p_perfil: id, p_papel: b.dataset.papel, p_ligar: !p.papeis.includes(b.dataset.papel) }); toast('Papel atualizado.'); await carregar(); } catch (er) { toast(er.message); b.disabled = false; } return; }
+  if (a === 'novo-equipe') { janela('Novo login da equipe', `<label>Nome<input name="nome" required maxlength="120"></label><label>E-mail<input name="email" type="email" required></label><label>Senha inicial<input name="senha" required minlength="8" value="${senhaNova()}"></label><fieldset><legend>Papéis</legend>${PAPEIS.map(([k, t]) => `<label class="ck"><input type="checkbox" name="papeis" value="${k}"> ${t}</label>`).join('')}</fieldset><p class="dica">Admin, Consultoria de campo e botão Sistemas você liga depois, na lista.</p>`,
+    async f => { const nome = f.get('nome').trim(), email = f.get('email').trim().toLowerCase(), senha = f.get('senha'); await fq({ acao: 'equipe_criar', nome, email, senha, papeis: f.getAll('papeis') }); await carregar(); setTimeout(() => mostrarMensagem(mensagem(nome, email, senha, 'https://agenciai3xdigital-crypto.github.io/suporterdp/')), 50); }, 'Criar login'); return; }
+  if (a === 'senha') { janela('Trocar senha · ' + p.nome, `<label>Nova senha<input name="senha" required minlength="8" value="${senhaNova()}"></label>`, async f => { const s = f.get('senha'); await fq({ acao: 'equipe_senha', user_id: id, senha: s }); setTimeout(() => mostrarMensagem(mensagem(p.nome, p.email, s, 'https://agenciai3xdigital-crypto.github.io/suporterdp/')), 50); }); return; }
+  if (a === 'ativo') { const ligar = b.dataset.ativo === 'true'; janela((ligar ? 'Reativar ' : 'Desativar ') + p.nome, `<p>${ligar ? 'O login volta a entrar com a mesma senha.' : 'O login deixa de entrar em todos os painéis e perde o botão Sistemas. Os papéis ficam guardados para uma reativação.'}</p>`, async () => { await fq({ acao: 'equipe_ativo', user_id: id, ativo: ligar }); toast(ligar ? 'Login reativado.' : 'Login desativado.'); await carregar(); }); return; }
+  const f = FQ && (FQ.franqueados || []).find(x => x.id === id);
+  if (a === 'novo-franq') { janela('Novo login de franqueado', `<label>Nome<input name="nome" required maxlength="120"></label><label>E-mail<input name="email" type="email" required></label><label>Senha inicial<input name="senha" required minlength="8" value="${senhaNova()}"></label><label>Lojas (FRA, separadas por vírgula)<input name="fras" required placeholder="ex.: 12, 45" inputmode="numeric"></label>`,
+    async fd => { const nome = fd.get('nome').trim(), email = fd.get('email').trim().toLowerCase(), senha = fd.get('senha'), fras = String(fd.get('fras')).split(/[^0-9]+/).filter(Boolean).map(Number); await fq({ acao: 'criar', nome, email, senha, fras }); FQ = null; await carregar(); carregarFq(); setTimeout(() => mostrarMensagem(mensagem(nome, email, senha, 'https://agenciai3xdigital-crypto.github.io/suporterdp/raiox/') + '\n\nCom esse login você vê o Raio-X da sua loja e as tarefas liberadas pela franqueadora.'), 50); }, 'Criar login'); return; }
+  if (a === 'fq-senha') { janela('Trocar senha · ' + f.nome, `<label>Nova senha<input name="senha" required minlength="8" value="${senhaNova()}"></label>`, async fd => { const s = fd.get('senha'); await fq({ acao: 'senha', user_id: id, senha: s }); setTimeout(() => mostrarMensagem(mensagem(f.nome, f.email, s, 'https://agenciai3xdigital-crypto.github.io/suporterdp/raiox/')), 50); }); return; }
+  if (a === 'fq-lojas') { janela('Lojas · ' + f.nome, `<label>Lojas (FRA, separadas por vírgula)<input name="fras" value="${esc(f.lojas.join(', '))}" inputmode="numeric"></label><p class="dica">Até 3 logins por loja. Deixar vazio desliga todas as lojas.</p>`, async fd => { const fras = String(fd.get('fras')).split(/[^0-9]+/).filter(Boolean).map(Number); await fq({ acao: 'lojas', user_id: id, fras }); toast('Lojas atualizadas.'); FQ = null; await carregar(); carregarFq(); }); return; }
+  if (a === 'fq-desativar') { janela('Desativar ' + f.nome, '<p>O login deixa de entrar no Raio-X e no portal de tarefas, e as lojas são desligadas.</p>', async () => { await fq({ acao: 'desativar', user_id: id }); toast('Login desativado.'); FQ = null; await carregar(); carregarFq(); }); return; }
+});
+document.addEventListener('change', async e => {
+  const t = e.target, a = t.dataset.acao, id = t.dataset.id; if (!a) return; t.disabled = true;
+  try {
+    if (a === 'admin') await rpc('acessos_admin', { p_perfil: id, p_ligar: t.checked });
+    if (a === 'sistemas') await rpc('acessos_sistemas', { p_perfil: id, p_ligar: t.checked });
+    if (a === 'campo') await rpc('acessos_campo', { p_perfil: id, p_papel: t.value || null });
+    toast('Acesso atualizado.'); await carregar();
+  } catch (er) { toast(er.message); await carregar(); }
+});
+let tBusca; document.addEventListener('input', e => { if (e.target.id !== 'busca') return; clearTimeout(tBusca); busca = e.target.value; tBusca = setTimeout(() => { const pos = e.target.selectionStart; desenharAba(); const i = $('#busca'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } }, 200); });
+
+/* ---------- início ---------- */
+function telaLogin() {
+  $('#main').innerHTML = `<div class="login-wrap"><form class="login" id="lf"><img src="logo-pop.png" alt="Rede POP Pet Center"><h1>Central de acessos</h1><p>Só para administradores. Use o mesmo e-mail e senha da Central POP.</p><label>E-mail<input name="email" type="email" autocomplete="username" required></label><label>Senha<input name="senha" type="password" autocomplete="current-password" required></label><button class="btn laranja">Entrar</button><div class="erro-j" role="alert"></div></form></div>`;
+  $('#lf').onsubmit = async ev => { ev.preventDefault(); const f = ev.target, b = f.querySelector('button'); b.disabled = true; try { await entrar(f.email.value, f.senha.value); BarraPop.sairVisivel(true); BarraPop.sessao(); carregar(); } catch (er) { f.querySelector('.erro-j').textContent = er.message; b.disabled = false; } };
+}
+BarraPop.montar({ el: 'barraPop', logo: 'logo-pop.png', central: './', trilha: [{ nome: 'Central POP', href: './' }], titulo: 'Central de <em>acessos</em>', sub: 'quem acessa o quê', sistema: 'acessos', sair, sairOculto: true, auto: false });
+token().then(t => { if (t) { BarraPop.sairVisivel(true); BarraPop.sessao(); carregar(); } else telaLogin(); });
+
+</script>
+</body></html>

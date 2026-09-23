@@ -124,6 +124,8 @@
   const ordemSev = { alta: 0, media: 1, baixa: 2 };
   R.tarefas.sort((a, b) => ordemSev[a.sev] - ordemSev[b.sev]);
   TASK_TEXT.custoZero = d => ({ titulo: 'Cadastrar custo nos produtos sem custo', desc: `${pc(d.pct)} da receita de produto (${kmil(d.valor)}) está sem custo cadastrado no One Pet — a margem reportada fica inflada e, acima de 20%, a loja fica sem nota. Cadastrar o custo nos itens (a maior parte costuma ser granel/balança) antes do próximo fechamento.` });
+  // v3.5: erros de fracionamento (motor v2.2) — custo da embalagem fechada lançado na unidade vendida
+  TASK_TEXT.fracionamento = d => ({ titulo: `Corrigir fracionamento no cadastro: ${br(d.n)} produto${d.n === 1 ? '' : 's'}`, desc: `Produtos vendidos por unidade ou kg estão com o custo da embalagem fechada (caixa, fardo, saco) — por isso aparecem ${kmil(d.prejuizo)} de "prejuízo" que não existe e a margem reportada cai. Maior caso: ${d.pior}. No One Pet, conferir no cadastro de cada produto a unidade de compra × unidade de venda (fator de conversão) e o custo; se a nota entrou com a caixa como 1 unidade, corrigir a entrada. A lista completa está na seção "Erros de fracionamento" do diagnóstico.` });
   R.tarefas = R.tarefas.filter(t => TASK_TEXT[t.chave]);
   // nota oficial (com trava de custo sem cadastro) prevalece sobre a nota crua do motor
   const scoreOficial = S.score;
@@ -133,6 +135,7 @@
   const lojaLabel = (F.nome || ('FRA ' + FRA)) + ' · FRA ' + FRA;
   window.__diagR = R; rx.state.R = R; rx.state.lojaLabel = lojaLabel;
   rep.innerHTML = buildReportHTML(R, { lojaLabel });
+  inserirFracionamento();
   window.__rxAchadosDB = true;
   rx.initResgate(R); initChartHovers(); rx.initTarefas(); await ligarAchados();
   if (window.parent !== window) document.body.classList.add('embed');
@@ -168,6 +171,49 @@
     if (ev.data.raiox === 'aba' && window.__rxIr) window.__rxIr(String(ev.data.aba), false);
     if (ev.data.raiox === 'exportar') { const b = document.getElementById(String(ev.data.botao)); if (b && /^btn[A-Za-z0-9]+$/.test(String(ev.data.botao))) b.click(); }
   });
+
+  /* ===== v3.5 · erros de fracionamento: seção no Diagnóstico, logo antes do Gate 0 ===== */
+  function inserirFracionamento() {
+    const Fr = R.fracionamento;
+    if (!Fr || !Fr.n) return;
+    const rs = v => v == null || !isFinite(v) ? '—' : 'R$ ' + br(v, v < 100 ? 2 : 0);
+    const dt = v => { const x = v ? new Date(v) : null; return x && !isNaN(x) ? x.toLocaleDateString('pt-BR') : '—'; };
+    const fat = i => i.fator == null ? '—' : '≈' + br(i.fator, i.fator >= 10 ? 0 : 1) + '×';
+    const linhas = Fr.itens.map(i => `<tr>
+      <td><b>${esc(i.produto)}</b><div class="note" style="margin:2px 0 0">${esc(i.grupo || '')} · ${br(i.linhas)} venda${i.linhas === 1 ? '' : 's'} · ${dt(i.dataIni)} a ${dt(i.dataFim)}</div></td>
+      <td class="num">${rs(i.precoUn)}</td>
+      <td class="num"><b style="color:var(--alerta)">${rs(i.custoUn)}</b></td>
+      <td class="num" title="custo lançado ÷ ${i.fatorBase === 'custo' ? 'custo normal do produto' : 'preço de venda'} — fica perto do tamanho da embalagem">${fat(i)}</td>
+      <td>${i.nf ? `NF ${esc(i.nf.nf || '?')} · ${dt(i.nf.d)}<div class="note" style="margin:2px 0 0">${esc(i.nf.fornecedor || '')} · ${rs(i.nf.custo)}/un</div>` : '<span class="note">cadastro do produto</span>'}</td>
+      <td class="num"><b>${kmil(i.prejuizo)}</b></td></tr>`).join('');
+    const html = `<section id="fracionamento"><div class="wrap">
+      <div class="sec-head"><h2>Erros de fracionamento</h2><span class="hint">Custo da embalagem fechada (caixa, fardo, saco) lançado na unidade ou no kg vendido — é cadastro, não prejuízo</span></div>
+      <div class="kpi-grid num" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+        <div class="kpi"><div class="lab">Produtos a corrigir</div><div class="val" style="color:var(--alerta)">${br(Fr.n)}</div></div>
+        <div class="kpi"><div class="lab">"Prejuízo" que não existe</div><div class="val" style="color:var(--alerta)">${kmil(Fr.prejuizo)}</div></div>
+        <div class="kpi"><div class="lab">Do custo da loja é fantasma</div><div class="val">${pc(Fr.pctCusto)}</div></div>
+        <div class="kpi"><div class="lab">Vendas fora da margem</div><div class="val">${br(Fr.linhas)}</div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><h3 style="flex:1">Produtos com custo de embalagem na unidade</h3><button type="button" class="btn" id="btnCopiarFrac" style="border:1.5px solid var(--linha);background:#fff;border-radius:9px;padding:7px 12px;font-weight:700;cursor:pointer">📋 Copiar para o franqueado</button></div>
+        <div class="tbl-scroll"><table class="num"><thead><tr><th>Produto</th><th class="num">Preço/un</th><th class="num">Custo/un lançado</th><th class="num">Fator</th><th>Onde corrigir</th><th class="num">"Prejuízo"</th></tr></thead><tbody>${linhas}</tbody></table></div>
+        ${Fr.n > Fr.itens.length ? `<div class="note" style="margin-top:8px">Mostrando os ${br(Fr.itens.length)} maiores de ${br(Fr.n)}.</div>` : ''}
+        <div class="callout"><b>Como corrigir no One Pet:</b> no cadastro de cada produto, conferir a unidade de compra × unidade de venda (fator de conversão/fracionamento) e o custo. Quando aparece uma nota na coluna "Onde corrigir", a entrada foi lançada com a caixa como 1 unidade — corrigir a entrada. Enquanto não corrige, essas vendas ficam fora da margem ajustada, da margem por categoria, dos vazamentos e do ranking de vendedores; depois da correção o Raio-X recalcula na rodada seguinte.</div>
+      </div></div></section>`;
+    const gate = [...rep.querySelectorAll('section')].find(s => /Gate 0/i.test((s.querySelector('h2') || {}).textContent || ''));
+    if (gate) gate.insertAdjacentHTML('beforebegin', html); else rep.insertAdjacentHTML('beforeend', html);
+    const b = $('btnCopiarFrac'); if (!b) return;
+    b.onclick = async () => {
+      const top = Fr.itens.slice(0, 10).map((i, k) => `${k + 1}. ${i.produto} — vendido a ${rs(i.precoUn)}/un com custo de ${rs(i.custoUn)}/un` + (i.nf ? ` (NF ${i.nf.nf}, ${dt(i.nf.d)}, ${i.nf.fornecedor})` : '')).join('\n');
+      const txt = `${F.nome || 'FRA ' + FRA} · FRA ${FRA} — produtos com erro de fracionamento no cadastro\n\n` +
+        `Estes produtos estão com o custo da embalagem fechada (caixa, fardo, saco) em cada unidade vendida. Isso gera ${kmil(Fr.prejuizo)} de prejuízo que não existe e derruba a margem da loja no Raio-X.\n\n${top}` +
+        (Fr.n > 10 ? `\n… e mais ${Fr.n - 10} no Raio-X.` : '') +
+        `\n\nComo corrigir no One Pet: no cadastro de cada produto, conferir unidade de compra × unidade de venda (fator de conversão) e o custo. Se a nota entrou com a caixa como 1 unidade, corrigir a entrada. Depois da correção o Raio-X recalcula sozinho.`;
+      try { await navigator.clipboard.writeText(txt); }
+      catch (_) { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+      b.textContent = '✓ Copiado'; setTimeout(() => { b.textContent = '📋 Copiar para o franqueado'; }, 1800);
+    };
+  }
 
   /* ===== achados do raio-x marcados como feitos: gravados na Central (fra + chave), por consultor ou franqueado ===== */
   async function ligarAchados() {

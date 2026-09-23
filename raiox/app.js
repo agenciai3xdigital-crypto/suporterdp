@@ -3,7 +3,7 @@
 'use strict';
 const SUPABASE_URL = 'https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO = 'v3.13'; // v3.13 · 23/09/2026 · franqueado ganha a aba Tarefas da loja (Consultoria de campo, mesmo login) · v3.12 · 22/09/2026 · aba Roteiro da visita; barra de abas não segue mais a rolagem; sai o botão Imprimir (o Exportar já faz) · v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
+const VERSAO = 'v3.14'; // v3.14 · 23/09/2026 · erros de fracionamento (motor v2.2): seção no diagnóstico, tarefa e texto para o franqueado · v3.13 · 23/09/2026 · franqueado ganha a aba Tarefas da loja (Consultoria de campo, mesmo login) · v3.12 · 22/09/2026 · aba Roteiro da visita; barra de abas não segue mais a rolagem; sai o botão Imprimir (o Exportar já faz) · v3.11 · 22/09/2026 · clusters da rede na aba Rede (filtros por faixa, colunas Potencial, Tend. e Franq.) · v3.10 · 21/09/2026 · botão Simulador de alavancas na ficha da loja · v3.9 Barra POP no cabeçalho
 const FN_FRANQ = SUPABASE_URL + '/functions/v1/raiox-franqueados';
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -559,6 +559,7 @@ function cabecaLoja(f, s) {
   </div></div>`;
 }
 const TXT_TAREFA = {
+  fracionamento: d => `Corrigir fracionamento no cadastro de ${br(d.n)} produto(s) — custo da embalagem fechada na unidade vendida gera ${kmil(d.prejuizo)} de "prejuízo" que não existe (maior caso: ${esc(d.pior)})`,
   custoZero: d => `Cadastrar custo nos produtos sem custo — ${pc(d.pct)} da receita de produto (${kmil(d.valor)}) está sem custo cadastrado`,
   identificacao: d => `Cadastrar cliente em toda venda — só ${pc(d.identPct)} da receita está identificada`,
   ruptura: d => `Repor ${br(d.n)} produtos zerados da curva A (${kmil(d.valor)} vendidos no período)`,

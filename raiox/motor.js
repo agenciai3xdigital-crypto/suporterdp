@@ -3,6 +3,11 @@
    Sem DOM. Mesmas contas da Maquina de Analise de Lojas.
    Entrada: linhas normalizadas (linhasDoBI a partir do CSV, ou o mapeamento
    do banco de compras na rotina noturna). Saida: o objeto R do diagnostico.
+   v2.2 · 23/09/2026 · erros de fracionamento: linha de produto com custo > 2× a receita
+   (custo da caixa/fardo/saco na unidade vendida) sai da margem ajustada, da margem por
+   categoria e por vendedor, do balcão, da farmácia e do pior grupo negativo; vira
+   R.fracionamento (lista por produto + NF suspeita) e a tarefa 'fracionamento'.
+   Custo de entrada que salta mais de 4× deixa de contar como "custo subindo".
    ============================================================ */
 'use strict';
 /* ---------- Parser CSV (sep ;, aspas, BOM, CRLF) ---------- */
@@ -140,7 +145,11 @@ function analisaEstoqueParadoNativo(rows) {
 }
 
 /* ---------- Constantes da metodologia (fixas, não editáveis) ---------- */
-const K = { RESGATE: 0.15, JANELA_BT_ATIVO: 60 };
+const K = { RESGATE: 0.15, JANELA_BT_ATIVO: 60,
+  FRAC_FATOR: 2,      // custo da linha > 2× a receita = custo de embalagem fechada na unidade (fracionamento)
+  FRAC_ENTRADA: 4,    // entrada com custo unitário > 4× a mediana do produto = NF suspeita
+  FRAC_ALTA_RS: 1000, // prejuízo aparente a partir disto = tarefa de severidade alta
+  FRAC_TOP: 30 };     // produtos guardados no diagnóstico
 
 /* ---------- Bandas de recência (fixas) ---------- */
 const BANDAS = [
@@ -228,7 +237,8 @@ function analisaCompras(entradaRowsArr, abcCompras, estoqueParado) {
       const primeiro = ls[0], ultimo = ls[ls.length - 1];
       if (primeiro.custo > 0 && ultimo.d > primeiro.d) {
         const variacao = 100 * (ultimo.custo / primeiro.custo - 1);
-        if (variacao > 15) custoSubindo.push({ produto, fornecedor: ultimo.fornecedor, custoIni: primeiro.custo, custoFim: ultimo.custo, variacao, dataIni: primeiro.d, dataFim: ultimo.d });
+        /* salto acima de 4× é caixa lançada como unidade (fracionamento), não reajuste */
+        if (variacao > 15 && ultimo.custo <= K.FRAC_ENTRADA * primeiro.custo) custoSubindo.push({ produto, fornecedor: ultimo.fornecedor, custoIni: primeiro.custo, custoFim: ultimo.custo, variacao, dataIni: primeiro.d, dataFim: ultimo.d });
       }
     });
     custoSubindo.sort((a, b) => b.variacao - a.variacao);
@@ -292,6 +302,75 @@ function analisaEstoqueAtual(rows, filialBI) {
   };
 }
 
+/* ---------- Erros de fracionamento (v2.2) ----------
+   Custo da embalagem fechada (caixa, fardo, saco, lote) aplicado à unidade ou ao kg vendido.
+   Ex.: adubo vendido a R$ 8/kg com custo de R$ 2.680/kg; seringa com o custo da caixa de 100.
+   Regra: linha de produto com custo > K.FRAC_FATOR × receita (= custo unitário > 2× preço unitário).
+   Não é prejuízo: é cadastro. As linhas saem das margens e viram uma lista para o franqueado corrigir. */
+const ehFrac = r => r.tipo === 'Produto' && r.tot > 0 && r.custo > K.FRAC_FATOR * r.tot;
+const chaveProd = s => String(s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+function analisaFracionamento(rows, entradaRowsArr) {
+  const frac = rows.filter(r => r.frac);
+  if (!frac.length) return null;
+
+  /* custo unitário normal do produto na própria loja (linhas de venda plausíveis) */
+  const refUn = {};
+  rows.forEach(r => {
+    if (r.frac || r.tipo !== 'Produto' || !(r.custo > 0) || !(r.qtd > 0)) return;
+    (refUn[chaveProd(r.prod)] = refUn[chaveProd(r.prod)] || []).push(r.custo / r.qtd);
+  });
+  /* entradas do produto, para apontar a nota que trouxe o custo errado */
+  const ent = {};
+  (entradaRowsArr || []).forEach(rs => rs.forEach(e => {
+    const custo = n0(e['Custo final']), qtd = n0(e['Quantidade']);
+    if (!(custo > 0) || !(qtd > 0)) return;
+    (ent[chaveProd(e['Produto'])] = ent[chaveProd(e['Produto'])] || []).push({
+      custo, nf: e['Número da NF'] || '', d: pDate(e['Data']), fornecedor: (e['Fornecedor'] || '').trim() });
+  }));
+
+  const g = {};
+  frac.forEach(r => {
+    const k = chaveProd(r.prod);
+    const x = g[k] = g[k] || { produto: (r.prod || '(sem nome)').trim(), grupo: r.grupo, linhas: 0, qtd: 0, receita: 0, custo: 0, dataIni: r.d, dataFim: r.d, vend: {} };
+    x.linhas++; x.qtd += r.qtd; x.receita += r.tot; x.custo += r.custo;
+    if (r.d < x.dataIni) x.dataIni = r.d;
+    if (r.d > x.dataFim) x.dataFim = r.d;
+    if (r.vend) x.vend[r.vend] = (x.vend[r.vend] || 0) + 1;
+  });
+
+  const itens = Object.entries(g).map(([k, x]) => {
+    const precoUn = x.qtd > 0 ? x.receita / x.qtd : null;
+    const custoUn = x.qtd > 0 ? x.custo / x.qtd : null;
+    const ref = refUn[k] && refUn[k].length ? median(refUn[k]) : null;
+    const es = ent[k] || [];
+    const medEnt = es.length ? median(es.map(e => e.custo)) : null;
+    // nota suspeita: custo unitário > 4× a mediana das entradas do produto; com uma entrada só, ela mesma se o custo não cabe no preço
+    const nf = es.filter(e => es.length === 1 ? (precoUn && e.custo > K.FRAC_FATOR * precoUn) : e.custo > K.FRAC_ENTRADA * medEnt)
+      .sort((a, b) => b.custo - a.custo)[0] || null;
+    const refEnt = es.length > 1 && medEnt ? medEnt : null;
+    const base = ref || refEnt;
+    return {
+      produto: x.produto, grupo: x.grupo, linhas: x.linhas, qtd: x.qtd, receita: x.receita, custo: x.custo,
+      precoUn, custoUn, custoRef: base,
+      fator: custoUn && base ? custoUn / base : (custoUn && precoUn ? custoUn / precoUn : null), // ≈ tamanho da embalagem
+      fatorBase: base ? 'custo' : 'preço',
+      prejuizo: x.custo - x.receita,          // o que hoje aparece como venda abaixo do custo
+      dataIni: x.dataIni, dataFim: x.dataFim,
+      nf: nf ? { nf: nf.nf, d: nf.d, fornecedor: nf.fornecedor, custo: nf.custo } : null
+    };
+  }).sort((a, b) => b.prejuizo - a.prejuizo);
+
+  const custoProd = sum(rows.filter(r => r.tipo === 'Produto').map(r => r.custo || 0));
+  const custo = sum(itens.map(i => i.custo));
+  return {
+    n: itens.length, linhas: frac.length,
+    receita: sum(itens.map(i => i.receita)), custo,
+    prejuizo: sum(itens.map(i => i.prejuizo)),
+    pctCusto: custoProd ? 100 * custo / custoProd : 0,   // quanto do custo de produto da loja é fantasma
+    itens: itens.slice(0, K.FRAC_TOP)
+  };
+}
+
 function linhasDoBI(biRowsArr) {
   const rows = [];
   biRowsArr.forEach(rs => rs.forEach(r => {
@@ -315,6 +394,7 @@ function linhasDoBI(biRowsArr) {
 function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, estoqueAtualRows) {
   if (!rows.length) throw new Error('Nenhuma linha válida encontrada no BI.');
   rows.sort((a, b) => a.d - b.d);
+  rows.forEach(r => { r.frac = ehFrac(r); });   // v2.2: erro de fracionamento (custo de embalagem na unidade)
   const ref = rows[rows.length - 1].d;
   const semCad = r => !r.cliNome || /SEM CADASTRO/i.test(r.cliNome);
   const ident = rows.filter(r => !semCad(r));
@@ -338,17 +418,19 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
   const prodRows = rows.filter(r => r.tipo === 'Produto');
   const cz = prodRows.filter(r => !(r.custo > 0));
   const czRec = sum(cz.map(r => r.tot));
-  const okRows = rows.filter(r => !(r.tipo === 'Produto' && !(r.custo > 0)));
+  const okRows = rows.filter(r => !(r.tipo === 'Produto' && !(r.custo > 0)) && !r.frac);
   const margemAdj = 100 * sum(okRows.map(r => r.lucro)) / sum(okRows.map(r => r.tot));
   const margemRep = 100 * totLucro / totReceita;
 
   /* --- mix por grupo --- */
+  /* margem da categoria sem as linhas de fracionamento (recM/lucroM); receita e share continuam com tudo */
   const gAll = {};
-  rows.forEach(r => { (gAll[r.grupo] = gAll[r.grupo] || { rec: 0, lucro: 0, qtd: 0 }); gAll[r.grupo].rec += r.tot; gAll[r.grupo].lucro += r.lucro; gAll[r.grupo].qtd += r.qtd; });
-  const mixTop = Object.entries(gAll).map(([g, v]) => ({ grupo: g, rec: v.rec, share: 100 * v.rec / totReceita, margem: 100 * v.lucro / v.rec, qtd: v.qtd })).sort((a, b) => b.rec - a.rec);
+  rows.forEach(r => { const v = gAll[r.grupo] = gAll[r.grupo] || { rec: 0, lucro: 0, qtd: 0, recM: 0, lucroM: 0 }; v.rec += r.tot; v.lucro += r.lucro; v.qtd += r.qtd; if (!r.frac) { v.recM += r.tot; v.lucroM += r.lucro; } });
+  const mixTop = Object.entries(gAll).map(([g, v]) => ({ grupo: g, rec: v.rec, share: 100 * v.rec / totReceita, margem: v.recM ? 100 * v.lucroM / v.recM : 0, qtd: v.qtd, _recM: v.recM, _lucroM: v.lucroM })).sort((a, b) => b.rec - a.rec);
   const mix9 = mixTop.slice(0, 9);
   const demais = mixTop.slice(9);
-  if (demais.length) mix9.push({ grupo: 'DEMAIS', rec: sum(demais.map(x => x.rec)), share: sum(demais.map(x => x.share)), margem: 100 * sum(demais.map(x => x.rec * x.margem / 100)) / Math.max(1, sum(demais.map(x => x.rec))) });
+  if (demais.length) mix9.push({ grupo: 'DEMAIS', rec: sum(demais.map(x => x.rec)), share: sum(demais.map(x => x.share)), margem: 100 * sum(demais.map(x => x._lucroM)) / Math.max(1, sum(demais.map(x => x._recM))) });
+  mix9.forEach(x => { delete x._recM; delete x._lucroM; });
   const GS = ['BANHO E TOSA','PACOTES DE SERVICOS','CONSULTORIO VETERINARIO','SERVICOS DE TRANSPORTE'];
   const servShare = 100 * sum(rows.filter(r => GS.includes(r.grupo)).map(r => r.tot)) / totReceita;
 
@@ -356,22 +438,24 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
   const gPorMes = {};
   rows.forEach(r => {
     const gm = gPorMes[r.mk] = gPorMes[r.mk] || {};
-    (gm[r.grupo] = gm[r.grupo] || { rec: 0, lucro: 0, qtd: 0 });
-    gm[r.grupo].rec += r.tot; gm[r.grupo].lucro += r.lucro; gm[r.grupo].qtd += r.qtd;
+    const v = gm[r.grupo] = gm[r.grupo] || { rec: 0, lucro: 0, qtd: 0, recM: 0, lucroM: 0 };
+    v.rec += r.tot; v.lucro += r.lucro; v.qtd += r.qtd;
+    if (!r.frac) { v.recM += r.tot; v.lucroM += r.lucro; }
   });
   const mixPorMes = meses.map(mk => {
     const gm = gPorMes[mk] || {};
     const receitaMes = (mensal.find(m => m.mk === mk) || {}).receita || 0;
-    const arr = Object.entries(gm).map(([g, v]) => ({ grupo: g, rec: v.rec, share: receitaMes ? 100 * v.rec / receitaMes : 0, margem: v.rec ? 100 * v.lucro / v.rec : 0 })).sort((a, b) => b.rec - a.rec);
+    const arr = Object.entries(gm).map(([g, v]) => ({ grupo: g, rec: v.rec, share: receitaMes ? 100 * v.rec / receitaMes : 0, margem: v.recM ? 100 * v.lucroM / v.recM : 0, _recM: v.recM, _lucroM: v.lucroM })).sort((a, b) => b.rec - a.rec);
     const top = arr.slice(0, 9), demais = arr.slice(9);
-    if (demais.length) top.push({ grupo: 'DEMAIS', rec: sum(demais.map(x => x.rec)), share: sum(demais.map(x => x.share)), margem: 100 * sum(demais.map(x => x.rec * x.margem / 100)) / Math.max(1, sum(demais.map(x => x.rec))) });
+    if (demais.length) top.push({ grupo: 'DEMAIS', rec: sum(demais.map(x => x.rec)), share: sum(demais.map(x => x.share)), margem: 100 * sum(demais.map(x => x._lucroM)) / Math.max(1, sum(demais.map(x => x._recM))) });
+    top.forEach(x => { delete x._recM; delete x._lucroM; });
     return { mk, label: mesLabel(mk), receita: receitaMes, itens: top };
   });
 
   /* --- farmácia --- */
   const GF = ['MEDICAMENTOS','ANTIPARASITARIOS'];
   const farmaM = meses.map(mk => sum(rows.filter(r => r.mk === mk && GF.includes(r.grupo)).map(r => r.tot)));
-  const farmaRows = rows.filter(r => GF.includes(r.grupo));
+  const farmaRows = rows.filter(r => GF.includes(r.grupo) && !r.frac);
   const farmaMg = farmaRows.length ? sum(farmaRows.map(r => r.lucro)) / Math.max(1, sum(farmaRows.map(r => r.tot))) : 0.4;
 
   /* --- FICHA POR CLIENTE (base de tudo: lista de resgate, B&T, churn) --- */
@@ -437,13 +521,15 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
   const vd = {};
   rows.forEach(r => {
     if (!r.vend) return;
-    (vd[r.vend] = vd[r.vend] || { rec: 0, lucro: 0, ped: new Set(), n: 0, descN: 0, descRS: 0 });
+    (vd[r.vend] = vd[r.vend] || { rec: 0, lucro: 0, ped: new Set(), n: 0, descN: 0, descRS: 0, recM: 0, lucroM: 0 });
     const v = vd[r.vend];
     v.rec += r.tot; v.lucro += r.lucro; v.ped.add(r.ped); v.n++;
+    if (!r.frac) { v.recM += r.tot; v.lucroM += r.lucro; }   // margem do vendedor sem fracionamento
+
     if (r.desc > 0) v.descN++;
     v.descRS += Math.max(0, r.pb * r.qtd - r.tot);
   });
-  const vend = Object.entries(vd).map(([n, v]) => ({ nome: n, rec: v.rec, cupons: v.ped.size, ticket: v.rec / v.ped.size, margem: 100 * v.lucro / v.rec, descPct: v.n ? 100 * v.descN / v.n : 0, descRS: v.descRS, n: v.n })).filter(v => v.cupons >= 0.1 * totCupons).sort((a, b) => b.rec - a.rec);
+  const vend = Object.entries(vd).map(([n, v]) => ({ nome: n, rec: v.rec, cupons: v.ped.size, ticket: v.rec / v.ped.size, margem: v.recM ? 100 * v.lucroM / v.recM : 0, descPct: v.n ? 100 * v.descN / v.n : 0, descRS: v.descRS, n: v.n })).filter(v => v.cupons >= 0.1 * totCupons).sort((a, b) => b.rec - a.rec);
   let vazBalcao = 0, balcaoAchado = null, maiorGap = 0;
   vend.forEach(v => {
     const outros = vend.filter(o => o !== v);
@@ -465,7 +551,7 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
   const descItens = 100 * rows.filter(r => r.desc > 0).length / rows.length;
   const descRS = sum(rows.map(r => Math.max(0, r.pb * r.qtd - r.tot)));
   const negG = {};
-  rows.filter(r => r.lucro < 0).forEach(r => negG[r.grupo] = (negG[r.grupo] || 0) + r.lucro);
+  rows.filter(r => r.lucro < 0 && !r.frac).forEach(r => negG[r.grupo] = (negG[r.grupo] || 0) + r.lucro);
   const piorGrupoNeg = Object.entries(negG).sort((a, b) => a[1] - b[1])[0] || null;
   const espT = {}; ident.forEach(r => { if (r.esp) espT[r.esp] = (espT[r.esp] || 0) + r.tot; });
   const espSum = sum(Object.values(espT));
@@ -485,6 +571,7 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
   const periodoDias = Math.round((ref - rows[0].d) / 864e5) + 1;
   const estoqueParado = analisaEstoqueParadoNativo(estoqueNativo) || analisaEstoqueParado(abcProd, periodoDias);
   const compras = analisaCompras(entradaRowsArr, abcCompras, estoqueParado);
+  const fracionamento = analisaFracionamento(rows, entradaRowsArr);
   const estoqueAtual = analisaEstoqueAtual(estoqueAtualRows, filial);
 
   /* --- horário e dia de pico (escala de equipe) --- */
@@ -592,6 +679,8 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
   const tarefas = [];
   const identSev = identPct < 30 ? 'alta' : identPct <= 60 ? 'media' : identPct <= 80 ? 'baixa' : null;
   if (filialAlerta) tarefas.push({ sev: 'alta', chave: 'filialMista', dados: { lista: filialAlerta.lista } });
+  if (fracionamento) tarefas.push({ sev: fracionamento.prejuizo >= K.FRAC_ALTA_RS ? 'alta' : 'media', chave: 'fracionamento',
+    dados: { n: fracionamento.n, prejuizo: fracionamento.prejuizo, pctCusto: fracionamento.pctCusto, pior: fracionamento.itens[0] ? fracionamento.itens[0].produto : '' } });
   if (identSev) tarefas.push({ sev: identSev, chave: 'identificacao', dados: { identPct } });
   if (ruptura && ruptura.nZer > 0) tarefas.push({ sev: 'alta', chave: 'ruptura', dados: { n: ruptura.nZer, valor: ruptura.valZer } });
   if (v1 > 200) tarefas.push({ sev: 'media', chave: 'farmacia', dados: { peak: peakF, last: lastF } });
@@ -619,7 +708,7 @@ function analisar(rows, abcProd, estoqueNativo, entradaRowsArr, abcCompras, esto
     clientes, bucketsGeral, cliTot, ativosUlt, identPct, semTel,
     buckets, cliRac: cliRacArr.length, inativos: inativosRac.length, gastoMensalHist, ciclo,
     btM, btCli, crossBT, gastoBT, gastoN, valorPacote, pacotesMesAtual, metaPacotes,
-    vend, descItens, descRS, piorGrupoNeg, felinos, ruptura, estoqueParado, metas, balcaoAchado, compras, estoqueAtual,
+    vend, descItens, descRS, piorGrupoNeg, felinos, ruptura, estoqueParado, metas, balcaoAchado, compras, estoqueAtual, fracionamento,
     horaSemana, entrega, novosPorMes, receitaPorMesSplit, churnGeral, governanca, tarefas,
     v1, v2, v3, v4, vazTotal, K,
     score, sub: { receita: sReceita, margem: sMargem, mix: sMix, ret: sRet, dado: sDado }
@@ -633,6 +722,6 @@ function analyze(biRowsArr, abcProd, estoqueNativo, entradaRowsArr, abcCompras, 
 
 /* exportacao dupla: Node (testes) e ESM/Deno (Edge Function) */
 const MOTOR = { parseCSV, num, n0, pDate, pDataHora, mesKey, mesLabel, median, sum, K, BANDAS, bandaDe, VAZIO, nivelPct,
-  detectType, analisaEstoqueParado, analisaEstoqueParadoNativo, analisaCompras, analisaEstoqueAtual, linhasDoBI, analisar, analyze };
+  detectType, analisaEstoqueParado, analisaEstoqueParadoNativo, analisaCompras, analisaEstoqueAtual, analisaFracionamento, linhasDoBI, analisar, analyze };
 if (typeof module !== 'undefined' && module.exports) module.exports = MOTOR;
 if (typeof globalThis !== 'undefined') globalThis.MOTOR = MOTOR;

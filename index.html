@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- v8.3 · 25/09/2026 · Lojas (CRM da consultoria): aba "Lojas ↗" abre lojas/ (quadro de casos por loja, histórico, tickets, lojas sem tarefa há 15–90 dias); ao concluir tarefa de loja a Central pergunta o nº do ticket/protocolo (coluna protocolo) e o pop-up da tarefa leva ao histórico da loja. -->
 <!-- v8.2 · 23/09/2026 · login de franqueado criado no Raio-X não entra mais na base da agenda (Equipe hoje, responsáveis, filtros, Admin → Equipe). Identidade visual única do Sistema POP. -->
 <!-- v8.1 · 21/09/2026 · Seu dia: card de tarefa abre o pop-up; no pop-up, responsável/criador/admin acrescentam subtarefas e anotações (coluna anotacoes); quem recebeu a tarefa de outra pessoa não edita a principal — trava também no banco (trg_agenda_trava_delegada). -->
 <!-- v8.0 · 21/09/2026 · Barra POP: cabeçalho único (logo → Central, trilha, relógio só no computador, sino, botão Sistemas com o catálogo do Painel Master para quem está em hub_acesso, Sair). Some com os links soltos Raio-X/Esteira/IC. Aba Admin → Equipe ganha "Botão Sistemas" para liberar pessoas. -->
@@ -832,6 +833,7 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
     <button class="aba" data-v="agenda">Agenda</button>
     <button class="aba" data-v="eventos" id="abaEventos">Eventos <span class="aba-badge" id="abaEvBadge" style="display:none"></span></button>
     <button class="aba" data-v="fluxos" id="abaFluxos">Fluxos</button>
+    <a class="aba" href="lojas/" id="abaLojas" title="Quadro de casos por loja, histórico e tickets" style="text-decoration:none">Lojas ↗</a>
     <span id="abasCustom" style="display:contents"></span>
     <button class="aba" data-v="insights" id="abaInsights" style="display:none">Equipe</button>
     <button class="aba" data-v="rotina" id="abaRotina" style="display:none!important">Rotina</button>
@@ -1912,6 +1914,7 @@ function linhaEventoDia(uid,e){
       if(!obsC.trim()){alert('A observação é obrigatória para concluir.');return;}
       pendentes.delete(chave);
       const updMD={concluida:true,concluida_em:new Date().toISOString(),concluida_obs:obsC.trim()};
+      if(e.fra){const tk=prompt('Abriu ou recebeu algum ticket/protocolo (OnePet, Sults…)? Digite o número para ficar no histórico da loja — ou deixe em branco.','');if(tk&&tk.trim())updMD.protocolo=tk.trim().slice(0,60);}
       if(e.por&&e.por!==e.dono)updMD.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,obs:obsC.trim(),quando:new Date().toISOString(),ciente:false}];
       const r1=await sb.from('agenda_eventos').update(updMD).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
@@ -2228,6 +2231,7 @@ function eventoEl(uid,e){
       if(!obsC.trim()){alert('A observação é obrigatória para concluir.');return;}
       pendEv.delete(e.id);
       const upd={concluida:true,concluida_em:new Date().toISOString(),concluida_obs:obsC.trim()};
+      if(e.fra){const tk=prompt('Abriu ou recebeu algum ticket/protocolo (OnePet, Sults…)? Digite o número para ficar no histórico da loja — ou deixe em branco.','');if(tk&&tk.trim())upd.protocolo=tk.trim().slice(0,60);}
       if(e.por&&e.por!==e.dono)upd.avisos=[...(e.avisos||[]),{id:novoId('av'),para:e.por,tipo:'concluida',por:e.dono,titulo:e.titulo,obs:obsC.trim(),quando:new Date().toISOString(),ciente:false}];
       const r1=await sb.from('agenda_eventos').update(upd).eq('id',e.id);
       const r2=await sb.from('historico_tarefas').insert({user_id:e.dono||uid,dia:chaveDia(agora()),cid:'ag_'+e.id,origem:'agenda',titulo:e.titulo,dificuldade:b.dataset.d});
@@ -2928,7 +2932,7 @@ function abrirDetalheEv(id){
     +'<button type="button" class="evm-x" id="evmX" title="Fechar">✕</button></div>'
     +'<h3'+(e.concluida?' style="text-decoration:line-through;color:var(--tinta-suave)"':'')+'>'+escHtml(e.titulo)+'</h3>'
     +'<div class="evm-l">'+quando+'</div>';
-  if(e.fra===0||e.fra)h+='<div class="evm-l">🏪 '+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+'</div>';
+  if(e.fra===0||e.fra)h+='<div class="evm-l">🏪 '+escHtml(frqRotulo(e.fra)||('FRA '+e.fra))+(e.fra>0?' &nbsp;<a href="lojas/?fra='+encodeURIComponent(e.fra)+'" style="font-weight:600">histórico da loja →</a>':'')+'</div>';
   h+='<div class="evm-l">👤 Responsável: <b>'+escHtml(nomeDe(e.dono))+'</b>'+(e.por&&e.por!==e.dono?' &nbsp;·&nbsp; ✍️ criado por '+escHtml(nomeDe(e.por).split(' ')[0]):'')+'</div>';
   if(outros.length)h+='<div class="evm-l">👥 Participantes: '+escHtml(outros.map(x=>nomeDe(x).split(' ')[0]).join(', '))+'</div>';
   if(e.descricao)h+='<div class="evm-l evm-desc">'+escHtml(e.descricao)+'</div>';

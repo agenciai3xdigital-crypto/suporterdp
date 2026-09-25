@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Lojas · Acompanhamento · Central POP</title>
+<link rel="icon" href="../icone-192.png">
+<!-- lojas v1.0 · 25/09/2026 · CRM da consultoria: quadro de casos por loja, histórico da loja, tickets e lojas sem tarefa (15/30/45/60/90 dias). Tema POP v1.0 + Barra POP v1.0.1 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
+<!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
+     Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
+     expansao/index.html e, no repositório canais-pop, admin.html e resultados.html.
+     Não carrega nada de fora. Lê o menu "Sistemas" do banco (RPC barra_sistemas, catálogo do Painel Master)
+     só para quem está em hub_acesso; para os outros mostra apenas os atalhos do papel (links) ou nada.
+     Para alterar o visual, altere aqui e cole o bloco inteiro nas outras páginas. ===== -->
+<style id="pb-css">
+.pb{--pb-bg:#fff;--pb-ink:#14332A;--pb-muted:#5A7268;--pb-line:#D3DFD8;--pb-soft:#EEF3F0;--pb-lar:#FF6B15;--pb-lar-soft:#FFEDE1;--pb-verde:#009150;--pb-verm:#C0392B;
+  display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--pb-bg);border-bottom:1px solid var(--pb-line);position:relative;flex-wrap:wrap;
+  font-family:'Inter',system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;color:var(--pb-ink);line-height:1.3;box-sizing:border-box}
+.pb *{box-sizing:border-box}
+.pb-marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;min-width:0}
+.pb-logo{height:38px;width:auto;display:block}
+.pb-trilha{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:19px;letter-spacing:-.3px;line-height:1.1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pb-trilha a.pb-pai{color:var(--pb-muted);font-weight:600;font-size:14px;text-decoration:none;font-family:'Inter',system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
+.pb-trilha a.pb-pai:hover{color:var(--pb-lar)}
+.pb-sep{color:var(--pb-line);font-weight:400}
+.pb-trilha em{font-style:normal;color:var(--pb-lar)}
+.pb-trilha small{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:12px;color:var(--pb-muted);letter-spacing:0;margin-top:2px}
+.pb-esp{flex:1 1 8px}
+.pb-quem{font-size:12.5px;color:var(--pb-muted);text-align:right;line-height:1.25;max-width:220px}
+.pb-quem b{display:block;color:var(--pb-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-ico{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--pb-line);background:var(--pb-bg);display:grid;place-items:center;color:var(--pb-ink);cursor:pointer;position:relative;flex:none;padding:0;font:inherit}
+.pb-ico svg{width:19px;height:19px;display:block}
+.pb-ico:hover{border-color:var(--pb-muted)}
+.pb-ico.on,.pb-ico.tem{border-color:var(--pb-lar);color:var(--pb-lar)}
+.pb-ico.on{background:var(--pb-lar-soft)}
+.pb-ico:focus-visible,.pb-sair:focus-visible,.pb-item:focus-visible{outline:2px solid var(--pb-lar);outline-offset:2px}
+.pb-bd{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;line-height:17px;padding:0 4px;border-radius:9px;background:var(--pb-verm);color:#fff;font-size:10.5px;font-weight:700;text-align:center}
+.pb-sair{border:1.5px solid var(--pb-line);background:var(--pb-bg);color:var(--pb-ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;line-height:1.3}
+.pb-sair:hover{border-color:var(--pb-muted)}
+.pb-relogio{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:800;font-size:22px;font-variant-numeric:tabular-nums;line-height:1;text-align:right}
+.pb-relogio .sync{display:block;font-family:'Inter',system-ui,sans-serif;font-weight:500;font-size:11px;color:var(--pb-verde);margin-top:2px}
+.pb-veu{display:none;position:fixed;inset:0;background:rgba(20,51,42,.35);z-index:180}
+.pb-veu.on{display:block}
+.pb-pop{display:none;position:absolute;right:16px;top:calc(100% - 4px);width:min(560px,calc(100vw - 32px));background:var(--pb-bg);border:1px solid var(--pb-line);border-radius:14px;box-shadow:0 10px 30px rgba(20,51,42,.16);padding:14px;z-index:190;color:var(--pb-ink)}
+.pb-pop.on{display:block}
+.pb-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.pb-cab b{font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:850;font-size:15px}
+.pb-cab span{font-size:12px;color:var(--pb-muted)}
+.pb-cab a{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--pb-verde);text-decoration:none;white-space:nowrap}
+.pb-cab a:hover{text-decoration:underline}
+.pb-x{display:none;margin-left:auto;border:0;background:none;font-size:22px;line-height:1;color:var(--pb-muted);cursor:pointer;padding:0 4px}
+.pb-grupo{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--pb-muted);margin:10px 0 6px}
+.pb-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+.pb-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;text-decoration:none;color:var(--pb-ink);border:1px solid transparent;min-width:0}
+.pb-item:hover{background:var(--pb-soft)}
+.pb-item.atual{background:var(--pb-lar-soft);cursor:default}
+.pb-q{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-family:'Archivo','Inter',system-ui,sans-serif;font-weight:900;font-size:11px;flex:none;letter-spacing:.02em}
+.pb-t{font-size:13px;font-weight:600;line-height:1.15;min-width:0}
+.pb-t small{display:block;font-weight:500;font-size:11px;color:var(--pb-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pb-item.ext .pb-t::after{content:" ↗";color:var(--pb-muted);font-weight:400}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chips a{font-size:12px;font-weight:600;color:var(--pb-muted);text-decoration:none;border:1px solid var(--pb-line);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.pb-chips a:hover{color:var(--pb-ink);border-color:var(--pb-muted)}
+.pb-aviso{font-size:11.5px;color:var(--pb-muted);margin-top:10px;border-top:1px solid var(--pb-line);padding-top:8px}
+@media(max-width:640px){
+  .pb{padding:8px 12px;gap:8px;flex-wrap:nowrap}.pb-logo{height:32px}
+  .pb-marca{flex:1 1 0;min-width:0}.pb-trilha{font-size:16px;flex-wrap:nowrap;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb-trilha a.pb-pai,.pb-sep,.pb-trilha small{display:none} /* no celular o logo já leva à Central */
+  .pb-esp{display:none}.pb-sair{padding:7px 10px}
+  .pb-quem,.pb-relogio{display:none}
+  .pb-pop{position:fixed;left:0;right:0;bottom:0;top:auto;width:auto;border-radius:18px 18px 0 0;max-height:80vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+  .pb-x{display:block}.pb-cab a{margin-left:0;flex-basis:100%}
+  .pb-grade{grid-template-columns:1fr 1fr}
+}
+@media print{.pb{display:none!important}}
+</style>
+<script id="pb-js">
+/* BarraPop — API: BarraPop.montar(opts) → depois BarraPop.sessao() quando houver login, BarraPop.quem(nome,sub), BarraPop.sairVisivel(bool). */
+window.BarraPop=(function(){
+  'use strict';
+  var SB_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+  var SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+  var HUB_URL='https://agenciai3xdigital-crypto.github.io/painel-master-pop/';
+  var GRID='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>';
+  var O=null, el={}, carregou=false;
+
+  function jwtPayload(t){try{var p=t.split('.')[1];return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/')));}catch(e){return null;}}
+  function doProjeto(t){var p=jwtPayload(t);return !!(p&&p.role==='authenticated'&&(String(p.iss||'').indexOf('klcxavgxonpsbsbzqcil')>=0||p.ref==='klcxavgxonpsbsbzqcil'));} /* v1.0.1: token de login traz o projeto em iss, não em ref */
+  /* Token padrão: procura no localStorage qualquer sessão válida deste projeto (supabase-js ou fetch manual), só leitura. */
+  function tokenPadrao(){
+    var melhor=null;
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i), v;
+        try{v=JSON.parse(localStorage.getItem(k));}catch(e){continue;}
+        var c=v&&(typeof v.access_token==='string'?v:(v.currentSession||v.session));
+        if(!c||typeof c.access_token!=='string'||!doProjeto(c.access_token))continue;
+        var exp=Number(c.expires_at)||(jwtPayload(c.access_token)||{}).exp||0;
+        if(exp*1000<Date.now()+15000)continue;
+        if(!melhor||exp>melhor.exp)melhor={t:c.access_token,exp:exp};
+      }
+    }catch(e){}
+    return Promise.resolve(melhor?melhor.t:null);
+  }
+  function rpc(nome,token,corpo,keep){
+    return fetch(SB_URL+'/rest/v1/rpc/'+nome,{method:'POST',keepalive:!!keep,
+      headers:{'apikey':SB_ANON,'Authorization':'Bearer '+token,'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(corpo||{})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+  }
+  function h(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function iniciais(n){var p=String(n||'').replace(/[—–-].*$/,'').trim().split(/\s+/).filter(function(w){return w.length>2||/^[A-Z0-9]+$/.test(w);});return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase();}
+  function escura(hex){var m=/^#?([0-9a-f]{6})$/i.exec(String(hex||''));if(!m)return true;var n=parseInt(m[1],16),r=n>>16,g=(n>>8)&255,b=n&255;return (0.299*r+0.587*g+0.114*b)<150;}
+  function urlOk(u){try{var x=new URL(u,location.href);return x.protocol==='https:'?x:null;}catch(e){return null;}}
+
+  function montar(o){
+    O=o||{};var raiz=typeof O.el==='string'?document.getElementById(O.el):O.el;if(!raiz)return;
+    var extras=[];while(raiz.firstChild){extras.push(raiz.firstChild);raiz.removeChild(raiz.firstChild);}
+    raiz.className='pb'+(O.classe?' '+O.classe:'');raiz.setAttribute('role','banner');
+    var marca=h('a','pb-marca');marca.href=O.logoHref||O.central||'./';marca.title='Ir para a Central POP';
+    var img=h('img','pb-logo');img.src=O.logo||'logo-pop.png';img.alt='Rede POP Pet Center';img.onerror=function(){img.style.display='none';};marca.appendChild(img);
+    var tr=h('div','pb-trilha');
+    (O.trilha||[]).forEach(function(t){var a=h('a','pb-pai',t.nome);a.href=t.href;tr.appendChild(a);tr.appendChild(h('span','pb-sep','/'));});
+    var tit=h('span');tit.innerHTML=O.titulo||'';if(O.sub){tit.appendChild(h('small',null,O.sub));}tr.appendChild(tit);
+    marca.appendChild(tr);raiz.appendChild(marca);
+    raiz.appendChild(h('span','pb-esp'));
+    extras.forEach(function(n){raiz.appendChild(n);});
+    el.quem=h('div','pb-quem');el.quemN=h('b');el.quemS=h('span');el.quem.appendChild(el.quemN);el.quem.appendChild(el.quemS);el.quem.style.display='none';raiz.appendChild(el.quem);
+    el.btn=h('button','pb-ico');el.btn.type='button';el.btn.title='Sistemas';el.btn.setAttribute('aria-label','Sistemas');el.btn.setAttribute('aria-expanded','false');el.btn.innerHTML=GRID;el.btn.style.display='none';raiz.appendChild(el.btn);
+    if(O.sair){el.sair=h('button','pb-sair','Sair');el.sair.type='button';el.sair.id=O.sairId||'pbSair';el.sair.onclick=function(){O.sair();};if(O.sairOculto)el.sair.style.display='none';raiz.appendChild(el.sair);}
+    el.veu=h('div','pb-veu');el.pop=h('div','pb-pop');el.pop.setAttribute('role','dialog');el.pop.setAttribute('aria-label','Sistemas');
+    raiz.appendChild(el.veu);raiz.appendChild(el.pop);
+    el.btn.onclick=function(){alternar();};el.veu.onclick=fechar;
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')fechar();});
+    document.addEventListener('click',function(e){if(el.pop.classList.contains('on')&&!el.pop.contains(e.target)&&!el.btn.contains(e.target))fechar();});
+    if(O.quem)quem(O.quem.nome,O.quem.sub);
+    if(O.auto!==false)sessao();
+  }
+  function alternar(){el.pop.classList.contains('on')?fechar():abrir();}
+  function abrir(){el.pop.classList.add('on');el.veu.classList.add('on');el.btn.classList.add('on');el.btn.setAttribute('aria-expanded','true');}
+  function fechar(){if(!el.pop)return;el.pop.classList.remove('on');el.veu.classList.remove('on');el.btn.classList.remove('on');el.btn.setAttribute('aria-expanded','false');}
+  function quem(nome,sub){if(!el.quem)return;el.quemN.textContent=nome||'';el.quemS.textContent=sub||'';el.quem.style.display=nome?'':'none';}
+  function sairVisivel(v){if(el.sair)el.sair.style.display=v?'':'none';}
+
+  /* Carrega o menu: catálogo completo para quem está em hub_acesso; senão só os atalhos do papel (O.links). */
+  function sessao(){
+    if(!O||!el.pop)return Promise.resolve();
+    var get=O.token||tokenPadrao;
+    return Promise.resolve().then(function(){return get();}).then(function(tok){
+      if(!tok)return desenhar(null,null);
+      return rpc('barra_sistemas',tok,{}).then(function(r){desenhar(r&&r.ok?r:null,tok);});
+    }).catch(function(){desenhar(null,null);});
+  }
+  function desenhar(r,tok){
+    el.pop.innerHTML='';carregou=true;
+    var itens=r?(r.paineis||[]):[];
+    var links=(O.links||[]).filter(function(l){return urlOk(l.url);});
+    var paineis=itens.filter(function(p){return p.grupo==='painel';});
+    var bastidor=itens.filter(function(p){return p.grupo!=='painel';});
+    if(!paineis.length&&!links.length){el.btn.style.display='none';return;}
+    var cab=h('div','pb-cab');cab.appendChild(h('b',null,'Sistemas'));
+    cab.appendChild(h('span',null,r?'catálogo do Painel Master':'atalhos do seu perfil'));
+    var x=h('button','pb-x','×');x.type='button';x.setAttribute('aria-label','Fechar');x.onclick=fechar;
+    if(r){var hub=h('a',null,'Abrir Painel Master →');hub.href=HUB_URL;hub.target='_blank';hub.rel='noopener';cab.appendChild(hub);}
+    cab.appendChild(x);el.pop.appendChild(cab);
+    el.pop.appendChild(h('div','pb-grupo','Painéis'));
+    var g=h('div','pb-grade');
+    (paineis.length?paineis:links).forEach(function(p){
+      var u=urlOk(p.url);if(!u)return;
+      var atual=(p.chave&&p.chave===O.sistema);
+      var a=h(atual?'span':'a','pb-item'+(atual?' atual':''));
+      if(!atual){a.href=u.href;if(u.origin!==location.origin){a.target='_blank';a.rel='noopener';a.classList.add('ext');}
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};}
+      var q=h('span','pb-q',iniciais(p.nome));var cor=/^#[0-9a-f]{6}$/i.test(p.cor||'')?p.cor:'#00573F';q.style.background=cor;q.style.color=escura(cor)?'#fff':'#14332A';
+      var t=h('span','pb-t',p.nome);var sub=atual?'você está aqui':(p.descricao||p.sub||'');if(sub)t.appendChild(h('small',null,sub));
+      if(p.aviso)a.title=p.aviso;
+      a.appendChild(q);a.appendChild(t);g.appendChild(a);
+    });
+    el.pop.appendChild(g);
+    if(bastidor.length){
+      el.pop.appendChild(h('div','pb-grupo','Bastidor'));var c=h('div','pb-chips');
+      bastidor.forEach(function(p){var u=urlOk(p.url);if(!u)return;var a=h('a',null,p.nome+' ↗');a.href=u.href;a.target='_blank';a.rel='noopener';if(p.aviso)a.title=p.aviso;
+        a.onclick=function(){if(tok&&p.chave)rpc('hub_registrar',tok,{p_acao:'abriu',p_alvo:p.chave},true);fechar();};c.appendChild(a);});
+      el.pop.appendChild(c);
+    }
+    if(r)el.pop.appendChild(h('div','pb-aviso','Quem vê este botão é definido em Central POP → Admin → Equipe → "Botão Sistemas". Endereços e cards: pelo Painel Master.'));
+    el.btn.style.display='';
+  }
+  return {montar:montar,sessao:sessao,quem:quem,sairVisivel:sairVisivel,fechar:fechar,rpc:rpc,token:tokenPadrao};
+})();
+</script>
+<!-- ===== fim BARRA POP ===== -->
+
+<style>
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--pop-fundo);color:var(--pop-tinta);font-size:14px;line-height:1.45}
+main{max-width:1320px;margin:0 auto;padding:16px 16px 60px}
+.oculto{display:none!important}
+.abas{display:flex;gap:18px;border-bottom:1px solid var(--pop-linha);margin:2px 0 14px;overflow-x:auto}
+.aba{background:none;border:0;font:inherit;font-weight:700;color:var(--pop-tinta-2);padding:10px 2px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.aba.on{color:var(--pop-tinta);border-bottom-color:var(--pop-laranja)}
+.aba .bd{display:inline-block;min-width:18px;padding:0 6px;border-radius:99px;background:var(--pop-verm);color:#fff;font-size:11px;margin-left:4px;text-align:center}
+.btn{font:inherit;font-weight:700;border-radius:var(--pop-r-sm);padding:8px 14px;cursor:pointer;border:1.5px solid var(--pop-linha);background:var(--pop-papel);color:var(--pop-tinta);line-height:1.2}
+.btn:hover{border-color:var(--pop-tinta-2)}
+.btn.pri{background:var(--pop-laranja);border-color:var(--pop-laranja);color:#fff}
+.btn.ok{background:var(--pop-verde);border-color:var(--pop-verde);color:#fff}
+.btn.peq{padding:5px 10px;font-size:12.5px}
+.btn:disabled{opacity:.55;cursor:default}
+label{display:block;font-size:12px;font-weight:600;color:var(--pop-tinta-2);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--pop-tinta);background:#fff;border:1.5px solid var(--pop-linha);border-radius:var(--pop-r-sm);padding:8px 10px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pop-laranja);outline-offset:0;border-color:transparent}
+textarea{min-height:70px;resize:vertical}
+.filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.filtros>div{min-width:150px}
+.filtros .esp{flex:1}
+.muted{color:var(--pop-tinta-2);font-size:12.5px}
+.aviso{border-left:3px solid var(--pop-ambar);background:var(--pop-ambar-suave);padding:9px 12px;border-radius:6px;font-size:13px;margin:10px 0}
+.aviso.erro{border-color:var(--pop-verm);background:var(--pop-verm-suave)}
+.aviso.ok{border-color:var(--pop-verde);background:var(--pop-verde-suave)}
+.selo{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;white-space:nowrap}
+.s-verm{background:var(--pop-verm-suave);color:var(--pop-verm)}
+.s-ambar{background:var(--pop-ambar-suave);color:var(--pop-ambar)}
+.s-verde{background:var(--pop-verde-suave);color:var(--pop-petroleo)}
+.s-azul{background:var(--pop-azul-suave);color:var(--pop-azul)}
+.s-cinza{background:var(--pop-linha-2);color:var(--pop-tinta-2)}
+.s-foco{background:var(--pop-foco-suave);color:var(--pop-foco)}
+/* quadro */
+.quadro{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--pop-papel-2);border:1px solid var(--pop-linha);border-radius:var(--pop-r);display:flex;flex-direction:column;min-height:360px}
+.col h3{margin:0;padding:10px 12px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between;border-bottom:1px solid var(--pop-linha)}
+.col .dica{font-size:11.5px;color:var(--pop-tinta-3);padding:6px 12px 0}
+.col .cards{padding:8px;display:flex;flex-direction:column;gap:8px;flex:1}
+.col.sobre{outline:2px dashed var(--pop-laranja);outline-offset:-4px}
+.card{background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:10px;padding:10px 11px;cursor:pointer;box-shadow:0 1px 2px rgba(20,51,42,.04)}
+.card[draggable=true]{cursor:grab}
+.card.arrastando{opacity:.4}
+.card .fra{font-family:var(--pop-fonte-titulo);font-weight:800;font-size:13px}
+.card .loja{font-size:12px;color:var(--pop-tinta-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .tit{font-weight:600;margin:4px 0 6px}
+.card .meta{display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--pop-tinta-2)}
+.card.urgente{border-left:4px solid var(--pop-verm)}
+.card.alta{border-left:4px solid var(--pop-ambar)}
+.card .alerta{margin-top:6px;font-size:11.5px;font-weight:700;color:var(--pop-verm)}
+/* tabelas */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--pop-papel);border:1.5px solid var(--pop-linha);border-radius:var(--pop-r);padding:10px 12px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.kpi b{display:block;font-family:var(--pop-fonte-titulo);font-weight:800;font-size:24px;line-height:1.1}
+.kpi span{font-size:12px;color:var(--pop-tinta-2)}
+.kpi.on{border-color:var(--pop-tinta);box-shadow:inset 0 0 0 1px var(--pop-tinta)}
+.kpi.verm b{color:var(--pop-verm)}.kpi.ambar b{color:var(--pop-ambar)}
+.tabwrap{overflow-x:auto;background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:var(--pop-r)}
+table{border-collapse:collapse;width:100%;min-width:820px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--pop-tinta-2);text-align:left;padding:9px 11px;background:var(--pop-papel-2);border-bottom:1px solid var(--pop-linha);white-space:nowrap}
+td{padding:9px 11px;border-bottom:1px solid var(--pop-linha-2);vertical-align:top}
+tr:hover td{background:var(--pop-fundo)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+a.lk{color:var(--pop-petroleo);font-weight:600;text-decoration:none;cursor:pointer}
+a.lk:hover{text-decoration:underline}
+/* loja */
+.loja-cab{background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:var(--pop-r);padding:14px 16px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.loja-cab h2{margin:0;font-size:21px;font-weight:800}
+.grid2{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:12px}
+.bloco{background:var(--pop-papel);border:1px solid var(--pop-linha);border-radius:var(--pop-r);padding:12px 14px;margin-bottom:12px}
+.bloco h3{margin:0 0 8px;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.tl{border-left:2px solid var(--pop-linha);margin-left:6px;padding-left:14px}
+.tl .it{position:relative;padding:0 0 12px}
+.tl .it::before{content:"";position:absolute;left:-20px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--pop-linha);border:2px solid var(--pop-papel)}
+.tl .it.concluida::before,.tl .it.resolvido::before{background:var(--pop-verde)}
+.tl .it.aberta::before{background:var(--pop-laranja)}
+.tl .it.nota::before{background:var(--pop-azul)}
+.tl .it.cancelada::before{background:var(--pop-tinta-3)}
+.tl .q{font-size:11.5px;color:var(--pop-tinta-3)}
+.tl .tx{white-space:pre-wrap}
+.tl .ob{background:var(--pop-papel-2);border-radius:6px;padding:5px 8px;margin-top:3px;font-size:13px;white-space:pre-wrap}
+/* gaveta e modal */
+.veu{position:fixed;inset:0;background:rgba(20,51,42,.35);display:none;z-index:50}
+.veu.on{display:block}
+.gaveta{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--pop-papel);box-shadow:var(--pop-sombra-alta);z-index:60;transform:translateX(105%);transition:transform .18s;overflow-y:auto;padding:18px}
+.gaveta.on{transform:none}
+.gaveta h2{margin:0 0 2px;font-size:19px;font-weight:800}
+.modal{position:fixed;left:50%;top:40px;transform:translateX(-50%);width:min(560px,calc(100% - 24px));max-height:calc(100vh - 60px);overflow:auto;background:var(--pop-papel);border-radius:var(--pop-r-lg);box-shadow:var(--pop-sombra-alta);padding:20px;z-index:70;display:none}
+.modal.on{display:block}
+.modal h2{margin:0 0 4px;font-size:19px;font-weight:800}
+.rod{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.linha-acoes{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.grade2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.login{max-width:420px;margin:48px auto;background:var(--pop-papel);border:1px solid var(--pop-linha);border-top:5px solid var(--pop-verde);border-radius:var(--pop-r-lg);box-shadow:0 8px 30px rgba(0,87,63,.08);padding:28px}
+.login img{height:48px;display:block;margin-bottom:14px}
+.login h1{font-size:24px;font-weight:800;margin:0}
+.login .btn{width:100%;margin-top:16px;padding:11px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--pop-tinta);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .2s;z-index:90;pointer-events:none}
+#toast.on{opacity:1}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+@media(max-width:640px){.quadro{grid-template-columns:repeat(4,minmax(78vw,1fr))}.grade2{grid-template-columns:1fr}.filtros>div{min-width:0;flex:1 1 45%}}
+</style>
+<!-- ===== TEMA POP v1.0 · 23/09/2026 · bloco-fonte da identidade visual única =====
+     Cole antes do </head> de qualquer página nova da rede, junto com a linha de fontes abaixo e depois do
+     bloco da Barra POP. Em seguida acrescente, dentro do mesmo <style>, só o que a página precisar para
+     apontar as próprias variáveis para as --pop-* (veja a parte "página" nas telas existentes). ===== -->
+<style id="pop-tema">
+/* ===== TEMA POP v1.0 · 23/09/2026 · identidade visual única do Sistema POP =====
+   Mesmo bloco em todas as páginas dos repositórios suporterdp, canais-pop e analise-geral-franquia.
+   Só visual: cores, fontes, raios, botões, abas, login e tabelas. Não mexe em lógica nem em dado.
+   Base: o visual da Central POP (porcelana + papel, tinta petróleo, Archivo nos títulos, Inter no texto,
+   laranja como ação principal e aba ativa). A parte "página" no fim traz só o que cada tela precisa
+   para cair nesse padrão. Para alterar o visual da rede toda: altere o bloco comum em tema-pop.snippet.html
+   e cole nas páginas. ===== */
+:root{
+  --pop-fundo:#EEF3F0; --pop-papel:#FFFFFF; --pop-papel-2:#F6FAF7;
+  --pop-tinta:#14332A; --pop-tinta-2:#5A7268; --pop-tinta-3:#8AA095;
+  --pop-linha:#D3DFD8; --pop-linha-2:#E6EDE9;
+  --pop-verde:#009150; --pop-verde-suave:#E2F2EA; --pop-verde-claro:#A8D3C4;
+  --pop-petroleo:#00573F; --pop-petroleo-suave:#E0EFE9;
+  --pop-laranja:#FF6B15; --pop-laranja-suave:#FFEDE1; --pop-laranja-texto:#A34608;
+  --pop-amarelo:#FDAE25; --pop-ambar:#B97E10; --pop-ambar-suave:#FBF1DC;
+  --pop-verm:#C0392B; --pop-verm-suave:#FBECEA;
+  --pop-foco:#5B4A9E; --pop-foco-suave:#ECE8F8;
+  --pop-azul:#2F6690; --pop-azul-suave:#E3EEF6;
+  --pop-r:12px; --pop-r-sm:8px; --pop-r-lg:18px;
+  --pop-sombra:0 1px 2px rgba(20,51,42,.05),0 8px 24px rgba(20,51,42,.07);
+  --pop-sombra-alta:0 10px 30px rgba(20,51,42,.16);
+  --pop-fonte:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --pop-fonte-titulo:'Archivo','Inter',system-ui,sans-serif;
+  color-scheme:light;
+}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--pop-fonte)}
+h1,h2,h3{font-family:var(--pop-fonte-titulo)}
+::selection{background:#FFD4BA;color:var(--pop-tinta)}
+:focus-visible{outline:2px solid var(--pop-laranja);outline-offset:2px}
+/* página: Lojas · acompanhamento — sem ajustes além do CSS da página */
+
+</style>
+<!-- ===== fim TEMA POP ===== -->
+
+</head>
+<body>
+<div id="barraPop"></div>
+
+<section id="telaLogin" class="login oculto">
+  <img src="../logo-pop.png" alt="Rede POP Pet Center" onerror="this.style.display='none'">
+  <h1>Lojas · Acompanhamento</h1>
+  <p class="muted">Mesmo login da Central POP. Se a Central já estiver aberta neste navegador, entra sozinho.</p>
+  <form id="fLogin">
+    <label for="lEmail">E-mail</label><input id="lEmail" type="email" autocomplete="username" required>
+    <label for="lSenha">Senha</label><input id="lSenha" type="password" autocomplete="current-password" required>
+    <div id="lMsg"></div>
+    <button class="btn pri" type="submit" id="lBtn">Entrar</button>
+  </form>
+</section>
+
+<main id="app" class="oculto">
+  <nav class="abas" role="tablist">
+    <button class="aba on" data-aba="quadro" type="button">Quadro de casos</button>
+    <button class="aba" data-aba="sem" type="button">Lojas sem tarefa <span class="bd oculto" id="bdSem"></span></button>
+    <button class="aba" data-aba="loja" type="button">Histórico da loja</button>
+    <button class="aba" data-aba="tickets" type="button">Tickets <span class="bd oculto" id="bdTk"></span></button>
+  </nav>
+
+  <!-- QUADRO -->
+  <section id="abaQuadro">
+    <div class="filtros">
+      <div><label for="qBusca">Buscar</label><input id="qBusca" placeholder="FRA, loja, título ou ticket"></div>
+      <div><label for="qResp">Responsável</label><select id="qResp"><option value="">Todos</option></select></div>
+      <div><label for="qCons">Consultor da loja</label><select id="qCons"><option value="">Todos</option></select></div>
+      <div><label for="qPrio">Prioridade</label><select id="qPrio"><option value="">Todas</option><option value="urgente">Urgente</option><option value="alta">Alta</option><option value="normal">Normal</option></select></div>
+      <span class="esp"></span>
+      <button class="btn" type="button" id="qAtual">↻ Atualizar</button>
+      <button class="btn pri" type="button" id="qNovo">+ Novo caso</button>
+    </div>
+    <div class="quadro" id="quadro"></div>
+    <p class="muted">Arraste o card entre as colunas. Em "Resolvido" o caso sai do quadro depois de 30 dias e continua no histórico da loja. Card com <b style="color:var(--pop-verm)">sem próxima tarefa</b> é caso aberto sem ninguém com ação marcada.</p>
+  </section>
+
+  <!-- SEM TAREFA -->
+  <section id="abaSem" class="oculto">
+    <div class="kpis" id="semKpis"></div>
+    <div class="filtros">
+      <div><label for="sBusca">Buscar</label><input id="sBusca" placeholder="FRA, loja ou cidade"></div>
+      <div><label for="sCons">Consultor</label><select id="sCons"><option value="">Todos</option></select></div>
+      <span class="esp"></span><span class="muted" id="sCont"></span>
+      <button class="btn peq" type="button" id="sCsv">CSV</button>
+    </div>
+    <div class="tabwrap"><table>
+      <thead><tr><th>FRA</th><th>Loja</th><th>Consultor</th><th>Última tarefa</th><th style="text-align:right">Dias</th><th>Próxima agendada</th><th style="text-align:right">Casos abertos</th><th></th></tr></thead>
+      <tbody id="tbSem"></tbody>
+    </table></div>
+    <p class="muted">Conta tarefas, reuniões e eventos da agenda ligados à loja (não cancelados). A data é a da conclusão, ou a data agendada quando já passou, ou a criação. Consultor vê só as lojas da própria carteira; gestão vê a rede.</p>
+  </section>
+
+  <!-- LOJA -->
+  <section id="abaLoja" class="oculto">
+    <div class="filtros">
+      <div style="flex:1;min-width:240px"><label for="lojaBusca">Loja</label><input id="lojaBusca" list="dlLojas" placeholder="Digite o FRA ou o nome da loja"><datalist id="dlLojas"></datalist></div>
+      <button class="btn" type="button" id="lojaIr">Abrir</button>
+    </div>
+    <div id="lojaCorpo"><p class="muted">Escolha uma loja para ver tudo o que já aconteceu com ela: tarefas, observações de conclusão, anotações, casos, tickets e consultorias.</p></div>
+  </section>
+
+  <!-- TICKETS -->
+  <section id="abaTickets" class="oculto">
+    <div class="filtros">
+      <div style="flex:1;min-width:220px"><label for="tBusca">Buscar número, loja ou texto</label><input id="tBusca" placeholder="ex.: 202609003788"></div>
+      <div><label for="tFiltro">Mostrar</label><select id="tFiltro"><option value="1">Só abertos</option><option value="0">Todos</option></select></div>
+      <span class="esp"></span><button class="btn pri" type="button" id="tNovo">+ Registrar ticket</button>
+    </div>
+    <div class="tabwrap"><table>
+      <thead><tr><th>Ticket</th><th>Sistema</th><th>Loja</th><th>Caso / tarefa</th><th>Registrado</th><th>Status</th><th></th></tr></thead>
+      <tbody id="tbTk"></tbody>
+    </table></div>
+    <p class="muted">Ticket escrito na observação ao concluir uma tarefa ("abri o ticket 2026…") é registrado sozinho. Ao concluir tarefa de loja, a Central também pergunta o número.</p>
+  </section>
+</main>
+
+<div class="veu" id="veu"></div>
+<aside class="gaveta" id="gaveta" aria-label="Caso"></aside>
+
+<div class="modal" id="mCaso" role="dialog" aria-modal="true">
+  <h2 id="mcTit">Novo caso</h2>
+  <p class="muted">Um caso é um problema de uma loja, do começo até a solução. Tarefas, tickets e anotações ficam presos a ele.</p>
+  <form id="fCaso">
+    <label for="mcLoja">Loja</label><input id="mcLoja" list="dlLojas" required placeholder="FRA ou nome">
+    <label for="mcTitulo">Qual é o problema</label><input id="mcTitulo" required maxlength="160" placeholder="ex.: Relatório de vendas do OnePet não bate">
+    <label for="mcDesc">Detalhes (opcional)</label><textarea id="mcDesc" maxlength="4000"></textarea>
+    <div class="grade2">
+      <div><label for="mcResp">Responsável</label><select id="mcResp"></select></div>
+      <div><label for="mcPrio">Prioridade</label><select id="mcPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+    </div>
+    <label for="mcDem">Faz parte de uma demanda da rede? (opcional)</label><select id="mcDem"><option value="">Não</option></select>
+    <label><input type="checkbox" id="mcTarefa" style="width:auto;margin-right:6px" checked>Já criar a primeira tarefa para o responsável</label>
+    <div id="mcTarefaBox" class="grade2">
+      <div><label for="mcTTit">Tarefa</label><input id="mcTTit" maxlength="140" placeholder="ex.: Ligar para o franqueado"></div>
+      <div><label for="mcTPrazo">Prazo</label><input id="mcTPrazo" type="date"></div>
+    </div>
+    <div id="mcMsg"></div>
+    <div class="rod"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn pri" type="submit">Abrir caso</button></div>
+  </form>
+</div>
+
+<div class="modal" id="mTexto" role="dialog" aria-modal="true">
+  <h2 id="mtTit"></h2><p class="muted" id="mtSub"></p>
+  <textarea id="mtTxt" maxlength="2000"></textarea>
+  <div id="mtMsg"></div>
+  <div class="rod"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn pri" type="button" id="mtOk">Confirmar</button></div>
+</div>
+
+<div class="modal" id="mTarefa" role="dialog" aria-modal="true">
+  <h2>Nova tarefa do caso</h2><p class="muted" id="mfSub"></p>
+  <form id="fTarefa">
+    <label for="mfTit">Tarefa</label><input id="mfTit" required maxlength="140">
+    <div class="grade2">
+      <div><label for="mfResp">Para quem</label><select id="mfResp"></select></div>
+      <div><label for="mfPrazo">Prazo</label><input id="mfPrazo" type="date" required></div>
+    </div>
+    <label for="mfDesc">Detalhes (opcional)</label><textarea id="mfDesc" maxlength="2000"></textarea>
+    <div id="mfMsg"></div>
+    <div class="rod"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn pri" type="submit">Criar tarefa na agenda</button></div>
+  </form>
+</div>
+
+<div class="modal" id="mTicket" role="dialog" aria-modal="true">
+  <h2>Registrar ticket</h2>
+  <form id="fTicket">
+    <label for="mkLoja">Loja</label><input id="mkLoja" list="dlLojas" required>
+    <div class="grade2">
+      <div><label for="mkSis">Sistema</label><select id="mkSis"><option value="onepet">OnePet</option><option value="sults">Sults</option><option value="nummus">Nummus</option><option value="ifood">iFood</option><option value="outro">Outro</option></select></div>
+      <div><label for="mkNum">Número</label><input id="mkNum" required maxlength="40"></div>
+    </div>
+    <label for="mkObs">Do que se trata (opcional)</label><textarea id="mkObs" maxlength="1000"></textarea>
+    <div id="mkMsg"></div>
+    <div class="rod"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn pri" type="submit">Registrar</button></div>
+  </form>
+</div>
+
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+'use strict';
+const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
+const VERSAO='lojas v1.0';
+const COLS=[['a_fazer','A fazer','novo, ninguém agiu ainda'],['andamento','Em andamento','tem gente trabalhando'],['aguardando','Aguardando','franqueado, ticket ou terceiro'],['resolvido','Resolvido','sai do quadro em 30 dias']];
+const COLNOME=Object.fromEntries(COLS.map(c=>[c[0],c[1]]));
+const SIS={onepet:'OnePet',sults:'Sults',nummus:'Nummus',ifood:'iFood',outro:'Outro'};
+const FAIXAS=[['nunca','Nunca teve','verm'],['90','90+ dias','verm'],['60','60–89 dias','verm'],['45','45–59 dias','ambar'],['30','30–44 dias','ambar'],['15','15–29 dias','ambar'],['em_dia','Menos de 15','']];
+const TIPOHIST={criado:'Caso aberto',movido:'Card movido',resolvido:'Caso resolvido',reaberto:'Caso reaberto',nota:'Anotação',editado:'Caso editado',tarefa_criada:'Tarefa criada',tarefa_vinculada:'Tarefa ligada ao caso',tarefa_concluida:'Tarefa concluída',tarefa_cancelada:'Tarefa cancelada',protocolo:'Ticket'};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dBR=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
+const dhBR=d=>d?new Date(d).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+const hojeISO=()=>{const d=new Date(Date.now()-3*3600e3);return d.toISOString().slice(0,10);};
+const maisDias=n=>{const d=new Date(Date.now()-3*3600e3+n*864e5);return d.toISOString().slice(0,10);};
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1800);}
+function msg(id,t,tipo){const b=$(id);b.innerHTML='';if(t){const d=document.createElement('div');d.className='aviso'+(tipo?' '+tipo:'');d.textContent=t;b.appendChild(d);}}
+const primeiro=n=>String(n||'—').replace(/\s+-\s+.*$/,'');
+
+let sb,usuario,perfil,gestor=false,LOJAS=[],EQUIPE=[],DEMANDAS=[],CASOS=[],SEM=[],TK=[],semFaixa='',casoAberto=null,lojaAtual=null,arrastando=null;
+
+BarraPop.montar({el:'barraPop',sistema:'lojas',logo:'../logo-pop.png',logoHref:'../',
+  trilha:[{nome:'Central POP',href:'../'}],titulo:'Lojas · <em>acompanhamento</em>',sub:'casos, histórico e tickets de cada loja',
+  sair:function(){sb.auth.signOut();},sairOculto:true,auto:false});
+
+async function iniciar(){
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  const {data:{session}}=await sb.auth.getSession();
+  if(session)await entrou(session);else $('telaLogin').classList.remove('oculto');
+  sb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_OUT')location.reload();});
+}
+$('fLogin').onsubmit=async ev=>{
+  ev.preventDefault();msg('lMsg');$('lBtn').disabled=true;
+  const {data,error}=await sb.auth.signInWithPassword({email:$('lEmail').value.trim(),password:$('lSenha').value});
+  $('lBtn').disabled=false;if(error){msg('lMsg','E-mail ou senha inválidos.','erro');return;}
+  await entrou(data.session);
+};
+async function rpc(n,a){const {data,error}=await sb.rpc(n,a||{});if(error)throw new Error(error.message);return data;}
+async function entrou(session){
+  usuario=session.user;
+  const {data:p}=await sb.from('perfis').select('nome,is_admin,papeis').eq('id',usuario.id).maybeSingle();
+  perfil=p||{nome:usuario.email,is_admin:false,papeis:[]};
+  const pap=perfil.papeis||[];
+  if(pap.includes('franqueado')&&!perfil.is_admin){$('telaLogin').classList.remove('oculto');msg('lMsg','Esta tela é da equipe da franqueadora.','erro');await sb.auth.signOut();return;}
+  gestor=!!(perfil.is_admin||pap.includes('supervisor')||pap.includes('diretoria'));
+  $('telaLogin').classList.add('oculto');$('app').classList.remove('oculto');
+  BarraPop.quem(perfil.nome,(perfil.is_admin?'admin':(gestor?'gestão':'consultor'))+' · '+VERSAO);BarraPop.sessao();BarraPop.sairVisivel(true);
+  try{await carregarBase();}catch(e){alert('Erro ao carregar: '+e.message);}
+  const u=new URLSearchParams(location.search);
+  if(u.get('fra')){abrirAba('loja');abrirLoja(+u.get('fra'));}
+  else{let a='quadro';try{a=sessionStorage.getItem('lojas-aba')||'quadro';}catch(e){}abrirAba(a);}
+  if(u.get('caso'))abrirCaso(+u.get('caso'));
+}
+async function carregarBase(){
+  const [l,eq,dm]=await Promise.all([
+    sb.from('franquias').select('fra,nome,cidade,estado,consultor,consultor_id,ativo').gt('fra',0).order('fra'),
+    sb.from('perfis').select('id,nome,is_admin,papeis').order('nome'),
+    sb.from('demandas').select('id,titulo,status').neq('status','concluida').order('titulo')]);
+  LOJAS=(l.data||[]).filter(x=>x.ativo!==false);
+  EQUIPE=(eq.data||[]).filter(p=>p.is_admin||!(p.papeis||[]).includes('franqueado')).filter(p=>(p.papeis||[]).length||p.is_admin);
+  DEMANDAS=dm.data||[];
+  $('dlLojas').innerHTML=LOJAS.map(f=>'<option value="'+esc(f.fra+' · '+f.nome)+'">').join('');
+  const opE='<option value="">Todos</option>'+EQUIPE.map(p=>'<option value="'+p.id+'">'+esc(primeiro(p.nome))+'</option>').join('');
+  $('qResp').innerHTML=opE;$('qCons').innerHTML=opE;$('sCons').innerHTML=opE;
+  const opR=EQUIPE.map(p=>'<option value="'+p.id+'"'+(p.id===usuario.id?' selected':'')+'>'+esc(p.nome)+'</option>').join('');
+  $('mcResp').innerHTML=opR;$('mfResp').innerHTML=opR;
+  $('mcDem').innerHTML='<option value="">Não</option>'+DEMANDAS.map(d=>'<option value="'+d.id+'">'+esc(d.titulo)+'</option>').join('');
+  await Promise.all([carregarQuadro(),carregarSem(),carregarTickets()]);
+}
+function fraDe(txt){const m=String(txt||'').trim().match(/^(\d{1,4})/);if(m)return +m[1];const t=String(txt||'').toLowerCase();const f=LOJAS.find(x=>x.nome.toLowerCase()===t)||LOJAS.find(x=>x.nome.toLowerCase().includes(t)&&t.length>2);return f?f.fra:null;}
+function lojaNome(fra){const f=LOJAS.find(x=>x.fra===fra);return f?f.nome:('FRA '+fra);}
+
+/* ---------- abas ---------- */
+function abrirAba(a){
+  document.querySelectorAll('.aba').forEach(b=>b.classList.toggle('on',b.dataset.aba===a));
+  ['quadro','sem','loja','tickets'].forEach(n=>$('aba'+n[0].toUpperCase()+n.slice(1)).classList.toggle('oculto',n!==a));
+  try{sessionStorage.setItem('lojas-aba',a);}catch(e){}
+}
+document.querySelectorAll('.aba').forEach(b=>b.onclick=()=>abrirAba(b.dataset.aba));
+
+/* ---------- quadro ---------- */
+async function carregarQuadro(){CASOS=await rpc('crm_quadro',{p_dias_resolvidos:30})||[];desenharQuadro();}
+function visiveisQuadro(){
+  const q=$('qBusca').value.trim().toLowerCase(),r=$('qResp').value,c=$('qCons').value,p=$('qPrio').value;
+  const consNome=c?(EQUIPE.find(x=>x.id===c)||{}).nome:'';
+  return CASOS.filter(k=>(!r||k.responsavel_id===r)&&(!p||k.prioridade===p)
+    &&(!c||(LOJAS.find(f=>f.fra===k.fra)||{}).consultor_id===c||k.consultor_loja===consNome)
+    &&(!q||[k.fra,k.loja,k.titulo,k.responsavel,(k.tickets_abertos||[]).map(t=>t.numero).join(' ')].join(' ').toLowerCase().includes(q)));
+}
+function desenharQuadro(){
+  const lista=visiveisQuadro(),box=$('quadro');box.innerHTML='';
+  COLS.forEach(([k,nome,dica])=>{
+    const itens=lista.filter(c=>c.coluna===k).sort((a,b)=>({urgente:0,alta:1,normal:2}[a.prioridade]-{urgente:0,alta:1,normal:2}[b.prioridade])||a.ordem-b.ordem);
+    const col=document.createElement('div');col.className='col';col.dataset.col=k;
+    col.innerHTML='<h3><span>'+esc(nome)+'</span><span>'+itens.length+'</span></h3><div class="dica">'+esc(dica)+'</div><div class="cards"></div>';
+    const cards=col.querySelector('.cards');
+    itens.forEach(c=>cards.appendChild(cardEl(c)));
+    col.addEventListener('dragover',ev=>{if(!arrastando)return;ev.preventDefault();col.classList.add('sobre');});
+    col.addEventListener('dragleave',()=>col.classList.remove('sobre'));
+    col.addEventListener('drop',ev=>{ev.preventDefault();col.classList.remove('sobre');const c=arrastando;arrastando=null;if(c&&c.coluna!==k)pedirMover(c,k);});
+    box.appendChild(col);
+  });
+}
+function cardEl(c){
+  const d=document.createElement('div');d.className='card '+(c.prioridade!=='normal'?c.prioridade:'');
+  d.draggable=!!c.pode_mexer;
+  const tk=(c.tickets_abertos||[]);
+  d.innerHTML='<div class="fra">FRA '+c.fra+'</div><div class="loja">'+esc(c.loja)+' · '+esc(c.cidade||'')+'</div>'
+    +'<div class="tit">'+esc(c.titulo)+'</div>'
+    +'<div class="meta"><span>👤 '+esc(primeiro(c.responsavel))+'</span>'
+    +(c.prioridade!=='normal'?'<span class="selo '+(c.prioridade==='urgente'?'s-verm':'s-ambar')+'">'+c.prioridade+'</span>':'')
+    +(tk.length?'<span class="selo s-foco">🎫 '+esc(tk.map(t=>t.numero).join(', '))+'</span>':'')
+    +'<span>· '+(c.dias_parado?c.dias_parado+' d parado':'mexido hoje')+'</span></div>'
+    +(c.coluna==='aguardando'&&c.aguardando_quem?'<div class="muted" style="margin-top:4px">⏳ '+esc(c.aguardando_quem)+'</div>':'')
+    +(c.coluna==='resolvido'?'<div class="muted" style="margin-top:4px">✔ '+esc(c.resolucao||'')+'</div>'
+      :(c.proxima_tarefa?'<div class="muted" style="margin-top:4px">➜ '+esc(c.proxima_tarefa.titulo)+' · '+dBR(c.proxima_tarefa.quando)+' · '+esc(primeiro(c.proxima_tarefa.quem))+'</div>'
+        :'<div class="alerta">sem próxima tarefa</div>'));
+  d.addEventListener('dragstart',()=>{arrastando=c;d.classList.add('arrastando');});
+  d.addEventListener('dragend',()=>{d.classList.remove('arrastando');document.querySelectorAll('.col.sobre').forEach(x=>x.classList.remove('sobre'));});
+  d.onclick=()=>abrirCaso(c.id);
+  return d;
+}
+['qBusca','qResp','qCons','qPrio'].forEach(id=>$(id)[id==='qBusca'?'oninput':'onchange']=desenharQuadro);
+$('qAtual').onclick=async()=>{await carregarQuadro();toast('Quadro atualizado');};
+
+let textoCb=null;
+function pedirTexto(tit,sub,obrig,cb,pre){$('mtTit').textContent=tit;$('mtSub').textContent=sub||'';$('mtTxt').value=pre||'';msg('mtMsg');textoCb={cb,obrig};abrirModal('mTexto');setTimeout(()=>$('mtTxt').focus(),50);}
+$('mtOk').onclick=async()=>{const v=$('mtTxt').value.trim();if(textoCb.obrig&&v.length<5){msg('mtMsg','Escreva pelo menos uma frase.','erro');return;}
+  $('mtOk').disabled=true;try{await textoCb.cb(v);fecharModais();}catch(e){msg('mtMsg',e.message,'erro');}$('mtOk').disabled=false;};
+function pedirMover(c,para){
+  if(!c.pode_mexer){toast('Só o responsável, quem abriu ou a gestão movem este card');return;}
+  const mover=async t=>{await rpc('crm_caso_mover',{p_id:c.id,p_coluna:para,p_texto:t||null,p_ordem:Date.now()/1000});toast('Movido para '+COLNOME[para]);await carregarQuadro();if(casoAberto===c.id)abrirCaso(c.id);};
+  if(para==='resolvido')return pedirTexto('Fechar caso · FRA '+c.fra,'Como o problema foi resolvido? Fica no histórico da loja.',true,mover);
+  if(c.coluna==='resolvido')return pedirTexto('Reabrir caso · FRA '+c.fra,'Por que o caso voltou?',true,mover);
+  if(para==='aguardando')return pedirTexto('Aguardando o quê? · FRA '+c.fra,'Ex.: retorno do ticket OnePet 2026…, resposta do franqueado.',true,mover,(c.tickets_abertos||[]).length?'Ticket '+c.tickets_abertos[0].numero:'');
+  mover(null).catch(e=>alert(e.message));
+}
+
+/* ---------- caso (gaveta) ---------- */
+async function abrirCaso(id){
+  casoAberto=id;const g=$('gaveta');g.innerHTML='<p class="muted">Carregando…</p>';g.classList.add('on');$('veu').classList.add('on');
+  let c=CASOS.find(x=>x.id===id);
+  if(!c){const {data}=await sb.from('crm_casos').select('*').eq('id',id).maybeSingle();if(!data){g.innerHTML='<p>Caso não encontrado.</p>';return;}
+    c={...data,loja:lojaNome(data.fra),responsavel:(EQUIPE.find(p=>p.id===data.responsavel_id)||{}).nome,pode_mexer:gestor||data.responsavel_id===usuario.id||data.criado_por===usuario.id,tickets_abertos:[]};}
+  const [h,t,k]=await Promise.all([
+    sb.from('crm_casos_hist').select('em,por,tipo,de,para,texto').eq('caso_id',id).order('em',{ascending:false}),
+    sb.from('agenda_eventos').select('id,titulo,data,prazo,concluida,concluida_em,concluida_obs,user_id,cancelado_em').eq('caso_id',id).order('criado_em',{ascending:false}),
+    sb.from('crm_protocolos').select('id,sistema,numero,status,criado_em').eq('caso_id',id).order('criado_em',{ascending:false})]);
+  const nomeP=uid=>primeiro((EQUIPE.find(p=>p.id===uid)||{}).nome);
+  const mov=COLS.filter(x=>x[0]!==c.coluna).map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('');
+  g.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px"><div><div class="muted">FRA '+c.fra+' · '+esc(c.loja)+'</div><h2>'+esc(c.titulo)+'</h2></div><button class="btn peq" id="gFechar" type="button">✕</button></div>'
+    +'<div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><span class="selo s-azul">'+COLNOME[c.coluna]+'</span>'
+    +(c.prioridade!=='normal'?'<span class="selo '+(c.prioridade==='urgente'?'s-verm':'s-ambar')+'">'+c.prioridade+'</span>':'')
+    +'<span class="muted">👤 '+esc(c.responsavel||'—')+(c.demanda?' · demanda: '+esc(c.demanda):'')+'</span></div>'
+    +(c.descricao?'<div class="bloco" style="white-space:pre-wrap">'+esc(c.descricao)+'</div>':'')
+    +(c.coluna==='aguardando'&&c.aguardando_quem?'<div class="aviso">⏳ Aguardando: '+esc(c.aguardando_quem)+'</div>':'')
+    +(c.coluna==='resolvido'?'<div class="aviso ok">✔ '+esc(c.resolucao||'')+' · '+dhBR(c.resolvido_em)+'</div>':'')
+    +'<div class="linha-acoes">'
+      +'<button class="btn pri peq" id="gTarefa" type="button">+ Tarefa</button>'
+      +'<button class="btn peq" id="gTicket" type="button">+ Ticket</button>'
+      +'<button class="btn peq" id="gNota" type="button">+ Anotação</button>'
+      +(c.pode_mexer?'<select id="gMover" style="width:auto;padding:5px 8px"><option value="">Mover para…</option>'+mov+'</select>':'')
+      +'<a class="lk" href="?fra='+c.fra+'" id="gLoja" style="align-self:center">histórico da loja →</a>'
+    +'</div>'
+    +(c.pode_mexer?'<details style="margin-bottom:10px"><summary class="muted" style="cursor:pointer">Editar responsável / prioridade</summary><div class="grade2"><div><label>Responsável</label><select id="gResp">'+EQUIPE.map(p=>'<option value="'+p.id+'"'+(p.id===c.responsavel_id?' selected':'')+'>'+esc(p.nome)+'</option>').join('')+'</select></div><div><label>Prioridade</label><select id="gPrio">'+['normal','alta','urgente'].map(x=>'<option'+(x===c.prioridade?' selected':'')+'>'+x+'</option>').join('')+'</select></div></div><div class="rod"><button class="btn peq" id="gSalvar" type="button">Salvar</button></div></details>':'')
+    +'<div class="bloco"><h3>Tarefas ('+(t.data||[]).length+')</h3>'+((t.data||[]).map(e=>'<div style="padding:5px 0;border-bottom:1px solid var(--pop-linha-2)">'
+        +(e.cancelado_em?'<span class="selo s-cinza">cancelada</span> ':e.concluida?'<span class="selo s-verde">feita</span> ':'<span class="selo s-ambar">aberta</span> ')
+        +'<b>'+esc(e.titulo)+'</b> <span class="muted">· '+esc(nomeP(e.user_id))+' · '+(e.concluida?'concluída '+dhBR(e.concluida_em):'prazo '+dBR(e.prazo||e.data))+'</span>'
+        +(e.concluida_obs?'<div class="muted" style="white-space:pre-wrap">“'+esc(e.concluida_obs)+'”</div>':'')+'</div>').join('')||'<p class="muted">Nenhuma tarefa. Crie a próxima ação para o caso não parar.</p>')+'</div>'
+    +'<div class="bloco"><h3>Tickets</h3>'+((k.data||[]).map(p=>'<div>🎫 <b>'+esc(p.numero)+'</b> · '+esc(SIS[p.sistema]||p.sistema)+' · <span class="selo '+(p.status==='aberto'?'s-foco':'s-verde')+'">'+p.status+'</span></div>').join('')||'<p class="muted">Nenhum.</p>')+'</div>'
+    +'<div class="bloco"><h3>Histórico do caso</h3><div class="tl">'+((h.data||[]).map(x=>'<div class="it '+(x.tipo==='nota'?'nota':x.tipo==='resolvido'||x.tipo==='tarefa_concluida'?'concluida':'')+'"><div class="q">'+dhBR(x.em)+' · '+esc(nomeP(x.por))+'</div><b>'+esc(TIPOHIST[x.tipo]||x.tipo)+'</b>'
+        +(x.de||x.para?' <span class="muted">'+esc(COLNOME[x.de]||x.de||'')+(x.de?' → ':'')+esc(COLNOME[x.para]||x.para||'')+'</span>':'')
+        +(x.texto?'<div class="tx">'+esc(x.texto)+'</div>':'')+'</div>').join('')||'<p class="muted">—</p>')+'</div></div>';
+  $('gFechar').onclick=fecharGaveta;
+  $('gTarefa').onclick=()=>novaTarefa(c);
+  $('gTicket').onclick=()=>novoTicket(c.fra,c.id);
+  $('gNota').onclick=()=>pedirTexto('Anotação · FRA '+c.fra,'Fica no histórico do caso e da loja. Número de ticket escrito aqui é registrado sozinho.',false,async v=>{if(!v)throw new Error('Escreva a anotação.');await rpc('crm_caso_nota',{p_id:c.id,p_texto:v});toast('Anotado');await carregarQuadro();abrirCaso(c.id);});
+  const gm=$('gMover');if(gm)gm.onchange=()=>{if(gm.value)pedirMover(c,gm.value);gm.value='';};
+  const gs=$('gSalvar');if(gs)gs.onclick=async()=>{try{await rpc('crm_caso_editar',{p_id:c.id,p_dados:{responsavel_id:$('gResp').value,prioridade:$('gPrio').value}});toast('Salvo');await carregarQuadro();abrirCaso(c.id);}catch(e){alert(e.message);}};
+  $('gLoja').onclick=ev=>{ev.preventDefault();fecharGaveta();abrirAba('loja');abrirLoja(c.fra);};
+}
+function fecharGaveta(){$('gaveta').classList.remove('on');if(!document.querySelector('.modal.on'))$('veu').classList.remove('on');casoAberto=null;}
+
+/* ---------- novo caso / tarefa / ticket ---------- */
+function abrirModal(id){$('veu').classList.add('on');$(id).classList.add('on');}
+function fecharModais(){document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'));if(!$('gaveta').classList.contains('on'))$('veu').classList.remove('on');}
+document.querySelectorAll('[data-fechar]').forEach(b=>b.onclick=fecharModais);
+$('veu').onclick=()=>{if(document.querySelector('.modal.on'))fecharModais();else fecharGaveta();};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.querySelector('.modal.on'))fecharModais();else fecharGaveta();}});
+
+function novoCaso(fra){
+  $('fCaso').reset();msg('mcMsg');$('mcResp').value=usuario.id;$('mcTPrazo').value=maisDias(2);
+  if(fra)$('mcLoja').value=fra+' · '+lojaNome(fra);
+  $('mcTarefaBox').classList.remove('oculto');abrirModal('mCaso');
+}
+$('qNovo').onclick=()=>novoCaso(null);
+$('mcTarefa').onchange=()=>$('mcTarefaBox').classList.toggle('oculto',!$('mcTarefa').checked);
+$('fCaso').onsubmit=async ev=>{
+  ev.preventDefault();msg('mcMsg');
+  const fra=fraDe($('mcLoja').value);if(!fra||!LOJAS.some(f=>f.fra===fra)){msg('mcMsg','Escolha a loja da lista.','erro');return;}
+  const querTarefa=$('mcTarefa').checked,tt=$('mcTTit').value.trim();
+  if(querTarefa&&!tt){msg('mcMsg','Escreva a primeira tarefa ou desmarque a opção.','erro');return;}
+  try{
+    const r=await rpc('crm_caso_criar',{p_fra:fra,p_titulo:$('mcTitulo').value,p_descricao:$('mcDesc').value,p_responsavel:$('mcResp').value,p_prioridade:$('mcPrio').value,p_demanda:$('mcDem').value||null});
+    if(querTarefa)await inserirTarefa({fra,caso:r.id,titulo:tt,para:$('mcResp').value,prazo:$('mcTPrazo').value||maisDias(2),desc:'Caso: '+$('mcTitulo').value.trim(),demanda:$('mcDem').value||null});
+    fecharModais();toast('Caso aberto');await carregarQuadro();carregarSem();abrirCaso(r.id);
+  }catch(e){msg('mcMsg',e.message,'erro');}
+};
+async function inserirTarefa(o){
+  const {error}=await sb.from('agenda_eventos').insert({user_id:o.para,titulo:o.titulo,data:hojeISO(),ini:'00:00',fim:'00:00',tipo:'tarefa',
+    descricao:o.desc||'',participantes:[],franquia_fra:o.fra,prazo:o.prazo,subtarefas:[],criado_por:usuario.id,caso_id:o.caso,demanda_id:o.demanda||null});
+  if(error)throw new Error(error.message);
+}
+let tarefaCaso=null;
+function novaTarefa(c){tarefaCaso=c;$('fTarefa').reset();msg('mfMsg');$('mfSub').textContent='FRA '+c.fra+' · '+c.titulo+' — aparece na agenda de quem receber.';$('mfResp').value=c.responsavel_id||usuario.id;$('mfPrazo').value=maisDias(2);abrirModal('mTarefa');}
+$('fTarefa').onsubmit=async ev=>{
+  ev.preventDefault();msg('mfMsg');
+  try{await inserirTarefa({fra:tarefaCaso.fra,caso:tarefaCaso.id,titulo:$('mfTit').value.trim(),para:$('mfResp').value,prazo:$('mfPrazo').value,desc:($('mfDesc').value.trim()?$('mfDesc').value.trim()+'\n':'')+'Caso: '+tarefaCaso.titulo,demanda:tarefaCaso.demanda_id});
+    fecharModais();toast('Tarefa criada na agenda');await carregarQuadro();carregarSem();abrirCaso(tarefaCaso.id);}catch(e){msg('mfMsg',e.message,'erro');}
+};
+let ticketCaso=null;
+function novoTicket(fra,caso){ticketCaso=caso||null;$('fTicket').reset();msg('mkMsg');if(fra)$('mkLoja').value=fra+' · '+lojaNome(fra);abrirModal('mTicket');}
+$('tNovo').onclick=()=>novoTicket(null,null);
+$('fTicket').onsubmit=async ev=>{
+  ev.preventDefault();msg('mkMsg');const fra=fraDe($('mkLoja').value);if(!fra){msg('mkMsg','Escolha a loja da lista.','erro');return;}
+  try{await rpc('crm_protocolo_salvar',{p_fra:fra,p_caso:ticketCaso,p_sistema:$('mkSis').value,p_numero:$('mkNum').value,p_obs:$('mkObs').value});
+    fecharModais();toast('Ticket registrado');await Promise.all([carregarTickets(),carregarQuadro()]);if(ticketCaso)abrirCaso(ticketCaso);if(lojaAtual===fra)abrirLoja(fra);}catch(e){msg('mkMsg',e.message,'erro');}
+};
+
+/* ---------- lojas sem tarefa ---------- */
+async function carregarSem(){SEM=await rpc('crm_lojas_sem_tarefa')||[];const n=SEM.filter(x=>x.faixa!=='em_dia').length;const b=$('bdSem');b.textContent=n;b.classList.toggle('oculto',!n);desenharSem();}
+function visiveisSem(){
+  const q=$('sBusca').value.trim().toLowerCase(),c=$('sCons').value;
+  return SEM.filter(x=>(!semFaixa||(semFaixa==='15mais'?x.faixa!=='em_dia':x.faixa===semFaixa))&&(!c||x.consultor_id===c)
+    &&(!q||[x.fra,x.loja,x.cidade].join(' ').toLowerCase().includes(q)));
+}
+function desenharSem(){
+  const k=$('semKpis');k.innerHTML='';
+  const cont=f=>SEM.filter(x=>x.faixa===f).length;
+  [['15mais','15 dias ou mais','verm',SEM.filter(x=>x.faixa!=='em_dia').length]].concat(FAIXAS.map(f=>[f[0],f[1],f[2],cont(f[0])])).forEach(([f,t,cor,n])=>{
+    const b=document.createElement('button');b.type='button';b.className='kpi '+cor+(semFaixa===f?' on':'');b.innerHTML='<b>'+n+'</b><span>'+t+'</span>';
+    b.onclick=()=>{semFaixa=semFaixa===f?'':f;desenharSem();};k.appendChild(b);});
+  const lista=visiveisSem(),tb=$('tbSem');tb.innerHTML='';$('sCont').textContent=lista.length+' loja(s)';
+  if(!lista.length){tb.innerHTML='<tr><td colspan="8" class="muted">Nenhuma loja neste filtro.</td></tr>';return;}
+  lista.forEach(x=>{
+    const f=FAIXAS.find(y=>y[0]===x.faixa)||['','',''];const tr=document.createElement('tr');
+    tr.innerHTML='<td><b>'+x.fra+'</b></td><td><a class="lk" data-fra="'+x.fra+'">'+esc(x.loja)+'</a><div class="muted">'+esc((x.cidade||'')+(x.uf?'/'+x.uf:''))+'</div></td>'
+      +'<td>'+esc(primeiro(x.consultor))+'</td>'
+      +'<td>'+(x.ultima?dBR(x.ultima)+'<div class="muted">'+esc(x.ultima_titulo||'')+'</div>':'<span class="muted">nenhuma registrada</span>')+'</td>'
+      +'<td class="num"><span class="selo '+(f[2]==='verm'?'s-verm':f[2]==='ambar'?'s-ambar':'s-verde')+'">'+(x.dias==null?'nunca':x.dias)+'</span></td>'
+      +'<td>'+(x.proxima?dBR(x.proxima):'<span class="muted">—</span>')+'</td>'
+      +'<td class="num">'+(x.casos_abertos||0)+'</td>'
+      +'<td><button class="btn peq" type="button" data-caso="'+x.fra+'">+ Caso</button></td>';
+    tb.appendChild(tr);});
+  tb.querySelectorAll('[data-fra]').forEach(a=>a.onclick=()=>{abrirAba('loja');abrirLoja(+a.dataset.fra);});
+  tb.querySelectorAll('[data-caso]').forEach(b=>b.onclick=()=>novoCaso(+b.dataset.caso));
+}
+['sBusca','sCons'].forEach(id=>$(id)[id==='sBusca'?'oninput':'onchange']=desenharSem);
+$('sCsv').onclick=()=>{
+  const lin=['fra;loja;cidade;uf;consultor;ultima_tarefa;titulo_ultima;dias;faixa;proxima;casos_abertos'].concat(visiveisSem().map(x=>[x.fra,x.loja,x.cidade,x.uf,x.consultor,x.ultima||'',x.ultima_titulo||'',x.dias==null?'':x.dias,x.faixa,x.proxima||'',x.casos_abertos]
+    .map(v=>{v=String(v==null?'':v);if(/^[=+\-@]/.test(v))v="'"+v;return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(';')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+lin.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='lojas-sem-tarefa-'+hojeISO()+'.csv';a.click();
+};
+
+/* ---------- histórico da loja ---------- */
+$('lojaIr').onclick=()=>{const f=fraDe($('lojaBusca').value);if(f)abrirLoja(f);else toast('Loja não encontrada');};
+$('lojaBusca').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('lojaIr').click();}});
+$('lojaBusca').addEventListener('change',()=>{const f=fraDe($('lojaBusca').value);if(f)abrirLoja(f);});
+const ROT_LINHA={aberta:'Tarefa aberta',concluida:'Tarefa concluída',cancelada:'Tarefa cancelada',criado:'Caso aberto',movido:'Caso movido',resolvido:'Caso resolvido',reaberto:'Caso reaberto',nota:'Anotação no caso',editado:'Caso editado',consultoria:'Consultoria',consultoria_encerrada:'Consultoria encerrada'};
+async function abrirLoja(fra){
+  lojaAtual=fra;$('lojaBusca').value=fra+' · '+lojaNome(fra);
+  try{history.replaceState(null,'','?fra='+fra);}catch(e){}
+  const b=$('lojaCorpo');b.innerHTML='<p class="muted">Carregando…</p>';
+  let r;try{r=await rpc('crm_loja_linha_tempo',{p_fra:fra});}catch(e){b.innerHTML='<div class="aviso erro">'+esc(e.message)+'</div>';return;}
+  const l=r.loja||{},sem=SEM.find(x=>x.fra===fra);
+  b.innerHTML='<div class="loja-cab"><div><div class="muted">FRA '+fra+'</div><h2>'+esc(l.nome||'')+'</h2><div class="muted">'+esc((l.cidade||'')+(l.uf?'/'+l.uf:''))+' · consultor: '+esc(primeiro(l.consultor))+'</div></div>'
+    +'<div style="text-align:right">'+(sem?'<div class="muted">última tarefa</div><b>'+(sem.ultima?dBR(sem.ultima)+' · '+sem.dias+' d':'nunca')+'</b>':'')+'<div class="linha-acoes" style="justify-content:flex-end"><button class="btn pri peq" id="lNovo" type="button">+ Caso</button><button class="btn peq" id="lTk" type="button">+ Ticket</button></div></div></div>'
+    +'<div class="grid2"><div class="bloco"><h3>Linha do tempo</h3><div class="tl" id="lTl"></div></div><div>'
+      +'<div class="bloco"><h3>Casos</h3>'+((r.casos||[]).map(c=>'<div style="padding:6px 0;border-bottom:1px solid var(--pop-linha-2)"><a class="lk" data-caso="'+c.id+'">'+esc(c.titulo)+'</a><div class="muted"><span class="selo '+(c.coluna==='resolvido'?'s-verde':'s-azul')+'">'+COLNOME[c.coluna]+'</span> · '+esc(primeiro(c.responsavel))+' · aberto '+dBR(c.criado_em)+(c.resolucao?' · ✔ '+esc(c.resolucao):'')+'</div></div>').join('')||'<p class="muted">Nenhum caso aberto para esta loja.</p>')+'</div>'
+      +'<div class="bloco"><h3>Tickets</h3>'+((r.tickets||[]).map(t=>'<div style="padding:4px 0">🎫 <b>'+esc(t.numero)+'</b> · '+esc(SIS[t.sistema]||t.sistema)+' · <span class="selo '+(t.status==='aberto'?'s-foco':'s-verde')+'">'+t.status+'</span><div class="muted">'+dBR(t.criado_em)+' · '+esc(primeiro(t.por))+(t.origem==='extraido'?' · lido da observação':'')+'</div></div>').join('')||'<p class="muted">Nenhum ticket.</p>')+'</div>'
+    +'</div></div>';
+  const tl=$('lTl');
+  const itens=r.linha||[];
+  tl.innerHTML=itens.map(x=>{
+    const cls=x.tipo==='resolvido'?'resolvido':x.tipo;
+    let h='<div class="it '+esc(cls)+'"><div class="q">'+dhBR(x.quando)+(x.quem?' · '+esc(primeiro(x.quem)):'')+(x.criou&&x.criou!==x.quem?' (marcada por '+esc(primeiro(x.criou))+')':'')+'</div>'
+      +'<b>'+esc(ROT_LINHA[x.tipo]||x.tipo)+'</b> · '+esc(x.titulo||'')+(x.caso_id&&x.origem==='agenda'?' <a class="lk" data-caso="'+x.caso_id+'">[caso]</a>':'');
+    if(x.origem==='agenda'){
+      if(x.prazo&&x.tipo==='aberta')h+='<div class="muted">prazo '+dBR(x.prazo)+'</div>';
+      if(x.demanda)h+='<div class="muted">demanda: '+esc(x.demanda)+'</div>';
+      if(x.obs)h+='<div class="ob">“'+esc(x.obs)+'”</div>';
+      (x.anotacoes||[]).forEach(a=>{h+='<div class="ob">📝 '+esc(a.txt)+' <span class="q">· '+esc(primeiro(a.por))+' '+dhBR(a.quando)+'</span></div>';});
+    }else if(x.texto){h+='<div class="tx muted">'+(x.de||x.para?esc((COLNOME[x.de]||x.de||'')+(x.de?' → ':'')+(COLNOME[x.para]||x.para||''))+' · ':'')+esc(x.texto)+'</div>';}
+    return h+'</div>';}).join('')||'<p class="muted">Nada registrado para esta loja ainda.</p>';
+  b.querySelectorAll('[data-caso]').forEach(a=>a.onclick=()=>abrirCaso(+a.dataset.caso));
+  $('lNovo').onclick=()=>novoCaso(fra);$('lTk').onclick=()=>novoTicket(fra,null);
+}
+
+/* ---------- tickets ---------- */
+async function carregarTickets(){TK=await rpc('crm_protocolos_buscar',{p_q:$('tBusca').value,p_so_abertos:$('tFiltro').value==='1'})||[];
+  const n=TK.filter(t=>t.status==='aberto').length;const b=$('bdTk');b.textContent=n;b.classList.toggle('oculto',!n||$('tFiltro').value!=='1');desenharTickets();}
+function desenharTickets(){
+  const tb=$('tbTk');tb.innerHTML='';
+  if(!TK.length){tb.innerHTML='<tr><td colspan="7" class="muted">Nenhum ticket.</td></tr>';return;}
+  TK.forEach(t=>{const tr=document.createElement('tr');
+    tr.innerHTML='<td><b>'+esc(t.numero)+'</b>'+(t.obs?'<div class="muted">'+esc(String(t.obs).slice(0,120))+'</div>':'')+'</td><td>'+esc(SIS[t.sistema]||t.sistema)+'</td>'
+      +'<td><a class="lk" data-fra="'+t.fra+'">FRA '+t.fra+' · '+esc(t.loja)+'</a></td>'
+      +'<td>'+(t.caso_id?'<a class="lk" data-caso="'+t.caso_id+'">'+esc(t.caso)+'</a>':'')+(t.tarefa?'<div class="muted">'+esc(t.tarefa)+'</div>':'')+'</td>'
+      +'<td>'+dBR(t.criado_em)+'<div class="muted">'+esc(primeiro(t.por))+(t.origem==='extraido'?' · lido da observação':'')+'</div></td>'
+      +'<td><span class="selo '+(t.status==='aberto'?'s-foco':'s-verde')+'">'+t.status+'</span></td>'
+      +'<td><button class="btn peq" type="button" data-st="'+t.id+'" data-v="'+(t.status==='aberto'?'resolvido':'aberto')+'">'+(t.status==='aberto'?'Marcar resolvido':'Reabrir')+'</button></td>';
+    tb.appendChild(tr);});
+  tb.querySelectorAll('[data-fra]').forEach(a=>a.onclick=()=>{abrirAba('loja');abrirLoja(+a.dataset.fra);});
+  tb.querySelectorAll('[data-caso]').forEach(a=>a.onclick=()=>abrirCaso(+a.dataset.caso));
+  tb.querySelectorAll('[data-st]').forEach(b=>b.onclick=async()=>{try{await rpc('crm_protocolo_status',{p_id:+b.dataset.st,p_status:b.dataset.v});toast('Ticket atualizado');carregarTickets();carregarQuadro();}catch(e){alert(e.message);}});
+}
+let tkT=null;$('tBusca').oninput=()=>{clearTimeout(tkT);tkT=setTimeout(carregarTickets,300);};$('tFiltro').onchange=carregarTickets;
+
+iniciar();
+</script>
+</body>
+</html>

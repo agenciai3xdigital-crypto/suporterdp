@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- v8.5 · 25/09/2026 · aba Fluxos (demandas) desligada a pedido da diretoria: aba, campo "Demanda" do formulário e link do popup somem; tabela demandas e histórico ficam no banco; código preservado (MOSTRAR_FLUXOS). Nav do celular ganha "Lojas". -->
 <!-- v8.4 · 25/09/2026 · formulário da agenda: campo "Caso da loja" (casos abertos da loja escolhida no quadro Lojas) grava agenda_eventos.caso_id; a tarefa passa a aparecer no caso e no histórico dele. -->
 <!-- v8.3 · 25/09/2026 · Lojas (CRM da consultoria): aba "Lojas ↗" abre lojas/ (quadro de casos por loja, histórico, tickets, lojas sem tarefa há 15–90 dias); ao concluir tarefa de loja a Central pergunta o nº do ticket/protocolo (coluna protocolo) e o pop-up da tarefa leva ao histórico da loja. -->
 <!-- v8.2 · 23/09/2026 · login de franqueado criado no Raio-X não entra mais na base da agenda (Equipe hoje, responsáveis, filtros, Admin → Equipe). Identidade visual única do Sistema POP. -->
@@ -833,7 +834,7 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
     <button class="aba ativa" data-v="dia">Hoje <span class="aba-badge" id="abaDiaBadge" style="display:none"></span></button>
     <button class="aba" data-v="agenda">Agenda</button>
     <button class="aba" data-v="eventos" id="abaEventos">Eventos <span class="aba-badge" id="abaEvBadge" style="display:none"></span></button>
-    <button class="aba" data-v="fluxos" id="abaFluxos">Fluxos</button>
+    <button class="aba" data-v="fluxos" id="abaFluxos" style="display:none">Fluxos</button>
     <a class="aba" href="lojas/" id="abaLojas" title="Quadro de casos por loja, histórico e tickets" style="text-decoration:none">Lojas ↗</a>
     <span id="abasCustom" style="display:contents"></span>
     <button class="aba" data-v="insights" id="abaInsights" style="display:none">Equipe</button>
@@ -1623,12 +1624,13 @@ async function iniciarSessao(user){
   tick();desenharDia();atualizarBadgeEventos();if(usuarioAtual.admin)desenharAdmin();
   let abaIni=new URLSearchParams(location.search).get('aba');
   if(abaIni==='rotina')abaIni='insights';
+  if(abaIni==='fluxos'&&!MOSTRAR_FLUXOS)abaIni='dia';
   if(abaIni){
     const alvo=document.querySelector('.aba[data-v='+abaIni+']');
     if(alvo)alvo.click();
   }
   const demIni=new URLSearchParams(location.search).get('dem');
-  if(demIni){setTimeout(()=>{if(demPorId(demIni))abrirDemanda(demIni);history.replaceState(null,'',location.pathname+'?aba=fluxos');},700);}
+  if(demIni&&MOSTRAR_FLUXOS){setTimeout(()=>{if(demPorId(demIni))abrirDemanda(demIni);history.replaceState(null,'',location.pathname+'?aba=fluxos');},700);}
 }
 async function sair(){await sb.auth.signOut();location.reload();}
 
@@ -2499,7 +2501,7 @@ function atualizarCamposTipo(){
   $('evPrazoLbl').style.display=tarefa?'inline-block':'none';
   $('evRepLbl').style.display=(tarefa&&!editEvId)?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
-  $('evDemLbl').style.display=tarefa?'inline-flex':'none';if(tarefa)opcoesDemandaSelect($('evDemanda'),$('evDemanda').value||null);
+  $('evDemLbl').style.display=(tarefa&&MOSTRAR_FLUXOS)?'inline-flex':'none';if(tarefa)opcoesDemandaSelect($('evDemanda'),$('evDemanda').value||null);
   opcoesCasoSelect(($('evCaso')&&$('evCaso').value)?+$('evCaso').value:evCasoAtual);
   $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
   const ehEvento=$('evTipo').value==='evento';
@@ -2583,6 +2585,9 @@ function montarNavMobile(){
     b.innerHTML=(IC[a.dataset.v]||IC.agenda)+(a.dataset.v==='board'?a.textContent.trim():a.firstChild.textContent.trim());
     b.onclick=()=>a.click();nav.appendChild(b);
   });
+  const lj=$('abaLojas');if(lj){const b=document.createElement('button');b.type='button';b.dataset.v='lojas';
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1.5-5h15L21 9M3 9h18v2a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0zM5 13v7h14v-7M10 20v-4h4v4"/></svg>Lojas';
+    b.onclick=()=>{location.href=lj.getAttribute('href');};nav.appendChild(b);}
   $('fabNovo').style.display='';
   sincronizarNavMobile();
 }
@@ -2970,7 +2975,7 @@ function abrirDetalheEv(id){
   if(podeAndar)h+='<div class="evm-l evm-add col"><textarea id="evmNotaTxt" rows="2" placeholder="Anotação de andamento (o que foi feito, o que falta, quem foi acionado)…" maxlength="1000"></textarea><button type="button" id="evmNotaAdd">+ Anotação</button></div>';
   if(ehT&&!e.concluida&&souDono&&!souCriador&&!usuarioAtual.admin)h+='<div class="evm-l" style="font-size:12px;color:var(--tinta-suave)">🔒 Tarefa marcada por '+escHtml(nomeDe(e.por).split(' ')[0])+': título, descrição e prazo só ele(a) ou um admin alteram. Você pode acrescentar subtarefas e anotações, concluir, reagendar ou devolver.</div>';
   if(e.origem)h+='<div class="evm-l">🔗 Tarefa de continuidade (criada a partir de uma devolução)</div>';
-  if(e.demanda){const dm=demPorId(e.demanda);if(dm)h+='<div class="evm-l">🧵 Demanda: <a href="#" id="evmDem" data-id="'+dm.id+'" style="color:var(--petroleo);font-weight:700">'+escHtml(dm.titulo)+'</a> <span style="color:var(--tinta-suave)">· '+escHtml(FX_AREAS[dm.area]||dm.area)+(dm.etapa?' · etapa '+escHtml(dm.etapa):'')+'</span></div>';}
+  if(e.demanda&&MOSTRAR_FLUXOS){const dm=demPorId(e.demanda);if(dm)h+='<div class="evm-l">🧵 Demanda: <a href="#" id="evmDem" data-id="'+dm.id+'" style="color:var(--petroleo);font-weight:700">'+escHtml(dm.titulo)+'</a> <span style="color:var(--tinta-suave)">· '+escHtml(FX_AREAS[dm.area]||dm.area)+(dm.etapa?' · etapa '+escHtml(dm.etapa):'')+'</span></div>';}
   if(e.dadosEvento){
     const dB=e.dadosEvento;
     h+='<div class="evm-l bet-box"><b>🐟 Evento Betta</b><br>Custo: '+fmtReaisBetta(dB.custo_total)
@@ -4792,6 +4797,7 @@ async function desenharLog(){
    FLUXOS (demandas) — v7.0
    O "fio": demanda que atravessa tarefas e pessoas, com histórico.
 ================================================================ */
+const MOSTRAR_FLUXOS=false; // v8.5: Fluxos desligado; acompanhamento por loja vai no quadro Lojas. true = volta a aba.
 const MOSTRAR_ABAS_CUSTOM=false; // v7.0: aba Fluxos substitui os boards custom (código preservado para rollback)
 const FX_AREAS={suporte:'Suporte',comercial:'Comercial',marketing:'Marketing',financeiro:'Financeiro',diretoria:'Diretoria'};
 const FX_CANAIS={whatsapp:'WhatsApp da franqueadora',sults:'Sults',diretoria:'Diretoria',interno:'Interno'};

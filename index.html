@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- v8.4 · 25/09/2026 · formulário da agenda: campo "Caso da loja" (casos abertos da loja escolhida no quadro Lojas) grava agenda_eventos.caso_id; a tarefa passa a aparecer no caso e no histórico dele. -->
 <!-- v8.3 · 25/09/2026 · Lojas (CRM da consultoria): aba "Lojas ↗" abre lojas/ (quadro de casos por loja, histórico, tickets, lojas sem tarefa há 15–90 dias); ao concluir tarefa de loja a Central pergunta o nº do ticket/protocolo (coluna protocolo) e o pop-up da tarefa leva ao histórico da loja. -->
 <!-- v8.2 · 23/09/2026 · login de franqueado criado no Raio-X não entra mais na base da agenda (Equipe hoje, responsáveis, filtros, Admin → Equipe). Identidade visual única do Sistema POP. -->
 <!-- v8.1 · 21/09/2026 · Seu dia: card de tarefa abre o pop-up; no pop-up, responsável/criador/admin acrescentam subtarefas e anotações (coluna anotacoes); quem recebeu a tarefa de outra pessoa não edita a principal — trava também no banco (trg_agenda_trava_delegada). -->
@@ -967,6 +968,7 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
       <input id="evTitulo" placeholder="Título">
       <div class="fr-wrap"><input id="evFra" placeholder="Franquia (obrigatório) — nome ou nº" autocomplete="off"><div class="fr-list" id="evFraList" style="display:none"></div></div>
       <label id="evDemLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave);align-items:center;gap:4px">🧵 Demanda <select id="evDemanda" style="max-width:260px"><option value="">Sem demanda</option></select></label>
+      <label id="evCasoLbl" style="display:none;font-size:12px;font-weight:700;color:var(--tinta-suave);align-items:center;gap:4px" title="Liga a tarefa a um caso aberto da loja no quadro Lojas">🗂 Caso da loja <select id="evCaso" style="max-width:260px"><option value="">Sem caso</option></select> <a href="lojas/" id="evCasoNovo" target="_blank" rel="noopener" style="font-weight:600">+ abrir caso</a></label>
       <label class="ev-lbl">Data início <input id="evData" type="date" title="Data de início"></label>
       <label class="ev-lbl" id="evIniLbl">Hora início <input id="evIni" type="time" value="09:00"></label>
       <label class="ev-lbl" id="evFimDataLbl" style="display:none">Data fim <input id="evDataFim" type="date" title="Data final (opcional)"></label>
@@ -1436,7 +1438,7 @@ async function carregarAgenda(){
   const data=await fetchAllSB(()=>sb.from('agenda_eventos').select('*').is('cancelado_em',null).order('ini').order('id'));
   agenda={};CFG.usuarios.forEach(u=>agenda[u.id]=[]);
   (data||[]).forEach(e=>{
-    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],anotacoes:e.anotacoes||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,demanda:e.demanda_id||null,consultoriaId:e.consultoria_id||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
+    const ev={id:e.id,dono:e.user_id,titulo:e.titulo,data:e.data,ini:e.ini.slice(0,5),fim:e.fim.slice(0,5),por:e.criado_por,tipo:e.tipo||'compromisso',descricao:e.descricao||'',concluida:!!e.concluida,participantes:e.participantes||[],fra:(e.franquia_fra===0||e.franquia_fra)?e.franquia_fra:null,prazo:e.prazo||null,prazoHora:(e.prazo_hora||'').slice(0,5)||null,subs:e.subtarefas||[],anotacoes:e.anotacoes||[],origem:e.tarefa_origem||null,avisos:e.avisos||[],concluidaEm:e.concluida_em||null,reaberturas:e.reaberturas||[],reagendamentos:e.reagendamentos||[],concluidaObs:e.concluida_obs||null,categoria:e.categoria||null,eventoPai:e.evento_pai||null,dadosEvento:e.dados_evento||null,rec:e.recorrencia||null,recPai:e.recorrencia_pai||null,demanda:e.demanda_id||null,caso:e.caso_id||null,consultoriaId:e.consultoria_id||null,dataFim:(e.data_fim&&e.data_fim>e.data)?e.data_fim:((e.tipo==='tarefa'&&e.prazo&&e.prazo>e.data)?e.prazo:null)};
     const donos=[...new Set([e.user_id,...(e.participantes||[])])];
     donos.forEach(uid=>{(agenda[uid]=agenda[uid]||[]).push(ev);});
   });
@@ -2498,6 +2500,7 @@ function atualizarCamposTipo(){
   $('evRepLbl').style.display=(tarefa&&!editEvId)?'inline-block':'none';
   $('evSubsForm').style.display=tarefa?'block':'none';
   $('evDemLbl').style.display=tarefa?'inline-flex':'none';if(tarefa)opcoesDemandaSelect($('evDemanda'),$('evDemanda').value||null);
+  opcoesCasoSelect(($('evCaso')&&$('evCaso').value)?+$('evCaso').value:evCasoAtual);
   $('evFimDataLbl').style.display=$('evTipo').value==='compromisso'?'inline-flex':'none';
   const ehEvento=$('evTipo').value==='evento';
   $('btnModeloBetta').style.display=ehEvento?'inline-block':'none';
@@ -2539,9 +2542,25 @@ function retroativo(data,ini){
   }
   return false;
 }
+let evCasoAtual=null;
+async function opcoesCasoSelect(atual){
+  const lbl=$('evCasoLbl'),sel=$('evCaso');if(!lbl||!sel)return;
+  if(atual!==undefined)evCasoAtual=atual||null;
+  const tarefa=$('evTipo').value==='tarefa';
+  if(!tarefa||!(evFraSel>0)){lbl.style.display='none';sel.innerHTML='<option value="">Sem caso</option>';return;}
+  lbl.style.display='inline-flex';$('evCasoNovo').href='lojas/?fra='+encodeURIComponent(evFraSel);
+  const fra=evFraSel;
+  try{
+    let q=sb.from('crm_casos').select('id,titulo,coluna').eq('fra',fra).order('criado_em',{ascending:false});
+    const {data,error}=await q;if(error)throw error;
+    if(fra!==evFraSel)return;
+    const lista=(data||[]).filter(c=>c.coluna!=='resolvido'||c.id===evCasoAtual);
+    sel.innerHTML='<option value="">Sem caso</option>'+lista.map(c=>'<option value="'+c.id+'"'+(c.id===evCasoAtual?' selected':'')+'>'+escHtml(c.titulo+(c.coluna==='resolvido'?' (resolvido)':''))+'</option>').join('');
+  }catch(e){sel.innerHTML='<option value="">Sem caso</option>';}
+}
 function sairEdicao(){
   editEvId=null;editEvOrig=null;evFraSel=null;
-  $('evFra').value='';$('btnAddEvento').textContent='Salvar';
+  $('evFra').value='';$('btnAddEvento').textContent='Salvar';opcoesCasoSelect(null);
 }
 function desenharAgPills(){
   const box=$('agPills');if(!box)return;
@@ -2804,14 +2823,15 @@ async function addEvento(){
   const dadosEventoSalvar=emModoBetta?{...(evDadosEventoOrig||{}),custo_total:Number($('evCusto').value)||0}:(evDadosEventoOrig||null);
   const categoria=tipo==='compromisso'?categorizarCompromisso(titulo):null;
   const demandaId=(ehTarefa&&$('evDemanda').value)?$('evDemanda').value:null;
+  const casoId=(ehTarefa&&evFraSel>0&&$('evCaso')&&$('evCaso').value)?+$('evCaso').value:null;
   let error;
   if(editEvId){
-    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar,categoria,demanda_id:demandaId}).eq('id',editEvId));
+    ({error}=await sb.from('agenda_eventos').update({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,prazo_avisado:false,subtarefas,data_fim:dataFim,dados_evento:dadosEventoSalvar,categoria,demanda_id:demandaId,caso_id:casoId}).eq('id',editEvId));
   }else{
     const rec=ehTarefa?lerRecorrencia():null;
     if(rec&&(rec.tipo!=='mensal')&&!rec.dias.length){alert('Escolha pelo menos um dia da semana para a repetição.');return;}
     let ins;
-    ({data:ins,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria,recorrencia:rec,demanda_id:demandaId,gcal_event_id:ICS_UID}).select('id').single());
+    ({data:ins,error}=await sb.from('agenda_eventos').insert({user_id:uid,titulo,data,ini,fim,tipo,descricao,participantes,franquia_fra:evFraSel,prazo,prazo_hora:prazoHora,subtarefas,tarefa_origem:devolverDe,data_fim:dataFim,criado_por:usuarioAtual.id,dados_evento:dadosEventoSalvar,categoria,recorrencia:rec,demanda_id:demandaId,caso_id:casoId,gcal_event_id:ICS_UID}).select('id').single());
     ICS_UID=null;
     if(!error&&demandaId&&ins&&ins.id)await demandaLog(demandaId,'tarefa_criada','Tarefa "'+titulo+'" para '+fxNome(uid)+(prazo?' · prazo '+fxDBR(prazo):''),{para:uid,tarefa_id:ins.id});
     if(!error&&rec&&ins&&ins.id){
@@ -2847,6 +2867,7 @@ function entrarEdicao(e){
   evPartsSel.clear();(e.participantes||[]).filter(p=>p!==e.dono).forEach(p=>evPartsSel.add(p));
   evFraSel=(e.fra===0||e.fra)?e.fra:null;
   $('evFra').value=evFraSel!==null?(frqRotulo(evFraSel)||''):'';
+  opcoesCasoSelect(e.caso||null);
   $('btnAddEvento').textContent='Salvar alterações';
   abrirFormAgenda();
   desenharEvParts();
@@ -2861,7 +2882,7 @@ function desenharFraList(){
   hits.forEach(f=>{
     const d=document.createElement('div');
     d.textContent=(f.fra===0?f.nome:'FRA '+f.fra+' · '+f.nome+(f.cidade?' — '+f.cidade:''));
-    d.onmousedown=ev=>{ev.preventDefault();evFraSel=f.fra;$('evFra').value=frqRotulo(f.fra);box.style.display='none';};
+    d.onmousedown=ev=>{ev.preventDefault();evFraSel=f.fra;$('evFra').value=frqRotulo(f.fra);box.style.display='none';opcoesCasoSelect(null);};
     box.appendChild(d);
   });
 }
@@ -5036,7 +5057,7 @@ BarraPop.montar({el:'barraPop',sistema:'central',titulo:'Central <em>POP</em>',l
   $('evFra').oninput=desenharFraList;
   $('evFra').onfocus=desenharFraList;
   $('evFra').onblur=()=>setTimeout(()=>{$('evFraList').style.display='none';},150);
-  $('evFra').addEventListener('change',()=>{if(!$('evFra').value.trim())evFraSel=null;});
+  $('evFra').addEventListener('change',()=>{if(!$('evFra').value.trim()){evFraSel=null;opcoesCasoSelect(null);}});
   const bFq=$('btnFrqNova');if(bFq)bFq.onclick=()=>{frqNovaOn=true;frqEdit=null;desenharFrqAdmin();};
   const bSkuNovo=$('btnSkuNovo');if(bSkuNovo)bSkuNovo.onclick=()=>{const el=$('skuNovoCod');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});if(el)el.focus();};
   const bRegraNovo=$('btnRegraNova');if(bRegraNovo)bRegraNovo.onclick=()=>{const el=$('regNovoTitulo');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});if(el)el.focus();};

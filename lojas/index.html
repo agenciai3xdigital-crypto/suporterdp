@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Lojas · Acompanhamento · Central POP</title>
 <link rel="icon" href="../icone-192.png">
-<!-- lojas v1.0 · 25/09/2026 · CRM da consultoria: quadro de casos por loja, histórico da loja, tickets e lojas sem tarefa (15/30/45/60/90 dias). Tema POP v1.0 + Barra POP v1.0.1 -->
+<!-- lojas v1.1 · 25/09/2026 · campo "demanda" oculto (Fluxos desligado) · CRM da consultoria: quadro de casos por loja, histórico da loja, tickets e lojas sem tarefa (15/30/45/60/90 dias). Tema POP v1.0 + Barra POP v1.0.1 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
 <!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
      Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
@@ -427,7 +427,7 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
       <div><label for="mcResp">Responsável</label><select id="mcResp"></select></div>
       <div><label for="mcPrio">Prioridade</label><select id="mcPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
     </div>
-    <label for="mcDem">Faz parte de uma demanda da rede? (opcional)</label><select id="mcDem"><option value="">Não</option></select>
+    <div style="display:none"><label for="mcDem">Demanda</label><select id="mcDem"><option value="">Não</option></select></div><!-- v1.1: Fluxos desligado na Central; campo oculto, casos não ligam mais a demanda -->
     <label><input type="checkbox" id="mcTarefa" style="width:auto;margin-right:6px" checked>Já criar a primeira tarefa para o responsável</label>
     <div id="mcTarefaBox" class="grade2">
       <div><label for="mcTTit">Tarefa</label><input id="mcTTit" maxlength="140" placeholder="ex.: Ligar para o franqueado"></div>
@@ -479,7 +479,7 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
 'use strict';
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO='lojas v1.0';
+const VERSAO='lojas v1.1';
 const COLS=[['a_fazer','A fazer','novo, ninguém agiu ainda'],['andamento','Em andamento','tem gente trabalhando'],['aguardando','Aguardando','franqueado, ticket ou terceiro'],['resolvido','Resolvido','sai do quadro em 30 dias']];
 const COLNOME=Object.fromEntries(COLS.map(c=>[c[0],c[1]]));
 const SIS={onepet:'OnePet',sults:'Sults',nummus:'Nummus',ifood:'iFood',outro:'Outro'};

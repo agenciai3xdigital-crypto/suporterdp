@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Central POP — Rede POP Pet Center</title>
+<!-- v8.6 · 25/09/2026 · campo "Caso da loja" também esconde caso cancelado (quadro Lojas por fases, lojas v1.2). -->
 <!-- v8.5 · 25/09/2026 · aba Fluxos (demandas) desligada a pedido da diretoria: aba, campo "Demanda" do formulário e link do popup somem; tabela demandas e histórico ficam no banco; código preservado (MOSTRAR_FLUXOS). Nav do celular ganha "Lojas". -->
 <!-- v8.4 · 25/09/2026 · formulário da agenda: campo "Caso da loja" (casos abertos da loja escolhida no quadro Lojas) grava agenda_eventos.caso_id; a tarefa passa a aparecer no caso e no histórico dele. -->
 <!-- v8.3 · 25/09/2026 · Lojas (CRM da consultoria): aba "Lojas ↗" abre lojas/ (quadro de casos por loja, histórico, tickets, lojas sem tarefa há 15–90 dias); ao concluir tarefa de loja a Central pergunta o nº do ticket/protocolo (coluna protocolo) e o pop-up da tarefa leva ao histórico da loja. -->
@@ -2556,7 +2557,7 @@ async function opcoesCasoSelect(atual){
     let q=sb.from('crm_casos').select('id,titulo,coluna').eq('fra',fra).order('criado_em',{ascending:false});
     const {data,error}=await q;if(error)throw error;
     if(fra!==evFraSel)return;
-    const lista=(data||[]).filter(c=>c.coluna!=='resolvido'||c.id===evCasoAtual);
+    const lista=(data||[]).filter(c=>(c.coluna!=='resolvido'&&c.coluna!=='cancelado')||c.id===evCasoAtual);
     sel.innerHTML='<option value="">Sem caso</option>'+lista.map(c=>'<option value="'+c.id+'"'+(c.id===evCasoAtual?' selected':'')+'>'+escHtml(c.titulo+(c.coluna==='resolvido'?' (resolvido)':''))+'</option>').join('');
   }catch(e){sel.innerHTML='<option value="">Sem caso</option>';}
 }

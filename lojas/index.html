@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Lojas · Acompanhamento · Central POP</title>
 <link rel="icon" href="../icone-192.png">
-<!-- lojas v1.1 · 25/09/2026 · campo "demanda" oculto (Fluxos desligado) · CRM da consultoria: quadro de casos por loja, histórico da loja, tickets e lojas sem tarefa (15/30/45/60/90 dias). Tema POP v1.0 + Barra POP v1.0.1 -->
+<!-- lojas v1.2 · 25/09/2026 · quadro por FASES (Triagem → Diagnóstico → Plano combinado → Execução → Validação → Resolvido), aguardando vira selo, tipo do caso, dias na fase com prazo, diagnóstico com sinal de risco financeiro, consultoria Raio-X no card · v1.1: campo "demanda" oculto (Fluxos desligado) · CRM da consultoria: quadro de casos por loja, histórico da loja, tickets e lojas sem tarefa (15/30/45/60/90 dias). Tema POP v1.0 + Barra POP v1.0.1 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,500..900&family=Inter:wght@400;500;600;700&display=swap">
 <!-- ===== BARRA POP v1.0.1 · 21/09/2026 · cabeçalho único dos painéis da Rede POP =====
      Colado igual em: Central (index.html), raiox/index.html, raiox/dash.html, raiox/score.html,
@@ -226,7 +226,7 @@ textarea{min-height:70px;resize:vertical}
 .s-cinza{background:var(--pop-linha-2);color:var(--pop-tinta-2)}
 .s-foco{background:var(--pop-foco-suave);color:var(--pop-foco)}
 /* quadro */
-.quadro{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
+.quadro{display:grid;grid-template-columns:repeat(6,minmax(188px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px}
 .col{background:var(--pop-papel-2);border:1px solid var(--pop-linha);border-radius:var(--pop-r);display:flex;flex-direction:column;min-height:360px}
 .col h3{margin:0;padding:10px 12px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between;border-bottom:1px solid var(--pop-linha)}
 .col .dica{font-size:11.5px;color:var(--pop-tinta-3);padding:6px 12px 0}
@@ -242,6 +242,16 @@ textarea{min-height:70px;resize:vertical}
 .card.urgente{border-left:4px solid var(--pop-verm)}
 .card.alta{border-left:4px solid var(--pop-ambar)}
 .card .alerta{margin-top:6px;font-size:11.5px;font-weight:700;color:var(--pop-verm)}
+.card .okpronto{margin-top:6px;font-size:11.5px;font-weight:700;color:var(--pop-petroleo)}
+.card .linha{margin-top:4px;font-size:11.5px;color:var(--pop-tinta-2)}
+.col h3 .atr{color:var(--pop-verm);font-size:11px;text-transform:none;letter-spacing:0}
+.resumo{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px}
+.fases{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:10px 0 4px}
+.fases span{font-size:11px;font-weight:700;text-align:center;padding:5px 2px;border-radius:6px;background:var(--pop-linha-2);color:var(--pop-tinta-3)}
+.fases span.feita{background:var(--pop-verde-suave);color:var(--pop-petroleo)}
+.fases span.atual{background:var(--pop-laranja);color:#fff}
+.diag{white-space:pre-wrap;font-size:13.5px}
+.chk{display:flex;gap:6px;align-items:center;font-weight:600;color:var(--pop-tinta);margin-top:10px}.chk input{width:auto}
 /* tabelas */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
 .kpi{background:var(--pop-papel);border:1.5px solid var(--pop-linha);border-radius:var(--pop-r);padding:10px 12px;cursor:pointer;text-align:left;font:inherit;color:inherit}
@@ -292,7 +302,7 @@ a.lk:hover{text-decoration:underline}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--pop-tinta);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .2s;z-index:90;pointer-events:none}
 #toast.on{opacity:1}
 @media(max-width:900px){.grid2{grid-template-columns:1fr}}
-@media(max-width:640px){.quadro{grid-template-columns:repeat(4,minmax(78vw,1fr))}.grade2{grid-template-columns:1fr}.filtros>div{min-width:0;flex:1 1 45%}}
+@media(max-width:640px){.quadro{grid-template-columns:repeat(6,minmax(78vw,1fr))}.grade2{grid-template-columns:1fr}.filtros>div{min-width:0;flex:1 1 45%}}
 </style>
 <!-- ===== TEMA POP v1.0 · 23/09/2026 · bloco-fonte da identidade visual única =====
      Cole antes do </head> de qualquer página nova da rede, junto com a linha de fontes abaixo e depois do
@@ -364,13 +374,16 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
       <div><label for="qBusca">Buscar</label><input id="qBusca" placeholder="FRA, loja, título ou ticket"></div>
       <div><label for="qResp">Responsável</label><select id="qResp"><option value="">Todos</option></select></div>
       <div><label for="qCons">Consultor da loja</label><select id="qCons"><option value="">Todos</option></select></div>
+      <div><label for="qTipo">Tipo</label><select id="qTipo"><option value="">Todos</option></select></div>
+      <div><label for="qSit">Situação</label><select id="qSit"><option value="">Todas</option><option value="atrasado">Atrasados na fase</option><option value="aguardando">Aguardando alguém</option><option value="risco">Risco financeiro</option><option value="semtarefa">Sem próxima tarefa</option></select></div>
       <div><label for="qPrio">Prioridade</label><select id="qPrio"><option value="">Todas</option><option value="urgente">Urgente</option><option value="alta">Alta</option><option value="normal">Normal</option></select></div>
       <span class="esp"></span>
       <button class="btn" type="button" id="qAtual">↻ Atualizar</button>
       <button class="btn pri" type="button" id="qNovo">+ Novo caso</button>
     </div>
+    <div class="resumo" id="qResumo"></div>
     <div class="quadro" id="quadro"></div>
-    <p class="muted">Arraste o card entre as colunas. Em "Resolvido" o caso sai do quadro depois de 30 dias e continua no histórico da loja. Card com <b style="color:var(--pop-verm)">sem próxima tarefa</b> é caso aberto sem ninguém com ação marcada.</p>
+    <p class="muted">Cada coluna é uma fase da consultoria. Para avançar, o sistema pede o que a fase exige: tipo do caso (sair da Triagem), diagnóstico (ir para Plano), uma ação na agenda (ir para Execução), todas as ações feitas (ir para Validação) e o resultado (Resolvido). Voltar de fase é livre. "Aguardando" é um selo, não uma coluna: o card fica na fase dele. Prazo de cada fase: <span id="qPrazos"></span>. Em "Resolvido" o caso sai do quadro depois de 30 dias e continua no histórico da loja.</p>
   </section>
 
   <!-- SEM TAREFA -->
@@ -421,13 +434,13 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
   <p class="muted">Um caso é um problema de uma loja, do começo até a solução. Tarefas, tickets e anotações ficam presos a ele.</p>
   <form id="fCaso">
     <label for="mcLoja">Loja</label><input id="mcLoja" list="dlLojas" required placeholder="FRA ou nome">
+    <label for="mcTipo">Tipo do caso</label><select id="mcTipo" required><option value="">— escolha —</option></select>
     <label for="mcTitulo">Qual é o problema</label><input id="mcTitulo" required maxlength="160" placeholder="ex.: Relatório de vendas do OnePet não bate">
     <label for="mcDesc">Detalhes (opcional)</label><textarea id="mcDesc" maxlength="4000"></textarea>
     <div class="grade2">
       <div><label for="mcResp">Responsável</label><select id="mcResp"></select></div>
       <div><label for="mcPrio">Prioridade</label><select id="mcPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
     </div>
-    <div style="display:none"><label for="mcDem">Demanda</label><select id="mcDem"><option value="">Não</option></select></div><!-- v1.1: Fluxos desligado na Central; campo oculto, casos não ligam mais a demanda -->
     <label><input type="checkbox" id="mcTarefa" style="width:auto;margin-right:6px" checked>Já criar a primeira tarefa para o responsável</label>
     <div id="mcTarefaBox" class="grade2">
       <div><label for="mcTTit">Tarefa</label><input id="mcTTit" maxlength="140" placeholder="ex.: Ligar para o franqueado"></div>
@@ -443,6 +456,18 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
   <textarea id="mtTxt" maxlength="2000"></textarea>
   <div id="mtMsg"></div>
   <div class="rod"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn pri" type="button" id="mtOk">Confirmar</button></div>
+</div>
+
+<div class="modal" id="mFase" role="dialog" aria-modal="true">
+  <h2 id="mxTit"></h2><p class="muted" id="mxSub"></p>
+  <div id="mxTipoBox"><label for="mxTipo">Tipo do caso</label><select id="mxTipo"></select></div>
+  <div id="mxDiagBox"><label for="mxDiag">Diagnóstico — o que está acontecendo na loja</label>
+    <textarea id="mxDiag" maxlength="6000" style="min-height:160px" placeholder="Situação · causas · oportunidades · riscos"></textarea>
+    <div class="linha-acoes" style="margin:6px 0 0"><button class="btn peq" type="button" id="mxUsarNota">Usar a última anotação do caso</button></div>
+    <label class="chk"><input type="checkbox" id="mxRisco"> Sinal de risco financeiro (boletos atrasando, crédito cortado, capital apertado)</label></div>
+  <div id="mxTxtBox"><label for="mxTxt" id="mxTxtLbl"></label><textarea id="mxTxt" maxlength="2000"></textarea></div>
+  <div id="mxMsg"></div>
+  <div class="rod"><button class="btn" type="button" data-fechar>Cancelar</button><button class="btn pri" type="button" id="mxOk">Confirmar</button></div>
 </div>
 
 <div class="modal" id="mTarefa" role="dialog" aria-modal="true">
@@ -479,12 +504,16 @@ h1,h2,h3{font-family:var(--pop-fonte-titulo)}
 'use strict';
 const SUPABASE_URL='https://klcxavgxonpsbsbzqcil.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY3hhdmd4b25wc2JzYnpxY2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MzQwMDAsImV4cCI6MjA5OTExMDAwMH0.UJK09SljKG0tJqDcGYQfuk41i1SN8GymL1hTTeE2ruY';
-const VERSAO='lojas v1.1';
-const COLS=[['a_fazer','A fazer','novo, ninguém agiu ainda'],['andamento','Em andamento','tem gente trabalhando'],['aguardando','Aguardando','franqueado, ticket ou terceiro'],['resolvido','Resolvido','sai do quadro em 30 dias']];
-const COLNOME=Object.fromEntries(COLS.map(c=>[c[0],c[1]]));
+const VERSAO='lojas v1.2';
+const COLS=[['triagem','Triagem','qual é o problema e quem cuida'],['diagnostico','Diagnóstico','o que está acontecendo na loja'],['plano','Plano combinado','o que foi acordado com o franqueado'],['execucao','Execução','as ações estão andando'],['validacao','Validação','resolveu? o número mudou?'],['resolvido','Resolvido','sai do quadro em 30 dias']];
+const COLNOME=Object.assign({a_fazer:'A fazer',andamento:'Em andamento',aguardando:'Aguardando',cancelado:'Cancelado'},Object.fromEntries(COLS.map(c=>[c[0],c[1]])));
+const ORD={triagem:1,diagnostico:2,plano:3,execucao:4,validacao:5,resolvido:6,cancelado:7};
+const PROX={triagem:'diagnostico',diagnostico:'plano',plano:'execucao',execucao:'validacao',validacao:'resolvido'};
+const PRAZOS={triagem:3,diagnostico:7,plano:7,execucao:30,validacao:15};
+const TIPOS={faturamento:'Faturamento',sistema:'Sistema / ticket',financeiro:'Financeiro',marketing:'Marketing',pessoas:'Pessoas',canais:'Canais (iFood/app)',fornecedor:'Fornecedor',outro:'Outro'};
 const SIS={onepet:'OnePet',sults:'Sults',nummus:'Nummus',ifood:'iFood',outro:'Outro'};
 const FAIXAS=[['nunca','Nunca teve','verm'],['90','90+ dias','verm'],['60','60–89 dias','verm'],['45','45–59 dias','ambar'],['30','30–44 dias','ambar'],['15','15–29 dias','ambar'],['em_dia','Menos de 15','']];
-const TIPOHIST={criado:'Caso aberto',movido:'Card movido',resolvido:'Caso resolvido',reaberto:'Caso reaberto',nota:'Anotação',editado:'Caso editado',tarefa_criada:'Tarefa criada',tarefa_vinculada:'Tarefa ligada ao caso',tarefa_concluida:'Tarefa concluída',tarefa_cancelada:'Tarefa cancelada',protocolo:'Ticket'};
+const TIPOHIST={cancelado:'Caso cancelado',diagnostico:'Diagnóstico registrado',aguardando:'Aguardando',criado:'Caso aberto',movido:'Card movido',resolvido:'Caso resolvido',reaberto:'Caso reaberto',nota:'Anotação',editado:'Caso editado',tarefa_criada:'Tarefa criada',tarefa_vinculada:'Tarefa ligada ao caso',tarefa_concluida:'Tarefa concluída',tarefa_cancelada:'Tarefa cancelada',protocolo:'Ticket'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dBR=d=>d?String(d).slice(0,10).split('-').reverse().join('/'):'—';
@@ -495,7 +524,7 @@ function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTi
 function msg(id,t,tipo){const b=$(id);b.innerHTML='';if(t){const d=document.createElement('div');d.className='aviso'+(tipo?' '+tipo:'');d.textContent=t;b.appendChild(d);}}
 const primeiro=n=>String(n||'—').replace(/\s+-\s+.*$/,'');
 
-let sb,usuario,perfil,gestor=false,LOJAS=[],EQUIPE=[],DEMANDAS=[],CASOS=[],SEM=[],TK=[],semFaixa='',casoAberto=null,lojaAtual=null,arrastando=null;
+let sb,usuario,perfil,gestor=false,LOJAS=[],EQUIPE=[],CASOS=[],SEM=[],TK=[],semFaixa='',casoAberto=null,lojaAtual=null,arrastando=null;
 
 BarraPop.montar({el:'barraPop',sistema:'lojas',logo:'../logo-pop.png',logoHref:'../',
   trilha:[{nome:'Central POP',href:'../'}],titulo:'Lojas · <em>acompanhamento</em>',sub:'casos, histórico e tickets de cada loja',
@@ -530,19 +559,19 @@ async function entrou(session){
   if(u.get('caso'))abrirCaso(+u.get('caso'));
 }
 async function carregarBase(){
-  const [l,eq,dm]=await Promise.all([
+  const [l,eq]=await Promise.all([
     sb.from('franquias').select('fra,nome,cidade,estado,consultor,consultor_id,ativo').gt('fra',0).order('fra'),
-    sb.from('perfis').select('id,nome,is_admin,papeis').order('nome'),
-    sb.from('demandas').select('id,titulo,status').neq('status','concluida').order('titulo')]);
+    sb.from('perfis').select('id,nome,is_admin,papeis').order('nome')]);
   LOJAS=(l.data||[]).filter(x=>x.ativo!==false);
   EQUIPE=(eq.data||[]).filter(p=>p.is_admin||!(p.papeis||[]).includes('franqueado')).filter(p=>(p.papeis||[]).length||p.is_admin);
-  DEMANDAS=dm.data||[];
   $('dlLojas').innerHTML=LOJAS.map(f=>'<option value="'+esc(f.fra+' · '+f.nome)+'">').join('');
   const opE='<option value="">Todos</option>'+EQUIPE.map(p=>'<option value="'+p.id+'">'+esc(primeiro(p.nome))+'</option>').join('');
   $('qResp').innerHTML=opE;$('qCons').innerHTML=opE;$('sCons').innerHTML=opE;
   const opR=EQUIPE.map(p=>'<option value="'+p.id+'"'+(p.id===usuario.id?' selected':'')+'>'+esc(p.nome)+'</option>').join('');
   $('mcResp').innerHTML=opR;$('mfResp').innerHTML=opR;
-  $('mcDem').innerHTML='<option value="">Não</option>'+DEMANDAS.map(d=>'<option value="'+d.id+'">'+esc(d.titulo)+'</option>').join('');
+  const opT=Object.entries(TIPOS).map(([k,v])=>'<option value="'+k+'">'+esc(v)+'</option>').join('');
+  $('qTipo').innerHTML='<option value="">Todos</option>'+opT;$('mcTipo').innerHTML='<option value="">— escolha —</option>'+opT;$('mxTipo').innerHTML='<option value="">— escolha —</option>'+opT;
+  $('qPrazos').textContent=COLS.filter(c=>PRAZOS[c[0]]).map(c=>c[1]+' '+PRAZOS[c[0]]+' d').join(' · ');
   await Promise.all([carregarQuadro(),carregarSem(),carregarTickets()]);
 }
 function fraDe(txt){const m=String(txt||'').trim().match(/^(\d{1,4})/);if(m)return +m[1];const t=String(txt||'').toLowerCase();const f=LOJAS.find(x=>x.nome.toLowerCase()===t)||LOJAS.find(x=>x.nome.toLowerCase().includes(t)&&t.length>2);return f?f.fra:null;}
@@ -559,18 +588,29 @@ document.querySelectorAll('.aba').forEach(b=>b.onclick=()=>abrirAba(b.dataset.ab
 /* ---------- quadro ---------- */
 async function carregarQuadro(){CASOS=await rpc('crm_quadro',{p_dias_resolvidos:30})||[];desenharQuadro();}
 function visiveisQuadro(){
-  const q=$('qBusca').value.trim().toLowerCase(),r=$('qResp').value,c=$('qCons').value,p=$('qPrio').value;
+  const q=$('qBusca').value.trim().toLowerCase(),r=$('qResp').value,c=$('qCons').value,p=$('qPrio').value,t=$('qTipo').value,s=$('qSit').value;
   const consNome=c?(EQUIPE.find(x=>x.id===c)||{}).nome:'';
-  return CASOS.filter(k=>(!r||k.responsavel_id===r)&&(!p||k.prioridade===p)
+  return CASOS.filter(k=>(!r||k.responsavel_id===r)&&(!p||k.prioridade===p)&&(!t||k.tipo===t)
+    &&(!s||(s==='atrasado'&&k.atrasado)||(s==='aguardando'&&k.aguardando_quem)||(s==='risco'&&k.risco_financeiro)||(s==='semtarefa'&&k.coluna!=='resolvido'&&!k.proxima_tarefa))
     &&(!c||(LOJAS.find(f=>f.fra===k.fra)||{}).consultor_id===c||k.consultor_loja===consNome)
-    &&(!q||[k.fra,k.loja,k.titulo,k.responsavel,(k.tickets_abertos||[]).map(t=>t.numero).join(' ')].join(' ').toLowerCase().includes(q)));
+    &&(!q||[k.fra,k.loja,k.titulo,k.responsavel,TIPOS[k.tipo]||'',(k.tickets_abertos||[]).map(t=>t.numero).join(' ')].join(' ').toLowerCase().includes(q)));
+}
+function desenharResumo(){
+  const ab=CASOS.filter(c=>c.coluna!=='resolvido');
+  const n=f=>ab.filter(f).length;
+  const it=[[ab.length+' caso(s) abertos','s-azul',''],[n(c=>c.atrasado)+' atrasado(s) na fase','s-verm','atrasado'],[n(c=>c.aguardando_quem)+' aguardando alguém','s-ambar','aguardando'],
+    [n(c=>c.risco_financeiro)+' com risco financeiro','s-foco','risco'],[n(c=>!c.proxima_tarefa)+' sem próxima tarefa','s-cinza','semtarefa']];
+  $('qResumo').innerHTML=it.map(([t,cl,f])=>'<button type="button" class="selo '+cl+'" data-sit="'+f+'" style="border:0;cursor:pointer;font:inherit;font-size:12px;font-weight:700;padding:4px 10px'+($('qSit').value===f&&f?';outline:2px solid currentColor':'')+'">'+esc(t)+'</button>').join('');
+  $('qResumo').querySelectorAll('[data-sit]').forEach(b=>b.onclick=()=>{$('qSit').value=$('qSit').value===b.dataset.sit?'':b.dataset.sit;desenharQuadro();});
 }
 function desenharQuadro(){
+  desenharResumo();
   const lista=visiveisQuadro(),box=$('quadro');box.innerHTML='';
   COLS.forEach(([k,nome,dica])=>{
-    const itens=lista.filter(c=>c.coluna===k).sort((a,b)=>({urgente:0,alta:1,normal:2}[a.prioridade]-{urgente:0,alta:1,normal:2}[b.prioridade])||a.ordem-b.ordem);
+    const itens=lista.filter(c=>c.coluna===k).sort((a,b)=>({urgente:0,alta:1,normal:2}[a.prioridade]-{urgente:0,alta:1,normal:2}[b.prioridade])||(b.atrasado-a.atrasado)||a.ordem-b.ordem);
+    const atr=itens.filter(c=>c.atrasado).length;
     const col=document.createElement('div');col.className='col';col.dataset.col=k;
-    col.innerHTML='<h3><span>'+esc(nome)+'</span><span>'+itens.length+'</span></h3><div class="dica">'+esc(dica)+'</div><div class="cards"></div>';
+    col.innerHTML='<h3><span>'+esc(nome)+'</span><span>'+itens.length+(atr?' <span class="atr">· '+atr+' atrasado'+(atr>1?'s':'')+'</span>':'')+'</span></h3><div class="dica">'+esc(dica)+(PRAZOS[k]?' · até '+PRAZOS[k]+' d':'')+'</div><div class="cards"></div>';
     const cards=col.querySelector('.cards');
     itens.forEach(c=>cards.appendChild(cardEl(c)));
     col.addEventListener('dragover',ev=>{if(!arrastando)return;ev.preventDefault();col.classList.add('sobre');});
@@ -579,39 +619,86 @@ function desenharQuadro(){
     box.appendChild(col);
   });
 }
+function faseTxt(c){if(c.coluna==='resolvido')return '';const d=c.dias_na_fase||0;return (d?d+' d na fase':'entrou hoje na fase');}
 function cardEl(c){
   const d=document.createElement('div');d.className='card '+(c.prioridade!=='normal'?c.prioridade:'');
   d.draggable=!!c.pode_mexer;
-  const tk=(c.tickets_abertos||[]);
+  const tk=(c.tickets_abertos||[]),rx=c.raiox;
+  let fim;
+  if(c.coluna==='resolvido')fim='<div class="muted" style="margin-top:4px">✔ '+esc(c.resolucao||'')+'</div>';
+  else if(c.proxima_tarefa)fim='<div class="linha">➜ '+esc(c.proxima_tarefa.titulo)+' · '+dBR(c.proxima_tarefa.quando)+' · '+esc(primeiro(c.proxima_tarefa.quem))+'</div>';
+  else if(c.coluna==='execucao'&&c.tarefas_total>0)fim='<div class="okpronto">✓ ações feitas → levar para Validação</div>';
+  else if(c.coluna==='validacao')fim='<div class="linha">conferir o resultado e fechar</div>';
+  else fim='<div class="alerta">sem próxima tarefa</div>';
   d.innerHTML='<div class="fra">FRA '+c.fra+'</div><div class="loja">'+esc(c.loja)+' · '+esc(c.cidade||'')+'</div>'
     +'<div class="tit">'+esc(c.titulo)+'</div>'
-    +'<div class="meta"><span>👤 '+esc(primeiro(c.responsavel))+'</span>'
+    +'<div class="meta">'+(c.tipo?'<span class="selo s-azul">'+esc(TIPOS[c.tipo]||c.tipo)+'</span>':'<span class="selo s-cinza">sem tipo</span>')
     +(c.prioridade!=='normal'?'<span class="selo '+(c.prioridade==='urgente'?'s-verm':'s-ambar')+'">'+c.prioridade+'</span>':'')
-    +(tk.length?'<span class="selo s-foco">🎫 '+esc(tk.map(t=>t.numero).join(', '))+'</span>':'')
-    +'<span>· '+(c.dias_parado?c.dias_parado+' d parado':'mexido hoje')+'</span></div>'
-    +(c.coluna==='aguardando'&&c.aguardando_quem?'<div class="muted" style="margin-top:4px">⏳ '+esc(c.aguardando_quem)+'</div>':'')
-    +(c.coluna==='resolvido'?'<div class="muted" style="margin-top:4px">✔ '+esc(c.resolucao||'')+'</div>'
-      :(c.proxima_tarefa?'<div class="muted" style="margin-top:4px">➜ '+esc(c.proxima_tarefa.titulo)+' · '+dBR(c.proxima_tarefa.quando)+' · '+esc(primeiro(c.proxima_tarefa.quem))+'</div>'
-        :'<div class="alerta">sem próxima tarefa</div>'));
+    +(c.risco_financeiro?'<span class="selo s-foco" title="Sinal de risco financeiro no diagnóstico">💰 risco</span>':'')
+    +(tk.length?'<span class="selo s-foco">🎫 '+esc(tk.map(t=>t.numero).join(', '))+'</span>':'')+'</div>'
+    +'<div class="meta" style="margin-top:4px"><span>👤 '+esc(primeiro(c.responsavel))+'</span>'
+    +(c.coluna!=='resolvido'?'<span>·</span>'+(c.atrasado?'<span class="selo s-verm">'+esc(faseTxt(c))+' · prazo '+c.prazo_fase+' d</span>':'<span>'+esc(faseTxt(c))+'</span>'):'')+'</div>'
+    +(c.aguardando_quem?'<div class="linha">⏳ <b>aguardando</b> '+esc(c.aguardando_quem)+(c.aguardando_desde?' · desde '+dBR(c.aguardando_desde):'')+'</div>':'')
+    +(rx?'<div class="linha">📊 Raio-X: reunião '+rx.reunioes_feitas+' de '+rx.reunioes_total+(rx.proxima_reuniao?' · próxima '+dBR(rx.proxima_reuniao):'')+'</div>':'')
+    +fim;
   d.addEventListener('dragstart',()=>{arrastando=c;d.classList.add('arrastando');});
   d.addEventListener('dragend',()=>{d.classList.remove('arrastando');document.querySelectorAll('.col.sobre').forEach(x=>x.classList.remove('sobre'));});
   d.onclick=()=>abrirCaso(c.id);
   return d;
 }
-['qBusca','qResp','qCons','qPrio'].forEach(id=>$(id)[id==='qBusca'?'oninput':'onchange']=desenharQuadro);
+['qBusca','qResp','qCons','qPrio','qTipo','qSit'].forEach(id=>$(id)[id==='qBusca'?'oninput':'onchange']=desenharQuadro);
 $('qAtual').onclick=async()=>{await carregarQuadro();toast('Quadro atualizado');};
 
 let textoCb=null;
 function pedirTexto(tit,sub,obrig,cb,pre){$('mtTit').textContent=tit;$('mtSub').textContent=sub||'';$('mtTxt').value=pre||'';msg('mtMsg');textoCb={cb,obrig};abrirModal('mTexto');setTimeout(()=>$('mtTxt').focus(),50);}
 $('mtOk').onclick=async()=>{const v=$('mtTxt').value.trim();if(textoCb.obrig&&v.length<5){msg('mtMsg','Escreva pelo menos uma frase.','erro');return;}
   $('mtOk').disabled=true;try{await textoCb.cb(v);fecharModais();}catch(e){msg('mtMsg',e.message,'erro');}$('mtOk').disabled=false;};
+
+/* ---------- mudar de fase: pede só o que a fase de destino exige ---------- */
+let faseCb=null;
+async function ultimaNota(id){const {data}=await sb.from('crm_casos_hist').select('texto').eq('caso_id',id).eq('tipo','nota').order('em',{ascending:false}).limit(1);return data&&data[0]?data[0].texto:'';}
+function pedirFase(o){ // o: {tit,sub,tipo:bool,diag:bool,txt:'rótulo'|null,c,ok}
+  $('mxTit').textContent=o.tit;$('mxSub').textContent=o.sub||'';msg('mxMsg');
+  $('mxTipoBox').classList.toggle('oculto',!o.tipo);$('mxTipo').value=o.c.tipo||'';
+  $('mxDiagBox').classList.toggle('oculto',!o.diag);$('mxDiag').value=o.c.diagnostico||'';$('mxRisco').checked=!!o.c.risco_financeiro;
+  $('mxTxtBox').classList.toggle('oculto',!o.txt);$('mxTxtLbl').textContent=o.txt||'';$('mxTxt').value='';
+  $('mxUsarNota').onclick=async()=>{const t=await ultimaNota(o.c.id);if(!t){toast('Este caso não tem anotação');return;}$('mxDiag').value=t;};
+  faseCb=o;abrirModal('mFase');
+}
+$('mxOk').onclick=async()=>{
+  const o=faseCb;if(!o)return;msg('mxMsg');
+  const tipo=$('mxTipo').value,diag=$('mxDiag').value.trim(),txt=$('mxTxt').value.trim();
+  if(o.tipo&&!tipo){msg('mxMsg','Escolha o tipo do caso.','erro');return;}
+  if(o.diag&&diag.length<10){msg('mxMsg','Escreva o diagnóstico (pelo menos uma frase).','erro');return;}
+  if(o.txt&&txt.length<5){msg('mxMsg','Escreva pelo menos uma frase.','erro');return;}
+  $('mxOk').disabled=true;
+  try{
+    if(o.tipo&&tipo!==o.c.tipo){await rpc('crm_caso_editar',{p_id:o.c.id,p_dados:{tipo}});o.c.tipo=tipo;}
+    if(o.diag&&(diag!==(o.c.diagnostico||'')||$('mxRisco').checked!==!!o.c.risco_financeiro)){await rpc('crm_caso_diagnostico',{p_id:o.c.id,p_texto:diag,p_risco:$('mxRisco').checked});o.c.diagnostico=diag;}
+    fecharModais();await o.ok(txt||null);
+  }catch(e){msg('mxMsg',e.message,'erro');if(!$('mFase').classList.contains('on'))abrirModal('mFase');}
+  $('mxOk').disabled=false;
+};
 function pedirMover(c,para){
   if(!c.pode_mexer){toast('Só o responsável, quem abriu ou a gestão movem este card');return;}
-  const mover=async t=>{await rpc('crm_caso_mover',{p_id:c.id,p_coluna:para,p_texto:t||null,p_ordem:Date.now()/1000});toast('Movido para '+COLNOME[para]);await carregarQuadro();if(casoAberto===c.id)abrirCaso(c.id);};
-  if(para==='resolvido')return pedirTexto('Fechar caso · FRA '+c.fra,'Como o problema foi resolvido? Fica no histórico da loja.',true,mover);
-  if(c.coluna==='resolvido')return pedirTexto('Reabrir caso · FRA '+c.fra,'Por que o caso voltou?',true,mover);
-  if(para==='aguardando')return pedirTexto('Aguardando o quê? · FRA '+c.fra,'Ex.: retorno do ticket OnePet 2026…, resposta do franqueado.',true,mover,(c.tickets_abertos||[]).length?'Ticket '+c.tickets_abertos[0].numero:'');
-  mover(null).catch(e=>alert(e.message));
+  const oDe=ORD[c.coluna],oPara=ORD[para],fechado=c.coluna==='resolvido'||c.coluna==='cancelado';
+  const mover=async t=>{await rpc('crm_caso_mover',{p_id:c.id,p_coluna:para,p_texto:t||null,p_ordem:Date.now()/1000});toast(para==='cancelado'?'Caso cancelado':'Agora em '+COLNOME[para]);await carregarQuadro();carregarSem();if(casoAberto===c.id)abrirCaso(c.id);};
+  const erro=e=>alert(e.message);
+  if(para==='cancelado')return pedirFase({c,tit:'Cancelar caso · FRA '+c.fra,sub:'O caso sai do quadro e fica no histórico da loja como cancelado.',txt:'Motivo do cancelamento',ok:mover});
+  if(para==='resolvido')return pedirFase({c,tit:'Fechar caso · FRA '+c.fra,sub:'Fica no histórico da loja.',tipo:!c.tipo,txt:'Resultado: o que foi feito e o que mudou',ok:mover});
+  const avanca=fechado||oPara>oDe;
+  if(!avanca)return mover(null).catch(erro); // voltar de fase é livre
+  if(oPara>=5&&(c.tarefas_abertas||0)>0){alert('Ainda há '+c.tarefas_abertas+' tarefa(s) aberta(s) neste caso. Conclua ou cancele na agenda antes de ir para Validação.');return;}
+  const precisaTipo=oPara>=2&&!c.tipo,precisaDiag=oPara>=3&&!c.diagnostico,precisaTarefa=oPara>=4&&!(c.tarefas_total>0);
+  const seguir=async t=>{
+    if(precisaTarefa){novaTarefa(c,async()=>{await mover(t);});toast('Crie a primeira ação do plano para entrar em Execução');return;}
+    await mover(t);
+  };
+  if(precisaTipo||precisaDiag||fechado)
+    return pedirFase({c,tit:(fechado?'Reabrir caso':'Ir para '+COLNOME[para])+' · FRA '+c.fra,
+      sub:precisaDiag?'Para combinar um plano, registre antes o que está acontecendo na loja.':'',
+      tipo:precisaTipo,diag:precisaDiag,txt:fechado?'Por que o caso voltou?':null,ok:t=>seguir(t).catch(erro)});
+  seguir(null).catch(erro);
 }
 
 /* ---------- caso (gaveta) ---------- */
@@ -619,42 +706,60 @@ async function abrirCaso(id){
   casoAberto=id;const g=$('gaveta');g.innerHTML='<p class="muted">Carregando…</p>';g.classList.add('on');$('veu').classList.add('on');
   let c=CASOS.find(x=>x.id===id);
   if(!c){const {data}=await sb.from('crm_casos').select('*').eq('id',id).maybeSingle();if(!data){g.innerHTML='<p>Caso não encontrado.</p>';return;}
-    c={...data,loja:lojaNome(data.fra),responsavel:(EQUIPE.find(p=>p.id===data.responsavel_id)||{}).nome,pode_mexer:gestor||data.responsavel_id===usuario.id||data.criado_por===usuario.id,tickets_abertos:[]};}
+    c={...data,loja:lojaNome(data.fra),responsavel:(EQUIPE.find(p=>p.id===data.responsavel_id)||{}).nome,pode_mexer:gestor||data.responsavel_id===usuario.id||data.criado_por===usuario.id,tickets_abertos:[],tarefas_total:0,tarefas_abertas:0};}
   const [h,t,k]=await Promise.all([
     sb.from('crm_casos_hist').select('em,por,tipo,de,para,texto').eq('caso_id',id).order('em',{ascending:false}),
     sb.from('agenda_eventos').select('id,titulo,data,prazo,concluida,concluida_em,concluida_obs,user_id,cancelado_em').eq('caso_id',id).order('criado_em',{ascending:false}),
     sb.from('crm_protocolos').select('id,sistema,numero,status,criado_em').eq('caso_id',id).order('criado_em',{ascending:false})]);
   const nomeP=uid=>primeiro((EQUIPE.find(p=>p.id===uid)||{}).nome);
-  const mov=COLS.filter(x=>x[0]!==c.coluna).map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('');
+  const aberto=c.coluna!=='resolvido'&&c.coluna!=='cancelado';
+  const mov=COLS.filter(x=>x[0]!==c.coluna).map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+(aberto?'<option value="cancelado">Cancelar caso…</option>':'');
+  const prox=PROX[c.coluna];
+  const fases=COLS.slice(0,5).map(([k,n])=>'<span class="'+(k===c.coluna?'atual':(ORD[k]<ORD[c.coluna]?'feita':''))+'">'+esc(n)+'</span>').join('');
+  const rx=c.raiox;
   g.innerHTML='<div style="display:flex;justify-content:space-between;gap:8px"><div><div class="muted">FRA '+c.fra+' · '+esc(c.loja)+'</div><h2>'+esc(c.titulo)+'</h2></div><button class="btn peq" id="gFechar" type="button">✕</button></div>'
-    +'<div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><span class="selo s-azul">'+COLNOME[c.coluna]+'</span>'
+    +'<div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">'
+    +(c.tipo?'<span class="selo s-azul">'+esc(TIPOS[c.tipo]||c.tipo)+'</span>':'<span class="selo s-cinza">sem tipo</span>')
     +(c.prioridade!=='normal'?'<span class="selo '+(c.prioridade==='urgente'?'s-verm':'s-ambar')+'">'+c.prioridade+'</span>':'')
-    +'<span class="muted">👤 '+esc(c.responsavel||'—')+(c.demanda?' · demanda: '+esc(c.demanda):'')+'</span></div>'
-    +(c.descricao?'<div class="bloco" style="white-space:pre-wrap">'+esc(c.descricao)+'</div>':'')
-    +(c.coluna==='aguardando'&&c.aguardando_quem?'<div class="aviso">⏳ Aguardando: '+esc(c.aguardando_quem)+'</div>':'')
-    +(c.coluna==='resolvido'?'<div class="aviso ok">✔ '+esc(c.resolucao||'')+' · '+dhBR(c.resolvido_em)+'</div>':'')
+    +(c.risco_financeiro?'<span class="selo s-foco">💰 risco financeiro</span>':'')
+    +'<span class="muted">👤 '+esc(c.responsavel||'—')+'</span></div>'
+    +(aberto?'<div class="fases">'+fases+'</div><div class="muted">'+esc(COLNOME[c.coluna])+' · '+esc(faseTxt(c))+(c.prazo_fase?' · prazo da fase '+c.prazo_fase+' d':'')+(c.atrasado?' · <b style="color:var(--pop-verm)">atrasado</b>':'')+'</div>'
+      :'<div class="aviso '+(c.coluna==='resolvido'?'ok':'')+'">'+(c.coluna==='resolvido'?'✔ ':'Cancelado · ')+esc(c.resolucao||'')+' · '+dhBR(c.resolvido_em)+'</div>')
+    +(c.aguardando_quem?'<div class="aviso">⏳ Aguardando: <b>'+esc(c.aguardando_quem)+'</b>'+(c.aguardando_desde?' · desde '+dBR(c.aguardando_desde):'')+'</div>':'')
     +'<div class="linha-acoes">'
+      +(aberto&&c.pode_mexer&&prox?'<button class="btn ok peq" id="gAvancar" type="button">'+(prox==='resolvido'?'Fechar caso ✔':'Avançar para '+esc(COLNOME[prox])+' →')+'</button>':'')
       +'<button class="btn pri peq" id="gTarefa" type="button">+ Tarefa</button>'
       +'<button class="btn peq" id="gTicket" type="button">+ Ticket</button>'
       +'<button class="btn peq" id="gNota" type="button">+ Anotação</button>'
+      +(aberto&&c.pode_mexer?'<button class="btn peq" id="gAguardar" type="button">'+(c.aguardando_quem?'Parou de aguardar':'⏳ Aguardando…')+'</button>':'')
       +(c.pode_mexer?'<select id="gMover" style="width:auto;padding:5px 8px"><option value="">Mover para…</option>'+mov+'</select>':'')
       +'<a class="lk" href="?fra='+c.fra+'" id="gLoja" style="align-self:center">histórico da loja →</a>'
     +'</div>'
-    +(c.pode_mexer?'<details style="margin-bottom:10px"><summary class="muted" style="cursor:pointer">Editar responsável / prioridade</summary><div class="grade2"><div><label>Responsável</label><select id="gResp">'+EQUIPE.map(p=>'<option value="'+p.id+'"'+(p.id===c.responsavel_id?' selected':'')+'>'+esc(p.nome)+'</option>').join('')+'</select></div><div><label>Prioridade</label><select id="gPrio">'+['normal','alta','urgente'].map(x=>'<option'+(x===c.prioridade?' selected':'')+'>'+x+'</option>').join('')+'</select></div></div><div class="rod"><button class="btn peq" id="gSalvar" type="button">Salvar</button></div></details>':'')
+    +(c.pode_mexer?'<details style="margin-bottom:10px"><summary class="muted" style="cursor:pointer">Editar tipo / responsável / prioridade</summary><div class="grade2"><div><label>Tipo</label><select id="gTipo"><option value="">— sem tipo —</option>'+Object.entries(TIPOS).map(([v,n])=>'<option value="'+v+'"'+(v===c.tipo?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></div><div><label>Prioridade</label><select id="gPrio">'+['normal','alta','urgente'].map(x=>'<option'+(x===c.prioridade?' selected':'')+'>'+x+'</option>').join('')+'</select></div><div><label>Responsável</label><select id="gResp">'+EQUIPE.map(p=>'<option value="'+p.id+'"'+(p.id===c.responsavel_id?' selected':'')+'>'+esc(p.nome)+'</option>').join('')+'</select></div></div><div class="rod"><button class="btn peq" id="gSalvar" type="button">Salvar</button></div></details>':'')
+    +(c.descricao?'<div class="bloco" style="white-space:pre-wrap">'+esc(c.descricao)+'</div>':'')
+    +'<div class="bloco"><h3>Diagnóstico</h3>'+(c.diagnostico?'<div class="diag">'+esc(c.diagnostico)+'</div>':'<p class="muted">Ainda não registrado. É o que libera a fase Plano combinado.</p>')
+      +(c.pode_mexer&&aberto?'<div class="linha-acoes" style="margin-bottom:0"><button class="btn peq" id="gDiag" type="button">'+(c.diagnostico?'Editar diagnóstico':'Registrar diagnóstico')+'</button></div>':'')+'</div>'
+    +(rx?'<div class="bloco"><h3>Consultoria Raio-X</h3><div>Ativa desde '+dBR(rx.inicio)+' · reunião <b>'+rx.reunioes_feitas+' de '+rx.reunioes_total+'</b>'+(rx.proxima_reuniao?' · próxima '+dBR(rx.proxima_reuniao):'')+' · '+esc(primeiro(rx.consultor))+'</div><div class="muted">As reuniões da consultoria seguem no Raio-X; aqui o caso acompanha o problema.</div><a class="lk" href="../raiox/">abrir Raio-X →</a></div>'
+      :(c.tipo==='faturamento'&&aberto?'<div class="aviso">Caso de faturamento sem consultoria ativa no Raio-X para esta loja.</div>':''))
     +'<div class="bloco"><h3>Tarefas ('+(t.data||[]).length+')</h3>'+((t.data||[]).map(e=>'<div style="padding:5px 0;border-bottom:1px solid var(--pop-linha-2)">'
         +(e.cancelado_em?'<span class="selo s-cinza">cancelada</span> ':e.concluida?'<span class="selo s-verde">feita</span> ':'<span class="selo s-ambar">aberta</span> ')
         +'<b>'+esc(e.titulo)+'</b> <span class="muted">· '+esc(nomeP(e.user_id))+' · '+(e.concluida?'concluída '+dhBR(e.concluida_em):'prazo '+dBR(e.prazo||e.data))+'</span>'
         +(e.concluida_obs?'<div class="muted" style="white-space:pre-wrap">“'+esc(e.concluida_obs)+'”</div>':'')+'</div>').join('')||'<p class="muted">Nenhuma tarefa. Crie a próxima ação para o caso não parar.</p>')+'</div>'
     +'<div class="bloco"><h3>Tickets</h3>'+((k.data||[]).map(p=>'<div>🎫 <b>'+esc(p.numero)+'</b> · '+esc(SIS[p.sistema]||p.sistema)+' · <span class="selo '+(p.status==='aberto'?'s-foco':'s-verde')+'">'+p.status+'</span></div>').join('')||'<p class="muted">Nenhum.</p>')+'</div>'
-    +'<div class="bloco"><h3>Histórico do caso</h3><div class="tl">'+((h.data||[]).map(x=>'<div class="it '+(x.tipo==='nota'?'nota':x.tipo==='resolvido'||x.tipo==='tarefa_concluida'?'concluida':'')+'"><div class="q">'+dhBR(x.em)+' · '+esc(nomeP(x.por))+'</div><b>'+esc(TIPOHIST[x.tipo]||x.tipo)+'</b>'
+    +'<div class="bloco"><h3>Histórico do caso</h3><div class="tl">'+((h.data||[]).map(x=>'<div class="it '+(x.tipo==='nota'||x.tipo==='diagnostico'?'nota':x.tipo==='resolvido'||x.tipo==='tarefa_concluida'?'concluida':x.tipo==='cancelado'?'cancelada':'')+'"><div class="q">'+dhBR(x.em)+' · '+esc(x.por?nomeP(x.por):'sistema')+'</div><b>'+esc(TIPOHIST[x.tipo]||x.tipo)+'</b>'
         +(x.de||x.para?' <span class="muted">'+esc(COLNOME[x.de]||x.de||'')+(x.de?' → ':'')+esc(COLNOME[x.para]||x.para||'')+'</span>':'')
         +(x.texto?'<div class="tx">'+esc(x.texto)+'</div>':'')+'</div>').join('')||'<p class="muted">—</p>')+'</div></div>';
   $('gFechar').onclick=fecharGaveta;
   $('gTarefa').onclick=()=>novaTarefa(c);
   $('gTicket').onclick=()=>novoTicket(c.fra,c.id);
   $('gNota').onclick=()=>pedirTexto('Anotação · FRA '+c.fra,'Fica no histórico do caso e da loja. Número de ticket escrito aqui é registrado sozinho.',false,async v=>{if(!v)throw new Error('Escreva a anotação.');await rpc('crm_caso_nota',{p_id:c.id,p_texto:v});toast('Anotado');await carregarQuadro();abrirCaso(c.id);});
+  const ga=$('gAvancar');if(ga)ga.onclick=()=>pedirMover(c,prox);
+  const gw=$('gAguardar');if(gw)gw.onclick=()=>{
+    if(c.aguardando_quem)return rpc('crm_caso_aguardar',{p_id:c.id,p_quem:null}).then(async()=>{toast('Não está mais aguardando');await carregarQuadro();abrirCaso(c.id);}).catch(e=>alert(e.message));
+    pedirTexto('Aguardando o quê? · FRA '+c.fra,'O card continua na fase atual, com o selo de espera. Ex.: retorno do ticket OnePet 2026…, resposta do franqueado.',true,async v=>{await rpc('crm_caso_aguardar',{p_id:c.id,p_quem:v});toast('Marcado como aguardando');await carregarQuadro();abrirCaso(c.id);},(c.tickets_abertos||[]).length?'Ticket '+c.tickets_abertos[0].numero:'');};
+  const gd=$('gDiag');if(gd)gd.onclick=()=>pedirFase({c,tit:'Diagnóstico · FRA '+c.fra,sub:'Situação, causas, oportunidades e riscos. Fica no caso e no histórico da loja.',diag:true,ok:async()=>{toast('Diagnóstico salvo');await carregarQuadro();abrirCaso(c.id);}});
   const gm=$('gMover');if(gm)gm.onchange=()=>{if(gm.value)pedirMover(c,gm.value);gm.value='';};
-  const gs=$('gSalvar');if(gs)gs.onclick=async()=>{try{await rpc('crm_caso_editar',{p_id:c.id,p_dados:{responsavel_id:$('gResp').value,prioridade:$('gPrio').value}});toast('Salvo');await carregarQuadro();abrirCaso(c.id);}catch(e){alert(e.message);}};
+  const gs=$('gSalvar');if(gs)gs.onclick=async()=>{try{await rpc('crm_caso_editar',{p_id:c.id,p_dados:{responsavel_id:$('gResp').value,prioridade:$('gPrio').value,tipo:$('gTipo').value}});toast('Salvo');await carregarQuadro();abrirCaso(c.id);}catch(e){alert(e.message);}};
   $('gLoja').onclick=ev=>{ev.preventDefault();fecharGaveta();abrirAba('loja');abrirLoja(c.fra);};
 }
 function fecharGaveta(){$('gaveta').classList.remove('on');if(!document.querySelector('.modal.on'))$('veu').classList.remove('on');casoAberto=null;}
@@ -676,25 +781,28 @@ $('mcTarefa').onchange=()=>$('mcTarefaBox').classList.toggle('oculto',!$('mcTare
 $('fCaso').onsubmit=async ev=>{
   ev.preventDefault();msg('mcMsg');
   const fra=fraDe($('mcLoja').value);if(!fra||!LOJAS.some(f=>f.fra===fra)){msg('mcMsg','Escolha a loja da lista.','erro');return;}
+  if(!$('mcTipo').value){msg('mcMsg','Escolha o tipo do caso.','erro');return;}
   const querTarefa=$('mcTarefa').checked,tt=$('mcTTit').value.trim();
   if(querTarefa&&!tt){msg('mcMsg','Escreva a primeira tarefa ou desmarque a opção.','erro');return;}
   try{
-    const r=await rpc('crm_caso_criar',{p_fra:fra,p_titulo:$('mcTitulo').value,p_descricao:$('mcDesc').value,p_responsavel:$('mcResp').value,p_prioridade:$('mcPrio').value,p_demanda:$('mcDem').value||null});
-    if(querTarefa)await inserirTarefa({fra,caso:r.id,titulo:tt,para:$('mcResp').value,prazo:$('mcTPrazo').value||maisDias(2),desc:'Caso: '+$('mcTitulo').value.trim(),demanda:$('mcDem').value||null});
+    const r=await rpc('crm_caso_criar',{p_fra:fra,p_titulo:$('mcTitulo').value,p_descricao:$('mcDesc').value,p_responsavel:$('mcResp').value,p_prioridade:$('mcPrio').value,p_demanda:null,p_tipo:$('mcTipo').value});
+    if(querTarefa)await inserirTarefa({fra,caso:r.id,titulo:tt,para:$('mcResp').value,prazo:$('mcTPrazo').value||maisDias(2),desc:'Caso: '+$('mcTitulo').value.trim()});
     fecharModais();toast('Caso aberto');await carregarQuadro();carregarSem();abrirCaso(r.id);
   }catch(e){msg('mcMsg',e.message,'erro');}
 };
 async function inserirTarefa(o){
   const {error}=await sb.from('agenda_eventos').insert({user_id:o.para,titulo:o.titulo,data:hojeISO(),ini:'00:00',fim:'00:00',tipo:'tarefa',
-    descricao:o.desc||'',participantes:[],franquia_fra:o.fra,prazo:o.prazo,subtarefas:[],criado_por:usuario.id,caso_id:o.caso,demanda_id:o.demanda||null});
+    descricao:o.desc||'',participantes:[],franquia_fra:o.fra,prazo:o.prazo,subtarefas:[],criado_por:usuario.id,caso_id:o.caso});
   if(error)throw new Error(error.message);
 }
-let tarefaCaso=null;
-function novaTarefa(c){tarefaCaso=c;$('fTarefa').reset();msg('mfMsg');$('mfSub').textContent='FRA '+c.fra+' · '+c.titulo+' — aparece na agenda de quem receber.';$('mfResp').value=c.responsavel_id||usuario.id;$('mfPrazo').value=maisDias(2);abrirModal('mTarefa');}
+let tarefaCaso=null,depoisTarefa=null;
+function novaTarefa(c,depois){tarefaCaso=c;depoisTarefa=depois||null;$('fTarefa').reset();msg('mfMsg');$('mfSub').textContent='FRA '+c.fra+' · '+c.titulo+' — aparece na agenda de quem receber.';$('mfResp').value=c.responsavel_id||usuario.id;$('mfPrazo').value=maisDias(2);abrirModal('mTarefa');}
 $('fTarefa').onsubmit=async ev=>{
   ev.preventDefault();msg('mfMsg');
-  try{await inserirTarefa({fra:tarefaCaso.fra,caso:tarefaCaso.id,titulo:$('mfTit').value.trim(),para:$('mfResp').value,prazo:$('mfPrazo').value,desc:($('mfDesc').value.trim()?$('mfDesc').value.trim()+'\n':'')+'Caso: '+tarefaCaso.titulo,demanda:tarefaCaso.demanda_id});
-    fecharModais();toast('Tarefa criada na agenda');await carregarQuadro();carregarSem();abrirCaso(tarefaCaso.id);}catch(e){msg('mfMsg',e.message,'erro');}
+  try{await inserirTarefa({fra:tarefaCaso.fra,caso:tarefaCaso.id,titulo:$('mfTit').value.trim(),para:$('mfResp').value,prazo:$('mfPrazo').value,desc:($('mfDesc').value.trim()?$('mfDesc').value.trim()+'\n':'')+'Caso: '+tarefaCaso.titulo});
+    fecharModais();toast('Tarefa criada na agenda');const dp=depoisTarefa;depoisTarefa=null;
+    if(dp){await carregarQuadro();const c2=CASOS.find(x=>x.id===tarefaCaso.id)||tarefaCaso;try{await dp(c2);}catch(e){alert(e.message);}}
+    else{await carregarQuadro();carregarSem();abrirCaso(tarefaCaso.id);}}catch(e){msg('mfMsg',e.message,'erro');}
 };
 let ticketCaso=null;
 function novoTicket(fra,caso){ticketCaso=caso||null;$('fTicket').reset();msg('mkMsg');if(fra)$('mkLoja').value=fra+' · '+lojaNome(fra);abrirModal('mTicket');}
@@ -744,7 +852,7 @@ $('sCsv').onclick=()=>{
 $('lojaIr').onclick=()=>{const f=fraDe($('lojaBusca').value);if(f)abrirLoja(f);else toast('Loja não encontrada');};
 $('lojaBusca').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('lojaIr').click();}});
 $('lojaBusca').addEventListener('change',()=>{const f=fraDe($('lojaBusca').value);if(f)abrirLoja(f);});
-const ROT_LINHA={aberta:'Tarefa aberta',concluida:'Tarefa concluída',cancelada:'Tarefa cancelada',criado:'Caso aberto',movido:'Caso movido',resolvido:'Caso resolvido',reaberto:'Caso reaberto',nota:'Anotação no caso',editado:'Caso editado',consultoria:'Consultoria',consultoria_encerrada:'Consultoria encerrada'};
+const ROT_LINHA={cancelado:'Caso cancelado',diagnostico:'Diagnóstico do caso',aguardando:'Caso aguardando',aberta:'Tarefa aberta',concluida:'Tarefa concluída',cancelada:'Tarefa cancelada',criado:'Caso aberto',movido:'Caso movido',resolvido:'Caso resolvido',reaberto:'Caso reaberto',nota:'Anotação no caso',editado:'Caso editado',consultoria:'Consultoria',consultoria_encerrada:'Consultoria encerrada'};
 async function abrirLoja(fra){
   lojaAtual=fra;$('lojaBusca').value=fra+' · '+lojaNome(fra);
   try{history.replaceState(null,'','?fra='+fra);}catch(e){}
@@ -754,7 +862,7 @@ async function abrirLoja(fra){
   b.innerHTML='<div class="loja-cab"><div><div class="muted">FRA '+fra+'</div><h2>'+esc(l.nome||'')+'</h2><div class="muted">'+esc((l.cidade||'')+(l.uf?'/'+l.uf:''))+' · consultor: '+esc(primeiro(l.consultor))+'</div></div>'
     +'<div style="text-align:right">'+(sem?'<div class="muted">última tarefa</div><b>'+(sem.ultima?dBR(sem.ultima)+' · '+sem.dias+' d':'nunca')+'</b>':'')+'<div class="linha-acoes" style="justify-content:flex-end"><button class="btn pri peq" id="lNovo" type="button">+ Caso</button><button class="btn peq" id="lTk" type="button">+ Ticket</button></div></div></div>'
     +'<div class="grid2"><div class="bloco"><h3>Linha do tempo</h3><div class="tl" id="lTl"></div></div><div>'
-      +'<div class="bloco"><h3>Casos</h3>'+((r.casos||[]).map(c=>'<div style="padding:6px 0;border-bottom:1px solid var(--pop-linha-2)"><a class="lk" data-caso="'+c.id+'">'+esc(c.titulo)+'</a><div class="muted"><span class="selo '+(c.coluna==='resolvido'?'s-verde':'s-azul')+'">'+COLNOME[c.coluna]+'</span> · '+esc(primeiro(c.responsavel))+' · aberto '+dBR(c.criado_em)+(c.resolucao?' · ✔ '+esc(c.resolucao):'')+'</div></div>').join('')||'<p class="muted">Nenhum caso aberto para esta loja.</p>')+'</div>'
+      +'<div class="bloco"><h3>Casos</h3>'+((r.casos||[]).map(c=>'<div style="padding:6px 0;border-bottom:1px solid var(--pop-linha-2)"><a class="lk" data-caso="'+c.id+'">'+esc(c.titulo)+'</a><div class="muted"><span class="selo '+(c.coluna==='resolvido'?'s-verde':c.coluna==='cancelado'?'s-cinza':'s-azul')+'">'+esc(COLNOME[c.coluna]||c.coluna)+'</span>'+(c.tipo?' <span class="selo s-cinza">'+esc(TIPOS[c.tipo]||c.tipo)+'</span>':'')+(c.risco_financeiro?' <span class="selo s-foco">💰 risco</span>':'')+' · '+esc(primeiro(c.responsavel))+' · aberto '+dBR(c.criado_em)+(c.resolucao?' · ✔ '+esc(c.resolucao):'')+'</div></div>').join('')||'<p class="muted">Nenhum caso aberto para esta loja.</p>')+'</div>'
       +'<div class="bloco"><h3>Tickets</h3>'+((r.tickets||[]).map(t=>'<div style="padding:4px 0">🎫 <b>'+esc(t.numero)+'</b> · '+esc(SIS[t.sistema]||t.sistema)+' · <span class="selo '+(t.status==='aberto'?'s-foco':'s-verde')+'">'+t.status+'</span><div class="muted">'+dBR(t.criado_em)+' · '+esc(primeiro(t.por))+(t.origem==='extraido'?' · lido da observação':'')+'</div></div>').join('')||'<p class="muted">Nenhum ticket.</p>')+'</div>'
     +'</div></div>';
   const tl=$('lTl');
@@ -765,7 +873,6 @@ async function abrirLoja(fra){
       +'<b>'+esc(ROT_LINHA[x.tipo]||x.tipo)+'</b> · '+esc(x.titulo||'')+(x.caso_id&&x.origem==='agenda'?' <a class="lk" data-caso="'+x.caso_id+'">[caso]</a>':'');
     if(x.origem==='agenda'){
       if(x.prazo&&x.tipo==='aberta')h+='<div class="muted">prazo '+dBR(x.prazo)+'</div>';
-      if(x.demanda)h+='<div class="muted">demanda: '+esc(x.demanda)+'</div>';
       if(x.obs)h+='<div class="ob">“'+esc(x.obs)+'”</div>';
       (x.anotacoes||[]).forEach(a=>{h+='<div class="ob">📝 '+esc(a.txt)+' <span class="q">· '+esc(primeiro(a.por))+' '+dhBR(a.quando)+'</span></div>';});
     }else if(x.texto){h+='<div class="tx muted">'+(x.de||x.para?esc((COLNOME[x.de]||x.de||'')+(x.de?' → ':'')+(COLNOME[x.para]||x.para||''))+' · ':'')+esc(x.texto)+'</div>';}
